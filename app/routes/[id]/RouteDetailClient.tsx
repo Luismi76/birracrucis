@@ -259,21 +259,60 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   const canCheckIn = distToActive != null && distToActive <= RADIUS_METERS && isPositionReliable();
 
+  // Contar participantes en el bar actual (dentro del radio)
+  const getParticipantsAtBar = (stopId: string) => {
+    const stop = stops.find(s => s.id === stopId);
+    if (!stop) return 1; // Al menos el usuario actual
+
+    const atBar = participants.filter(p => {
+      if (p.lat === 0 && p.lng === 0) return false;
+      const dist = distanceInMeters(p.lat, p.lng, stop.lat, stop.lng);
+      return dist <= RADIUS_METERS;
+    });
+
+    // +1 por el usuario actual si está en el bar
+    const userAtBar = canCheckIn ? 1 : 0;
+    return Math.max(1, atBar.length + userAtBar);
+  };
+
   const handleAddRound = async (stopId: string) => {
-    // Optimistic update
+    // Contar participantes en el bar
+    const peopleAtBar = getParticipantsAtBar(stopId);
+
+    // Optimistic update - sumar ronda
     setRounds(prev => ({
       ...prev,
       [stopId]: (prev[stopId] || 0) + 1
     }));
 
+    // Sumar una cerveza por cada persona en el bar
+    setBeers(prev => ({
+      ...prev,
+      [stopId]: (prev[stopId] || 0) + peopleAtBar
+    }));
+
     try {
       const res = await fetch(`/api/stops/${stopId}/checkin`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to check in');
+
+      // Registrar las cervezas en el servidor
+      for (let i = 0; i < peopleAtBar; i++) {
+        fetch(`/api/routes/${routeId}/drinks`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stopId, type: 'beer' }),
+        }).catch(console.error);
+      }
     } catch (err) {
       console.error(err);
+      // Rollback
       setRounds(prev => ({
         ...prev,
         [stopId]: Math.max(0, (prev[stopId] || 0) - 1)
+      }));
+      setBeers(prev => ({
+        ...prev,
+        [stopId]: Math.max(0, (prev[stopId] || 0) - peopleAtBar)
       }));
       alert("Error al registrar la ronda. Inténtalo de nuevo.");
     }
@@ -399,17 +438,29 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             </div>
 
             {/* Boton principal: Pedir Ronda */}
-            <button
-              onClick={() => handleAddRound(activeStop.id)}
-              disabled={!canCheckIn && !showDebug}
-              className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
-                (canCheckIn || showDebug)
-                  ? "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
-                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
-              }`}
-            >
-              {(canCheckIn || showDebug) ? "🍺 Siguiente Ronda" : `Acercate (${distToActive || '...'}m)`}
-            </button>
+            {(() => {
+              const peopleAtBar = getParticipantsAtBar(activeStop.id);
+              return (
+                <button
+                  onClick={() => handleAddRound(activeStop.id)}
+                  disabled={!canCheckIn && !showDebug}
+                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex flex-col items-center justify-center gap-1 ${
+                    (canCheckIn || showDebug)
+                      ? "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
+                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  }`}
+                >
+                  {(canCheckIn || showDebug) ? (
+                    <>
+                      <span>🍺 Siguiente Ronda</span>
+                      <span className="text-xs opacity-80">+{peopleAtBar} {peopleAtBar === 1 ? 'cerveza' : 'cervezas'} ({peopleAtBar} {peopleAtBar === 1 ? 'persona' : 'personas'})</span>
+                    </>
+                  ) : (
+                    <span>Acercate ({distToActive || '...'}m)</span>
+                  )}
+                </button>
+              );
+            })()}
 
             {/* Seccion de consumiciones */}
             <div className="bg-slate-50 rounded-xl p-3 space-y-3">
