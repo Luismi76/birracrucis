@@ -144,6 +144,32 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Detectar si nos hemos pasado de rondas planificadas
   const isOverPlannedRounds = activeStop && (rounds[activeStop.id] || 0) >= activeStop.plannedRounds;
 
+  // Auto-avance de bar basado en ubicacion
+  useEffect(() => {
+    if (!position || isRouteComplete) return;
+
+    const nextBarIndex = currentBarIndex + 1;
+    if (nextBarIndex >= stops.length) return;
+
+    const nextStop = stops[nextBarIndex];
+    const currentStop = stops[currentBarIndex];
+
+    // Calcular distancias
+    const distToCurrentBar = distanceInMeters(position.lat, position.lng, currentStop.lat, currentStop.lng);
+    const distToNextBar = distanceInMeters(position.lat, position.lng, nextStop.lat, nextStop.lng);
+
+    // Condicion 1: Estamos dentro del radio del siguiente bar
+    const isAtNextBar = distToNextBar <= RADIUS_METERS;
+
+    // Condicion 2: Estamos mas cerca del siguiente bar que del actual Y lejos del actual
+    const isCloserToNextBar = distToNextBar < distToCurrentBar && distToCurrentBar > RADIUS_METERS * 2;
+
+    // Avanzar automaticamente si estamos en el siguiente bar o claramente yendo hacia el
+    if (isAtNextBar || (isCloserToNextBar && isOverPlannedRounds)) {
+      setCurrentBarIndex(nextBarIndex);
+    }
+  }, [position, currentBarIndex, stops, isRouteComplete, isOverPlannedRounds]);
+
   // Calcular progreso
   const completedStops = stops.filter(s => (rounds[s.id] || 0) >= s.plannedRounds).length;
   const totalRounds = Object.values(rounds).reduce((sum, r) => sum + r, 0);
