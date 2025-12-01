@@ -186,10 +186,6 @@ export default function PotManager({
     }
   };
 
-  // Debug: verificar IDs
-  console.log("PotManager - currentUserId:", currentUserId);
-  console.log("PotManager - contributions:", potData?.contributions.map(c => ({ id: c.id, odIduserId: c.userId, userName: c.userName })));
-
   const hasContributed = currentUserId
     ? potData?.contributions.some(c => c.userId === currentUserId)
     : false;

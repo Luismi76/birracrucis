@@ -65,8 +65,18 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    }
+
+    // Obtener el ID interno del usuario por email
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, name: true },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
     }
 
     const { id } = await params;
@@ -89,9 +99,9 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Ruta no encontrada" }, { status: 404 });
     }
 
-    // Verificar si es el creador (por ID o por email)
-    const isCreator = route.creatorId === session.user.id ||
-                      (session.user.email && route.creator?.email === session.user.email);
+    // Verificar si es el creador
+    const isCreator = route.creatorId === currentUser.id ||
+                      route.creator?.email === session.user.email;
 
     // Accion: Configurar bote (solo creador)
     if (action === "configure") {
@@ -137,12 +147,12 @@ export async function POST(
         return NextResponse.json({ ok: false, error: "El bote no esta activado" }, { status: 400 });
       }
 
-      // Verificar si ya contribuyo
+      // Verificar si ya contribuyo (usando ID interno)
       const existing = await prisma.potContribution.findUnique({
         where: {
           routeId_userId: {
             routeId: id,
-            userId: session.user.id,
+            userId: currentUser.id,
           },
         },
       });
@@ -151,13 +161,13 @@ export async function POST(
         return NextResponse.json({ ok: false, error: "Ya has contribuido al bote" }, { status: 400 });
       }
 
-      // Registrar contribucion con nombre
+      // Registrar contribucion con ID interno y nombre
       await prisma.$transaction([
         prisma.potContribution.create({
           data: {
             routeId: id,
-            userId: session.user.id,
-            userName: session.user.name || session.user.email || "Usuario",
+            userId: currentUser.id,
+            userName: currentUser.name || session.user.email || "Usuario",
             amount: route.potAmountPerPerson,
           },
         }),
