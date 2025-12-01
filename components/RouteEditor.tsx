@@ -110,6 +110,29 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         getMapCenter: () => { lat: number; lng: number } | null;
     } | null>(null);
 
+    // Estado para ordenación de la lista de bares
+    const [sortBy, setSortBy] = useState<"relevance" | "distance">("relevance");
+
+    // Función para calcular distancia entre dos puntos (Haversine)
+    const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
+        const R = 6371000; // Radio de la Tierra en metros
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c; // Distancia en metros
+    };
+
+    // Formatear distancia para mostrar
+    const formatDistance = (meters: number): string => {
+        if (meters < 1000) {
+            return `${Math.round(meters)} m`;
+        }
+        return `${(meters / 1000).toFixed(1)} km`;
+    };
+
     // Inicializar datos si estamos editando
     useEffect(() => {
         if (initialData && initialData.stops.length > 0) {
@@ -168,14 +191,20 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         }
 
         setPlacesError(null);
+        setPlacesLoading(true);
         navigator.geolocation.getCurrentPosition(
             (pos) => {
-                setCenterLat(pos.coords.latitude.toString());
-                setCenterLng(pos.coords.longitude.toString());
+                const lat = pos.coords.latitude.toString();
+                const lng = pos.coords.longitude.toString();
+                setCenterLat(lat);
+                setCenterLng(lng);
+                // Buscar bares automáticamente
+                handleSearchPlaces(lat, lng);
             },
             (err) => {
                 console.error("Error geolocation:", err);
                 setPlacesError("No se pudo obtener la ubicación.");
+                setPlacesLoading(false);
             },
             { enableHighAccuracy: true }
         );
@@ -706,6 +735,128 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
     return (
         <div className="flex flex-col h-screen bg-slate-50 font-sans">
+            {/* Overlay fullscreen para modo manual - FUERA del contenedor flex */}
+            {manualAddMode && (
+                <div className="fixed inset-0 z-50 bg-white">
+                    <div className="w-full h-full">
+                        <BarSearchMap
+                            center={mapCenter}
+                            radius={parseInt(radius)}
+                            bars={places}
+                            selectedBars={orderedIds}
+                            routePreview={routePreview}
+                            onBarClick={handleToggleBar}
+                            onDistanceCalculated={(distance, duration) => {
+                                setRouteDistance(distance);
+                                setRouteDuration(duration);
+                            }}
+                            onMapClick={handleMapClick}
+                            manualAddMode={manualAddMode}
+                            isLoaded={isLoaded}
+                            loadError={loadError}
+                            onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
+                        />
+                    </div>
+
+                    {/* Banner indicador */}
+                    <div className="absolute top-4 left-4 right-4 z-20">
+                        <div className="bg-purple-500 text-white rounded-xl px-4 py-2 shadow-lg flex items-center justify-between">
+                            <span className="font-bold text-sm">✏️ Navega y pulsa el botón</span>
+                            <button
+                                onClick={() => setManualAddMode(false)}
+                                className="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 text-sm font-bold transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Marcador central fijo */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                        <div className="flex flex-col items-center">
+                            <div className="text-5xl animate-bounce">📍</div>
+                            <div className="w-3 h-3 bg-purple-500 rounded-full -mt-2"></div>
+                        </div>
+                    </div>
+
+                    {/* Botón para confirmar ubicación */}
+                    <div className="absolute bottom-8 left-4 right-4 z-20">
+                        <button
+                            onClick={() => {
+                                if (mapFunctionsRef.current) {
+                                    const coords = mapFunctionsRef.current.getMapCenter();
+                                    if (coords) {
+                                        console.log("Adding bar at map center:", coords.lat, coords.lng);
+                                        handleMapClick(coords.lat, coords.lng);
+                                        return;
+                                    }
+                                }
+                                handleMapClick(mapCenter.lat, mapCenter.lng);
+                            }}
+                            className="w-full py-4 bg-purple-500 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-purple-600 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        >
+                            <span>✓</span> Añadir bar aquí
+                        </button>
+                    </div>
+
+                    {/* Modal para introducir nombre del bar manual */}
+                    {pendingManualBar && (
+                        <div className="absolute inset-0 bg-black/50 flex items-end sm:items-center justify-center z-30">
+                            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl w-full sm:max-w-sm sm:mx-4 max-h-[80vh] overflow-y-auto">
+                                <div className="text-center mb-4">
+                                    <span className="text-3xl">📍</span>
+                                    <h3 className="font-bold text-slate-800 text-lg mt-1">Nuevo Bar</h3>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                                            Nombre del bar *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: Bar de Pepe, La Taberna..."
+                                            value={manualBarName}
+                                            onChange={(e) => setManualBarName(e.target.value)}
+                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                                            Dirección (opcional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: Calle Mayor 5"
+                                            value={manualBarAddress}
+                                            onChange={(e) => setManualBarAddress(e.target.value)}
+                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 mt-4">
+                                    <button
+                                        onClick={handleCancelManualBar}
+                                        className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmManualBar}
+                                        disabled={!manualBarName.trim()}
+                                        className="flex-1 py-3 bg-purple-500 text-white rounded-xl font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        ✓ Añadir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Header Fijo */}
             <div className="bg-white border-b px-4 py-3 shadow-sm z-10 flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -1235,29 +1386,77 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
                                 {/* Lista de Resultados de Búsqueda */}
                                 <div className="pt-4 border-t border-slate-100">
-                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
-                                        Bares Disponibles ({places.filter((p) => !selectedBars.has(p.placeId)).length})
-                                    </h3>
+                                    <div className="flex justify-between items-center mb-3">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                            Bares Disponibles ({places.filter((p) => !selectedBars.has(p.placeId)).length})
+                                        </h3>
+                                        {/* Selector de ordenación */}
+                                        <div className="flex gap-1 bg-slate-100 rounded-lg p-0.5">
+                                            <button
+                                                onClick={() => setSortBy("relevance")}
+                                                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                                                    sortBy === "relevance"
+                                                        ? "bg-white text-slate-800 shadow-sm"
+                                                        : "text-slate-500 hover:text-slate-700"
+                                                }`}
+                                            >
+                                                ⭐ Relevancia
+                                            </button>
+                                            <button
+                                                onClick={() => setSortBy("distance")}
+                                                className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${
+                                                    sortBy === "distance"
+                                                        ? "bg-white text-slate-800 shadow-sm"
+                                                        : "text-slate-500 hover:text-slate-700"
+                                                }`}
+                                            >
+                                                📍 Cercanía
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
                                         {places
                                             .filter((p) => !selectedBars.has(p.placeId))
+                                            .map((place) => ({
+                                                ...place,
+                                                distance: centerLat && centerLng
+                                                    ? calculateDistance(parseFloat(centerLat), parseFloat(centerLng), place.lat, place.lng)
+                                                    : null
+                                            }))
+                                            .sort((a, b) => {
+                                                if (sortBy === "distance") {
+                                                    return (a.distance ?? Infinity) - (b.distance ?? Infinity);
+                                                }
+                                                // Por relevancia: primero rating, luego número de reseñas
+                                                const ratingA = a.rating ?? 0;
+                                                const ratingB = b.rating ?? 0;
+                                                if (ratingB !== ratingA) return ratingB - ratingA;
+                                                return b.userRatingsTotal - a.userRatingsTotal;
+                                            })
                                             .map((place) => (
                                                 <div
                                                     key={place.placeId}
                                                     onClick={() => handleToggleBar(place.placeId)}
                                                     className="group flex items-center gap-3 p-3 rounded-xl border border-slate-100 hover:border-amber-200 hover:bg-amber-50/30 cursor-pointer transition-all"
                                                 >
-                                                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-amber-400 flex items-center justify-center">
+                                                    <div className="w-5 h-5 rounded-full border-2 border-slate-300 group-hover:border-amber-400 flex items-center justify-center flex-shrink-0">
                                                         <div className="w-2.5 h-2.5 rounded-full bg-amber-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="flex justify-between items-baseline">
+                                                        <div className="flex justify-between items-baseline gap-2">
                                                             <h3 className="font-medium text-slate-700 truncate">{place.name}</h3>
-                                                            {place.rating && (
-                                                                <span className="text-xs text-amber-500 font-bold flex items-center gap-0.5">
-                                                                    ⭐ {place.rating}
-                                                                </span>
-                                                            )}
+                                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                                {place.distance !== null && (
+                                                                    <span className="text-xs text-blue-500 font-medium">
+                                                                        {formatDistance(place.distance)}
+                                                                    </span>
+                                                                )}
+                                                                {place.rating && (
+                                                                    <span className="text-xs text-amber-500 font-bold flex items-center gap-0.5">
+                                                                        ⭐ {place.rating}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <p className="text-xs text-slate-400 truncate">{place.address}</p>
                                                     </div>
@@ -1282,149 +1481,39 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     </div>
                 </div>
 
-                {/* Panel Derecho (Mapa) - Fullscreen en modo manual */}
-                <div
-                    className={`relative transition-all duration-300 ${
-                        manualAddMode
-                            ? "fixed top-0 left-0 right-0 bottom-0 z-40"
-                            : "w-full md:w-2/3 h-[60dvh] md:h-full order-first md:order-last border-b md:border-l border-slate-200"
-                    }`}
-                    style={manualAddMode ? { height: '100dvh', width: '100vw' } : undefined}
-                >
-                    <BarSearchMap
-                        center={mapCenter}
-                        radius={parseInt(radius)}
-                        bars={places}
-                        selectedBars={orderedIds}
-                        routePreview={routePreview}
-                        onBarClick={handleToggleBar}
-                        onDistanceCalculated={(distance, duration) => {
-                            setRouteDistance(distance);
-                            setRouteDuration(duration);
-                        }}
-                        onMapClick={handleMapClick}
-                        manualAddMode={manualAddMode}
-                        isLoaded={isLoaded}
-                        loadError={loadError}
-                        onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
-                    />
+                {/* Panel Derecho (Mapa) - Solo visible cuando NO está en modo manual */}
+                {!manualAddMode && (
+                    <div className="relative w-full md:w-2/3 h-[60dvh] md:h-full order-first md:order-last border-b md:border-l border-slate-200">
+                        <BarSearchMap
+                            center={mapCenter}
+                            radius={parseInt(radius)}
+                            bars={places}
+                            selectedBars={orderedIds}
+                            routePreview={routePreview}
+                            onBarClick={handleToggleBar}
+                            onDistanceCalculated={(distance, duration) => {
+                                setRouteDistance(distance);
+                                setRouteDuration(duration);
+                            }}
+                            onMapClick={handleMapClick}
+                            manualAddMode={false}
+                            isLoaded={isLoaded}
+                            loadError={loadError}
+                            onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
+                        />
 
-                    {/* Banner y botón flotante para modo manual */}
-                    {manualAddMode && (
-                        <>
-                            {/* Banner indicador */}
-                            <div className="absolute top-4 left-4 right-4 z-20 pointer-events-none">
-                                <div className="bg-purple-500 text-white rounded-xl px-4 py-2 shadow-lg flex items-center justify-between pointer-events-auto">
-                                    <span className="font-bold text-sm">✏️ Navega el mapa y pulsa el botón para añadir</span>
-                                    <button
-                                        onClick={() => setManualAddMode(false)}
-                                        className="bg-white/20 hover:bg-white/30 rounded-lg px-2 py-1 text-xs font-bold transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
+                        {/* Overlay de instrucciones si está vacío */}
+                        {places.length === 0 && selectedBars.size === 0 && (
+                            <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center pointer-events-none z-10">
+                                <div className="bg-white p-6 rounded-2xl shadow-xl text-center max-w-xs border border-slate-100">
+                                    <div className="text-4xl mb-3">🗺️</div>
+                                    <p className="text-slate-800 font-bold text-lg">¡Empieza tu aventura!</p>
+                                    <p className="text-sm text-slate-500 mt-2">Usa el panel para buscar bares o tu ubicación actual.</p>
                                 </div>
                             </div>
-
-                            {/* Marcador central fijo */}
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                                <div className="flex flex-col items-center">
-                                    <div className="text-4xl animate-bounce">📍</div>
-                                    <div className="w-2 h-2 bg-purple-500 rounded-full -mt-1"></div>
-                                </div>
-                            </div>
-
-                            {/* Botón para confirmar ubicación */}
-                            <div className="absolute bottom-8 left-4 right-4 z-20">
-                                <button
-                                    onClick={() => {
-                                        // Obtener el centro actual del mapa directamente
-                                        if (mapFunctionsRef.current) {
-                                            const coords = mapFunctionsRef.current.getMapCenter();
-                                            if (coords) {
-                                                console.log("Adding bar at map center:", coords.lat, coords.lng);
-                                                handleMapClick(coords.lat, coords.lng);
-                                                return;
-                                            }
-                                        }
-                                        // Fallback: usar el centro del estado
-                                        console.log("Adding bar at state center (fallback):", mapCenter.lat, mapCenter.lng);
-                                        handleMapClick(mapCenter.lat, mapCenter.lng);
-                                    }}
-                                    className="w-full py-4 bg-purple-500 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-purple-600 active:scale-95 transition-all flex items-center justify-center gap-2"
-                                >
-                                    <span>✓</span> Añadir bar aquí
-                                </button>
-                            </div>
-                        </>
-                    )}
-
-                    {/* Modal para introducir nombre del bar manual */}
-                    {pendingManualBar && (
-                        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
-                            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl w-full sm:max-w-sm sm:mx-4 max-h-[80vh] overflow-y-auto">
-                                <div className="text-center mb-4">
-                                    <span className="text-3xl">📍</span>
-                                    <h3 className="font-bold text-slate-800 text-lg mt-1">Nuevo Bar</h3>
-                                </div>
-
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
-                                            Nombre del bar *
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ej: Bar de Pepe, La Taberna..."
-                                            value={manualBarName}
-                                            onChange={(e) => setManualBarName(e.target.value)}
-                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
-                                            autoFocus
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
-                                            Dirección (opcional)
-                                        </label>
-                                        <input
-                                            type="text"
-                                            placeholder="Ej: Calle Mayor 5"
-                                            value={manualBarAddress}
-                                            onChange={(e) => setManualBarAddress(e.target.value)}
-                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-2 mt-4 pb-safe">
-                                    <button
-                                        onClick={handleCancelManualBar}
-                                        className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        onClick={handleConfirmManualBar}
-                                        disabled={!manualBarName.trim()}
-                                        className="flex-1 py-3 bg-purple-500 text-white rounded-xl font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        ✓ Añadir
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Overlay de instrucciones si está vacío */}
-                    {places.length === 0 && selectedBars.size === 0 && (
-                        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center pointer-events-none z-10">
-                            <div className="bg-white p-6 rounded-2xl shadow-xl text-center max-w-xs border border-slate-100">
-                                <div className="text-4xl mb-3">🗺️</div>
-                                <p className="text-slate-800 font-bold text-lg">¡Empieza tu aventura!</p>
-                                <p className="text-sm text-slate-500 mt-2">Usa el panel para buscar bares o tu ubicación actual.</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
+                )}
             </div>
         </div>
     );
