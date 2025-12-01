@@ -1357,14 +1357,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
                     {/* Modal para introducir nombre del bar manual */}
                     {pendingManualBar && (
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30 p-4">
-                            <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full space-y-4">
-                                <div className="text-center">
-                                    <span className="text-4xl">📍</span>
-                                    <h3 className="font-bold text-slate-800 text-lg mt-2">Nuevo Bar Manual</h3>
-                                    <p className="text-xs text-slate-500 mt-1">
-                                        Coordenadas: {pendingManualBar.lat.toFixed(6)}, {pendingManualBar.lng.toFixed(6)}
-                                    </p>
+                        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+                            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl w-full sm:max-w-sm sm:mx-4 max-h-[80vh] overflow-y-auto">
+                                <div className="text-center mb-4">
+                                    <span className="text-3xl">📍</span>
+                                    <h3 className="font-bold text-slate-800 text-lg mt-1">Nuevo Bar</h3>
                                 </div>
 
                                 <div className="space-y-3">
@@ -1377,25 +1374,25 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                             placeholder="Ej: Bar de Pepe, La Taberna..."
                                             value={manualBarName}
                                             onChange={(e) => setManualBarName(e.target.value)}
-                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
                                             autoFocus
                                         />
                                     </div>
                                     <div>
                                         <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
-                                            Direccion (opcional)
+                                            Dirección (opcional)
                                         </label>
                                         <input
                                             type="text"
                                             placeholder="Ej: Calle Mayor 5"
                                             value={manualBarAddress}
                                             onChange={(e) => setManualBarAddress(e.target.value)}
-                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 mt-4 pb-safe">
                                     <button
                                         onClick={handleCancelManualBar}
                                         className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
@@ -1407,7 +1404,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                         disabled={!manualBarName.trim()}
                                         className="flex-1 py-3 bg-purple-500 text-white rounded-xl font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
-                                        ✓ Añadir Bar
+                                        ✓ Añadir
                                     </button>
                                 </div>
                             </div>
