@@ -49,12 +49,19 @@ export default function PotManager({
   const fetchPot = async () => {
     try {
       const res = await fetch(`/api/routes/${routeId}/pot`);
+      if (!res.ok) {
+        // Si hay error del servidor, simplemente no mostramos el bote
+        console.warn("Pot API not available:", res.status);
+        setPotData(null);
+        return;
+      }
       const data = await res.json();
       if (data.ok) {
         setPotData(data.pot);
       }
     } catch (err) {
       console.error("Error fetching pot:", err);
+      setPotData(null);
     } finally {
       setLoading(false);
     }
@@ -189,6 +196,12 @@ export default function PotManager({
         </div>
       </div>
     );
+  }
+
+  // Si no hay datos del bote (error de API o campos no existentes), no mostrar nada
+  if (potData === null) {
+    // Solo el creador ve la opción de activar el bote (cuando el API esté disponible)
+    return null;
   }
 
   // Si el bote no está activado, mostrar opción para activarlo (solo creador)
