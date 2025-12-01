@@ -261,21 +261,6 @@ export default function ProfilePage() {
         {/* Notificaciones Push */}
         <PushNotificationManager />
 
-        {/* Actions */}
-        <div className="space-y-3">
-          <Link
-            href="/routes"
-            className="block w-full py-3 bg-amber-500 text-white text-center rounded-xl font-bold hover:bg-amber-600 transition-colors"
-          >
-            Ver mis rutas
-          </Link>
-          <Link
-            href="/routes/new"
-            className="block w-full py-3 bg-white text-amber-600 text-center rounded-xl font-bold border-2 border-amber-500 hover:bg-amber-50 transition-colors"
-          >
-            Crear nueva ruta
-          </Link>
-        </div>
       </div>
     </div>
   );

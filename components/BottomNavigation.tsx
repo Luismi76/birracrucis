@@ -18,8 +18,13 @@ export default function BottomNavigation() {
     return null;
   }
 
+  // No mostrar en creacion/edicion de rutas (tienen su propia UI completa)
+  if (pathname === "/routes/new" || pathname.includes("/edit")) {
+    return null;
+  }
+
   // No mostrar dentro de una ruta activa (tiene su propia navegacion)
-  if (pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/edit") && !pathname.includes("/new") && !pathname.includes("/history")) {
+  if (pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/history")) {
     return null;
   }
 

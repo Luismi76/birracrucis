@@ -639,9 +639,19 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         <div className="flex flex-col h-screen bg-slate-50 font-sans">
             {/* Header Fijo */}
             <div className="bg-white border-b px-4 py-3 shadow-sm z-10 flex justify-between items-center">
-                <h1 className="text-xl font-bold text-amber-600 flex items-center gap-2">
-                    <span>🍺</span> {isEditing ? "Editar Birracrucis" : "Nuevo Birracrucis"}
-                </h1>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => router.back()}
+                        className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
+                    >
+                        <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <h1 className="text-xl font-bold text-amber-600 flex items-center gap-2">
+                        <span>🍺</span> {isEditing ? "Editar Birracrucis" : "Nuevo Birracrucis"}
+                    </h1>
+                </div>
             </div>
 
             <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
