@@ -1282,12 +1282,15 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     </div>
                 </div>
 
-                {/* Panel Derecho (Mapa) - Más grande en modo manual */}
-                <div className={`relative border-b md:border-l border-slate-200 transition-all duration-300 ${
-                    manualAddMode
-                        ? "fixed inset-0 z-50 h-screen w-screen"
-                        : "w-full md:w-2/3 h-[60dvh] md:h-full order-first md:order-last"
-                }`}>
+                {/* Panel Derecho (Mapa) - Fullscreen en modo manual */}
+                <div
+                    className={`relative transition-all duration-300 ${
+                        manualAddMode
+                            ? "fixed top-0 left-0 right-0 bottom-0 z-40"
+                            : "w-full md:w-2/3 h-[60dvh] md:h-full order-first md:order-last border-b md:border-l border-slate-200"
+                    }`}
+                    style={manualAddMode ? { height: '100dvh', width: '100vw' } : undefined}
+                >
                     <BarSearchMap
                         center={mapCenter}
                         radius={parseInt(radius)}
