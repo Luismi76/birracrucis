@@ -44,6 +44,7 @@ export default function PotManager({
   const [externalName, setExternalName] = useState("");
   const [showAddExternal, setShowAddExternal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   // Cargar datos del bote
   const fetchPot = async () => {
@@ -272,9 +273,6 @@ export default function PotManager({
       </div>
     );
   }
-
-  // Estado expandido/colapsado
-  const [expanded, setExpanded] = useState(false);
 
   // Bote activado - mostrar estado compacto
   return (
