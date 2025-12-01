@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 
 type PricePickerProps = {
   isOpen: boolean;
@@ -11,8 +11,8 @@ type PricePickerProps = {
   icon: string;
 };
 
-// Precios disponibles de 0.50€ a 10€ en incrementos de 0.10€
-const PRICES = Array.from({ length: 96 }, (_, i) => (i + 5) / 10); // 0.50 a 10.00
+// Precios comunes predefinidos
+const QUICK_PRICES = [1.00, 1.20, 1.50, 1.80, 2.00, 2.50, 3.00, 3.50, 4.00, 5.00];
 
 export default function PricePicker({
   isOpen,
@@ -22,40 +22,60 @@ export default function PricePicker({
   title,
   icon,
 }: PricePickerProps) {
-  const [selectedPrice, setSelectedPrice] = useState(currentPrice);
-  const listRef = useRef<HTMLDivElement>(null);
-  const itemHeight = 48; // altura de cada item
+  // Separar euros y centimos
+  const [euros, setEuros] = useState(Math.floor(currentPrice));
+  const [centimos, setCentimos] = useState(Math.round((currentPrice % 1) * 100));
 
-  // Scroll al precio seleccionado al abrir
-  useEffect(() => {
-    if (isOpen && listRef.current) {
-      const index = PRICES.findIndex(p => p === selectedPrice);
-      if (index !== -1) {
-        const scrollTop = index * itemHeight - (listRef.current.clientHeight / 2) + (itemHeight / 2);
-        listRef.current.scrollTop = Math.max(0, scrollTop);
-      }
-    }
-  }, [isOpen, selectedPrice]);
-
-  // Detectar el precio centrado durante el scroll
-  const handleScroll = () => {
-    if (!listRef.current) return;
-    const scrollTop = listRef.current.scrollTop;
-    const centerOffset = listRef.current.clientHeight / 2;
-    const index = Math.round((scrollTop + centerOffset - itemHeight / 2) / itemHeight);
-    const clampedIndex = Math.max(0, Math.min(PRICES.length - 1, index));
-    setSelectedPrice(PRICES[clampedIndex]);
-  };
+  const currentTotal = euros + centimos / 100;
 
   const handleConfirm = () => {
-    onSelect(selectedPrice);
+    onSelect(currentTotal);
     onClose();
+  };
+
+  const handleQuickPrice = (price: number) => {
+    onSelect(price);
+    onClose();
+  };
+
+  const incrementEuros = () => setEuros(prev => Math.min(prev + 1, 20));
+  const decrementEuros = () => setEuros(prev => Math.max(prev - 1, 0));
+
+  const incrementCentimos = () => {
+    setCentimos(prev => {
+      const next = prev + 10;
+      if (next >= 100) {
+        if (euros < 20) {
+          setEuros(e => e + 1);
+          return 0;
+        }
+        return 90;
+      }
+      return next;
+    });
+  };
+
+  const decrementCentimos = () => {
+    setCentimos(prev => {
+      const next = prev - 10;
+      if (next < 0) {
+        if (euros > 0) {
+          setEuros(e => e - 1);
+          return 90;
+        }
+        return 0;
+      }
+      return next;
+    });
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+      onClick={onClose}
+    >
       <div
         className="bg-white rounded-t-3xl w-full max-w-md overflow-hidden animate-slide-up"
         onClick={(e) => e.stopPropagation()}
@@ -64,7 +84,7 @@ export default function PricePicker({
         <div className="flex items-center justify-between p-4 border-b">
           <button
             onClick={onClose}
-            className="text-slate-500 font-medium"
+            className="text-slate-500 font-medium px-2"
           >
             Cancelar
           </button>
@@ -74,74 +94,83 @@ export default function PricePicker({
           </div>
           <button
             onClick={handleConfirm}
-            className="text-amber-600 font-bold"
+            className="text-amber-600 font-bold px-2"
           >
             OK
           </button>
         </div>
 
-        {/* Picker */}
-        <div className="relative h-64">
-          {/* Indicador central */}
-          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 h-12 bg-amber-100 rounded-xl border-2 border-amber-300 pointer-events-none z-10" />
+        {/* Selector de precio con +/- */}
+        <div className="p-6">
+          <div className="flex items-center justify-center gap-2">
+            {/* Euros */}
+            <div className="flex flex-col items-center">
+              <button
+                onClick={incrementEuros}
+                className="w-14 h-14 rounded-xl bg-slate-100 text-slate-600 text-2xl font-bold hover:bg-slate-200 active:bg-slate-300 transition-colors"
+              >
+                +
+              </button>
+              <div className="my-3 text-5xl font-black text-slate-800 w-14 text-center">
+                {euros}
+              </div>
+              <button
+                onClick={decrementEuros}
+                className="w-14 h-14 rounded-xl bg-slate-100 text-slate-600 text-2xl font-bold hover:bg-slate-200 active:bg-slate-300 transition-colors"
+              >
+                -
+              </button>
+            </div>
 
-          {/* Lista de precios */}
-          <div
-            ref={listRef}
-            onScroll={handleScroll}
-            className="h-full overflow-y-auto scroll-smooth snap-y snap-mandatory"
-            style={{
-              scrollSnapType: "y mandatory",
-              paddingTop: "calc(50% - 24px)",
-              paddingBottom: "calc(50% - 24px)",
-            }}
-          >
-            {PRICES.map((price) => {
-              const isSelected = price === selectedPrice;
-              return (
-                <div
-                  key={price}
-                  className={`h-12 flex items-center justify-center snap-center transition-all ${
-                    isSelected
-                      ? "text-2xl font-bold text-amber-600"
-                      : "text-lg text-slate-400"
-                  }`}
-                  onClick={() => {
-                    setSelectedPrice(price);
-                    // Scroll to center
-                    if (listRef.current) {
-                      const index = PRICES.indexOf(price);
-                      const scrollTop = index * itemHeight - (listRef.current.clientHeight / 2) + (itemHeight / 2);
-                      listRef.current.scrollTo({ top: scrollTop, behavior: "smooth" });
-                    }
-                  }}
-                >
-                  {price.toFixed(2)} €
-                </div>
-              );
-            })}
+            {/* Separador */}
+            <div className="text-5xl font-black text-slate-800 mb-1">,</div>
+
+            {/* Centimos */}
+            <div className="flex flex-col items-center">
+              <button
+                onClick={incrementCentimos}
+                className="w-14 h-14 rounded-xl bg-slate-100 text-slate-600 text-2xl font-bold hover:bg-slate-200 active:bg-slate-300 transition-colors"
+              >
+                +
+              </button>
+              <div className="my-3 text-5xl font-black text-slate-800 w-14 text-center">
+                {centimos.toString().padStart(2, '0')}
+              </div>
+              <button
+                onClick={decrementCentimos}
+                className="w-14 h-14 rounded-xl bg-slate-100 text-slate-600 text-2xl font-bold hover:bg-slate-200 active:bg-slate-300 transition-colors"
+              >
+                -
+              </button>
+            </div>
+
+            {/* Euro symbol */}
+            <div className="text-4xl font-bold text-slate-400 ml-1">€</div>
+          </div>
+
+          {/* Preview del precio */}
+          <div className="mt-4 text-center">
+            <span className="text-lg text-slate-500">
+              Precio: <span className="font-bold text-amber-600">{currentTotal.toFixed(2)}€</span>
+            </span>
           </div>
         </div>
 
         {/* Precios rapidos */}
-        <div className="p-4 border-t bg-slate-50">
-          <p className="text-xs text-slate-500 mb-2 text-center">Precios comunes</p>
-          <div className="flex justify-center gap-2 flex-wrap">
-            {[1.00, 1.50, 2.00, 2.50, 3.00, 3.50, 4.00, 5.00].map((price) => (
+        <div className="px-4 pb-6">
+          <p className="text-xs text-slate-500 mb-3 text-center">Precios rapidos</p>
+          <div className="grid grid-cols-5 gap-2">
+            {QUICK_PRICES.map((price) => (
               <button
                 key={price}
-                onClick={() => {
-                  setSelectedPrice(price);
-                  onSelect(price);
-                  onClose();
-                }}
-                className={`px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  price === selectedPrice
-                    ? "bg-amber-500 text-white"
-                    : "bg-white border border-slate-200 text-slate-700 hover:border-amber-300"
+                onClick={() => handleQuickPrice(price)}
+                className={`py-3 rounded-xl text-sm font-bold transition-all active:scale-95 ${
+                  Math.abs(price - currentTotal) < 0.01
+                    ? "bg-amber-500 text-white shadow-lg"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
-                {price.toFixed(2)}€
+                {price.toFixed(2)}
               </button>
             ))}
           </div>
