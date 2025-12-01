@@ -4,6 +4,7 @@ import { FormEvent, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import BarSearchMap from "@/components/BarSearchMap";
 import { useLoadScript } from "@react-google-maps/api";
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
 
 // Tipos
 type PlaceResult = {
@@ -86,8 +87,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const searchInputRef = useRef<HTMLDivElement | null>(null);
 
     const { isLoaded, loadError } = useLoadScript({
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
-        libraries: ["places"],
+        googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+        libraries: GOOGLE_MAPS_LIBRARIES,
     });
 
     // Estado de selección y orden

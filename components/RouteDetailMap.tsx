@@ -2,6 +2,7 @@
 
 import { GoogleMap, Marker, DirectionsRenderer, DirectionsService, InfoWindow, useLoadScript } from "@react-google-maps/api";
 import { useState, useMemo, useCallback, useEffect } from "react";
+import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
 
 type Stop = {
     id: string;
@@ -64,7 +65,8 @@ const PARTICIPANT_COLORS = [
 
 export default function RouteDetailMap({ stops, userPosition, participants = [] }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
-        googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
+        googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+        libraries: GOOGLE_MAPS_LIBRARIES,
     });
 
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
