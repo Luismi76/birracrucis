@@ -5,6 +5,7 @@ import Link from "next/link";
 import RouteDetailMap from "@/components/RouteDetailMap";
 import RouteDetailClient from "./RouteDetailClient";
 import ShareInviteCode from "@/components/ShareInviteCode";
+import UserMenu from "@/components/UserMenu";
 
 type Stop = {
   id: string;
@@ -128,6 +129,9 @@ export default function RouteDetailWrapper({
                   </svg>
                 </Link>
               )}
+
+              {/* Menu de usuario */}
+              <UserMenu />
             </div>
           </div>
 

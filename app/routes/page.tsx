@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import DeleteRouteButton from "@/components/DeleteRouteButton";
+import UserMenu from "@/components/UserMenu";
 
 export default async function RoutesPage() {
   const routes = await prisma.route.findMany({
@@ -13,12 +14,15 @@ export default async function RoutesPage() {
     <div className="max-w-3xl mx-auto p-4 space-y-4">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Birracrucis creados</h1>
-        <Link
-          href="/routes/new"
-          className="text-sm px-3 py-2 rounded bg-amber-600 text-white"
-        >
-          + Nuevo Birracrucis
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/routes/new"
+            className="text-sm px-3 py-2 rounded bg-amber-600 text-white"
+          >
+            + Nuevo
+          </Link>
+          <UserMenu />
+        </div>
       </div>
 
       {routes.length === 0 && (
