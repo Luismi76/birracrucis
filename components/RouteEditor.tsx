@@ -428,12 +428,19 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
     // Calcular hora estimada de llegada a cada bar
     const calculateArrivalTimes = () => {
-        if (!startTime || orderedIds.length === 0) return [];
+        if (!startTime || !date || orderedIds.length === 0) return [];
+
+        // Combinar fecha y hora de inicio
+        const dateOnly = date.split("T")[0]; // YYYY-MM-DD
+        const fullStartDateTime = new Date(`${dateOnly}T${startTime}`);
+
+        // Verificar que la fecha sea válida
+        if (isNaN(fullStartDateTime.getTime())) return [];
 
         const arrivalTimes: { id: string; arrivalTime: Date; departureTime: Date }[] = [];
-        let currentTime = new Date(startTime);
+        let currentTime = fullStartDateTime;
 
-        orderedIds.forEach((id, index) => {
+        orderedIds.forEach((id) => {
             const config = selectedBars.get(id);
             if (!config) return;
 
