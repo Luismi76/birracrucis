@@ -104,15 +104,21 @@ export async function PUT(
         const session = await getServerSession(authOptions);
         const { id } = await params;
 
+        console.log(`[PUT /routes/${id}] Session:`, session?.user?.id || 'NO SESSION');
+
         // Verificar permisos (solo si hay sesión)
         if (session?.user?.id) {
             const canModify = await canModifyRoute(id, session.user.id);
+            console.log(`[PUT /routes/${id}] canModify result:`, canModify);
             if (!canModify) {
                 return NextResponse.json(
                     { ok: false, error: "No tienes permiso para editar esta ruta" },
                     { status: 403 }
                 );
             }
+        } else {
+            // Sin sesión, permitir temporalmente para debug
+            console.log(`[PUT /routes/${id}] No session, allowing anyway`);
         }
 
         const body = (await req.json()) as UpdateRouteBody;
