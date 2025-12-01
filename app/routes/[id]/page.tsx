@@ -42,6 +42,16 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     }),
   ]);
 
+  // Obtener el ID del usuario actual
+  let currentUserId: string | undefined;
+  if (session?.user?.email) {
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
+    currentUserId = currentUser?.id;
+  }
+
   if (!route) {
     return notFound();
   }
@@ -64,11 +74,19 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     actualRounds: s.actualRounds,
   }));
 
+  // Formatear startTime como HH:MM
+  const startTimeStr = route.startTime
+    ? route.startTime.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", hour12: false })
+    : "12:00";
+
   return (
     <RouteDetailWrapper
       routeId={route.id}
       routeName={route.name}
       routeDate={route.date.toISOString()}
+      startTime={startTimeStr}
+      routeStatus={route.status}
+      currentUserId={currentUserId}
       inviteCode={route.inviteCode}
       stops={clientStops}
       isCreator={isCreator}

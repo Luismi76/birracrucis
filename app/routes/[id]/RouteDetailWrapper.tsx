@@ -32,6 +32,9 @@ type RouteDetailWrapperProps = {
   routeId: string;
   routeName: string;
   routeDate: string;
+  startTime: string;
+  routeStatus: string;
+  currentUserId?: string;
   inviteCode: string | null;
   stops: Stop[];
   isCreator: boolean;
@@ -43,6 +46,9 @@ export default function RouteDetailWrapper({
   routeId,
   routeName,
   routeDate,
+  startTime,
+  routeStatus,
+  currentUserId,
   inviteCode,
   stops,
   isCreator,
@@ -187,6 +193,10 @@ export default function RouteDetailWrapper({
             stops={stops}
             routeId={routeId}
             routeName={routeName}
+            routeDate={routeDate}
+            startTime={startTime}
+            routeStatus={routeStatus}
+            currentUserId={currentUserId}
             onPositionChange={setUserPosition}
             onParticipantsChange={handleParticipantsChange}
             isCreator={isCreator}

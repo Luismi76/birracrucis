@@ -52,6 +52,11 @@ model User {
   photos         Photo[]
   messages       Message[]
   sentNudges     Nudge[]       @relation("NudgeSender")
+  skipVotes      SkipVote[]
+  drinks         Drink[]
+  paidDrinks     Drink[]       @relation("DrinkPayer")
+  barRatings     BarRating[]
+  badges         UserBadge[]
 }
 
 model VerificationToken {
@@ -92,6 +97,10 @@ model Route {
   photos       Photo[]
   messages     Message[]
   nudges       Nudge[]
+  skipVotes    SkipVote[]
+  drinks       Drink[]
+  barRatings   BarRating[]
+  earnedBadges UserBadge[]
 }
 
 model RouteStop {
@@ -121,6 +130,9 @@ model RouteStop {
   // Relaciones
   rounds        Round[]
   photos        Photo[]
+  skipVotes     SkipVote[]
+  drinks        Drink[]
+  ratings       BarRating[]
 }
 
 model Participant {
@@ -182,4 +194,75 @@ model Message {
   userId    String
   content   String
   createdAt DateTime @default(now())
+}
+
+// Votación para saltarse un bar
+model SkipVote {
+  id        String    @id @default(cuid())
+  route     Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId   String
+  stop      RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  stopId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  vote      Boolean   // true = saltar, false = quedarse
+  createdAt DateTime  @default(now())
+
+  @@unique([routeId, stopId, userId])
+}
+
+// Contador de bebidas por usuario
+model Drink {
+  id          String    @id @default(cuid())
+  route       Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId     String
+  stop        RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  stopId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  type        String    @default("beer") // beer, wine, cocktail, soft, other
+  paidBy      User?     @relation("DrinkPayer", fields: [paidById], references: [id])
+  paidById    String?
+  createdAt   DateTime  @default(now())
+}
+
+// Valoración de bares visitados
+model BarRating {
+  id            String    @id @default(cuid())
+  route         Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId       String
+  stop          RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  stopId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  rating        Int       // 1-5 estrellas
+  comment       String?
+  createdAt     DateTime  @default(now())
+
+  @@unique([routeId, stopId, userId])
+}
+
+// Logros/Badges del usuario
+model Badge {
+  id          String   @id @default(cuid())
+  code        String   @unique // first_route, marathon, punctual, photographer, etc.
+  name        String
+  description String
+  icon        String   // emoji o URL
+  createdAt   DateTime @default(now())
+
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(cuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  badgeId   String
+  route     Route?   @relation(fields: [routeId], references: [id])
+  routeId   String?  // Ruta donde se ganó el badge (opcional)
+  earnedAt  DateTime @default(now())
+
+  @@unique([userId, badgeId])
 }

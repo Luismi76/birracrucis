@@ -4,6 +4,13 @@ import { useEffect, useState, useRef } from "react";
 import PhotoCapture from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
 import NudgeButton from "@/components/NudgeButton";
+import RouteChat from "@/components/RouteChat";
+import SkipVoteButton from "@/components/SkipVoteButton";
+import DrinkCounter from "@/components/DrinkCounter";
+import BarTimer from "@/components/BarTimer";
+import BarRating from "@/components/BarRating";
+import RouteSummary from "@/components/RouteSummary";
+import AddToCalendar from "@/components/AddToCalendar";
 
 type StopClient = {
   id: string;
@@ -14,11 +21,15 @@ type StopClient = {
   plannedRounds: number;
   maxRounds: number | null;
   actualRounds: number;
+  arrivalTime?: string;
+  departureTime?: string;
+  durationMinutes?: number;
 };
 
 type Participant = {
   odId: string;
   odIduserId: string;
+  id: string;
   name: string | null;
   image: string | null;
   lat: number;
@@ -30,6 +41,10 @@ type RouteDetailClientProps = {
   stops: StopClient[];
   routeId: string;
   routeName: string;
+  routeDate: string;
+  startTime: string;
+  routeStatus: string;
+  currentUserId?: string;
   onPositionChange?: (position: { lat: number; lng: number } | null) => void;
   onParticipantsChange?: (participants: Participant[]) => void;
   isCreator?: boolean;
@@ -57,12 +72,14 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
 const LOCATION_UPDATE_INTERVAL = 10000; // Enviar ubicación cada 10 segundos
 const PARTICIPANTS_FETCH_INTERVAL = 5000; // Obtener participantes cada 5 segundos
 
-export default function RouteDetailClient({ stops, routeId, routeName, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
   const [useWatch, setUseWatch] = useState(false);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [showSummary, setShowSummary] = useState(false);
 
   // Debug mode
   const [showDebug, setShowDebug] = useState(false);
@@ -70,8 +87,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, onPositio
   const [simLng, setSimLng] = useState("");
   const [simActive, setSimActive] = useState(false);
 
-  // Tabs para fotos
-  const [activeTab, setActiveTab] = useState<"route" | "photos">("route");
+  // Tabs para diferentes secciones
+  const [activeTab, setActiveTab] = useState<"route" | "photos" | "drinks" | "ratings">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
 
   // Estado local de rondas (optimista)
@@ -135,6 +152,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, onPositio
         if (res.ok) {
           const data = await res.json();
           if (data.ok && data.participants) {
+            setParticipants(data.participants);
             onParticipantsChange(data.participants);
           }
         }
@@ -341,11 +359,36 @@ export default function RouteDetailClient({ stops, routeId, routeName, onPositio
         <NudgeButton routeId={routeId} isAtCurrentStop={false} />
       )}
 
-      {/* Tabs: Ruta / Fotos */}
-      <div className="flex bg-slate-100 rounded-xl p-1">
+      {/* Votacion para saltar bar - siempre visible si hay bar activo */}
+      {activeStop && !isRouteComplete && (
+        <SkipVoteButton
+          routeId={routeId}
+          stopId={activeStop.id}
+          currentUserId={currentUserId}
+        />
+      )}
+
+      {/* Anadir al calendario - siempre visible excepto si completada */}
+      {!isRouteComplete && (
+        <AddToCalendar
+          routeName={routeName}
+          routeDate={routeDate}
+          startTime={startTime}
+          stops={stops.map(s => ({
+            id: s.id,
+            name: s.name,
+            address: s.address || "",
+            arrivalTime: s.arrivalTime,
+            departureTime: s.departureTime,
+          }))}
+        />
+      )}
+
+      {/* Tabs: Ruta / Fotos / Bebidas / Valoraciones */}
+      <div className="flex bg-slate-100 rounded-xl p-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab("route")}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
             activeTab === "route"
               ? "bg-white text-slate-900 shadow-sm"
               : "text-slate-500 hover:text-slate-700"
@@ -355,7 +398,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, onPositio
         </button>
         <button
           onClick={() => setActiveTab("photos")}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
             activeTab === "photos"
               ? "bg-white text-slate-900 shadow-sm"
               : "text-slate-500 hover:text-slate-700"
@@ -363,9 +406,29 @@ export default function RouteDetailClient({ stops, routeId, routeName, onPositio
         >
           📸 Fotos
         </button>
+        <button
+          onClick={() => setActiveTab("drinks")}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+            activeTab === "drinks"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          🍺 Bebidas
+        </button>
+        <button
+          onClick={() => setActiveTab("ratings")}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+            activeTab === "ratings"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          ⭐ Valorar
+        </button>
       </div>
 
-      {activeTab === "photos" ? (
+      {activeTab === "photos" && (
         /* Galeria de Fotos */
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -373,7 +436,45 @@ export default function RouteDetailClient({ stops, routeId, routeName, onPositio
           </h3>
           <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />
         </div>
-      ) : (
+      )}
+
+      {activeTab === "drinks" && (
+        /* Contador de Bebidas */
+        activeStop ? (
+          <DrinkCounter
+            routeId={routeId}
+            stopId={activeStop.id}
+            currentUserId={currentUserId}
+            participants={participants.map(p => ({
+              id: p.id,
+              name: p.name,
+              image: p.image,
+            }))}
+          />
+        ) : (
+          <div className="bg-white rounded-xl border p-4 text-center text-slate-500">
+            Selecciona un bar para ver las bebidas
+          </div>
+        )
+      )}
+
+      {activeTab === "ratings" && (
+        /* Valoracion del Bar */
+        activeStop ? (
+          <BarRating
+            routeId={routeId}
+            stopId={activeStop.id}
+            stopName={activeStop.name}
+            currentUserId={currentUserId}
+          />
+        ) : (
+          <div className="bg-white rounded-xl border p-4 text-center text-slate-500">
+            Selecciona un bar para valorar
+          </div>
+        )
+      )}
+
+      {activeTab === "route" && (
         /* 4. Timeline de la Ruta (Pasaporte) */
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
         <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
@@ -434,6 +535,30 @@ export default function RouteDetailClient({ stops, routeId, routeName, onPositio
         </div>
       </div>
       )}
+
+      {/* Boton Ver Resumen (cuando ruta completada) */}
+      {isRouteComplete && (
+        <button
+          onClick={() => setShowSummary(true)}
+          className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+        >
+          🎉 Ver Resumen de la Ruta
+        </button>
+      )}
+
+      {/* Modal de Resumen */}
+      {showSummary && (
+        <RouteSummary
+          routeId={routeId}
+          onClose={() => setShowSummary(false)}
+        />
+      )}
+
+      {/* Chat Flotante */}
+      <RouteChat
+        routeId={routeId}
+        currentUserId={currentUserId}
+      />
 
       {/* 5. Controles de Debug (Ocultos por defecto) */}
       {showDebug && (
