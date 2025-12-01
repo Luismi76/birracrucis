@@ -12,7 +12,12 @@ const nextConfig = {
   },
 };
 
-export default withPWA({
-  dest: "public",
-  disable: process.env.NODE_ENV === "development",
-})(nextConfig);
+// Deshabilitar PWA en Vercel para evitar que el service worker intercepte las API routes
+const isVercel = !!process.env.VERCEL;
+
+export default isVercel
+  ? nextConfig
+  : withPWA({
+      dest: "public",
+      disable: process.env.NODE_ENV === "development",
+    })(nextConfig);
