@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🍺 Birracrucis
 
-## Getting Started
+Aplicación para organizar jornadas de cervezas entre amigos visitando distintos bares y restaurantes. Inspirada en el pasaporte del Camino de Santiago.
 
-First, run the development server:
+## 🚀 Inicio Rápido
 
 ```bash
+# Instalar dependencias
+npm install
+
+# Configurar variables de entorno
+cp .env.example .env.local
+# Edita .env.local con tus credenciales
+
+# Migrar base de datos
+npx prisma migrate dev
+
+# Iniciar desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 📱 Testing en Móvil
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+La geolocalización **requiere HTTPS**:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Terminal 1: Servidor de desarrollo
+npm run dev
 
-## Learn More
+# Terminal 2: Túnel HTTPS
+npx ngrok http 3000
+```
 
-To learn more about Next.js, take a look at the following resources:
+Abre la URL `https://xxxxx.ngrok.io` en tu móvil.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠️ Stack Tecnológico
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Framework**: Next.js 16
+- **Base de Datos**: PostgreSQL + Prisma
+- **Mapas**: Google Maps API
+- **Estilos**: Tailwind CSS 4
+- **UI**: Radix UI + shadcn/ui
 
-## Deploy on Vercel
+## 📖 Documentación
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Ver [PROJECT_OVERVIEW.md](./PROJECT_OVERVIEW.md) para documentación completa.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## ✨ Funcionalidades
+
+- ✅ Crear rutas con bares/restaurantes
+- ✅ Buscar locales con Google Places
+- ✅ Geolocalización y detección de proximidad
+- ✅ Contador de rondas por local
+- ⏳ Fotos compartidas
+- ⏳ Gamificación
+- ⏳ Multiusuario en tiempo real
+
+## 🐛 Troubleshooting
+
+**Geolocalización no funciona en móvil**
+- Asegúrate de usar HTTPS (ngrok en desarrollo)
+- Verifica permisos del navegador
+- Activa el GPS del dispositivo
+
+**Distancias incorrectas**
+```bash
+npx tsx check-coordinates.ts
+```
+
+Ver [mobile_debug.md](./mobile_debug.md) para más ayuda.
+
+## 📄 Licencia
+
+[Por definir]

@@ -1,0 +1,159 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { prisma } from "@/lib/prisma";
+import { authOptions } from "@/lib/auth";
+
+type StopInput = {
+    name: string;
+    address?: string;
+    lat: number;
+    lng: number;
+    plannedRounds?: number;
+    maxRounds?: number | null;
+    googlePlaceId?: string | null;
+};
+
+type UpdateRouteBody = {
+    name: string;
+    date: string;
+    stops: StopInput[];
+};
+
+// Verifica si el usuario es creador o participante de la ruta
+async function canModifyRoute(routeId: string, userId: string): Promise<boolean> {
+    const route = await prisma.route.findUnique({
+        where: { id: routeId },
+        select: { creatorId: true },
+    });
+
+    // Si es el creador, puede modificar
+    if (route?.creatorId === userId) return true;
+
+    // Si no hay creador asignado (rutas antiguas), permitir a cualquier participante
+    if (!route?.creatorId) {
+        const participant = await prisma.participant.findUnique({
+            where: { routeId_userId: { routeId, userId } },
+        });
+        return !!participant;
+    }
+
+    return false;
+}
+
+export async function DELETE(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getServerSession(authOptions);
+        const { id } = await params;
+
+        // Verificar permisos (solo si hay sesión)
+        if (session?.user?.id) {
+            const canModify = await canModifyRoute(id, session.user.id);
+            if (!canModify) {
+                return NextResponse.json(
+                    { ok: false, error: "No tienes permiso para eliminar esta ruta" },
+                    { status: 403 }
+                );
+            }
+        }
+
+        // Borrar participantes
+        await prisma.participant.deleteMany({
+            where: { routeId: id },
+        });
+
+        // Borrar stops (cascade está configurado, pero por seguridad)
+        await prisma.routeStop.deleteMany({
+            where: { routeId: id },
+        });
+
+        // Borrar ruta
+        await prisma.route.delete({
+            where: { id },
+        });
+
+        return NextResponse.json({ ok: true });
+    } catch (error) {
+        console.error("Error DELETE route:", error);
+        return NextResponse.json(
+            { ok: false, error: "Error al eliminar la ruta" },
+            { status: 500 }
+        );
+    }
+}
+
+export async function PUT(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getServerSession(authOptions);
+        const { id } = await params;
+
+        // Verificar permisos (solo si hay sesión)
+        if (session?.user?.id) {
+            const canModify = await canModifyRoute(id, session.user.id);
+            if (!canModify) {
+                return NextResponse.json(
+                    { ok: false, error: "No tienes permiso para editar esta ruta" },
+                    { status: 403 }
+                );
+            }
+        }
+
+        const body = (await req.json()) as UpdateRouteBody;
+        const { name, date, stops } = body;
+
+        if (!name || !date || !Array.isArray(stops) || stops.length === 0) {
+            return NextResponse.json(
+                { ok: false, error: "Datos inválidos" },
+                { status: 400 }
+            );
+        }
+
+        // Transacción para actualizar
+        const updatedRoute = await prisma.$transaction(async (tx) => {
+            // 1. Actualizar datos básicos
+            const route = await tx.route.update({
+                where: { id },
+                data: {
+                    name,
+                    date: new Date(date),
+                },
+            });
+
+            // 2. Reemplazar stops (Estrategia simple: borrar y crear)
+            // NOTA: Esto resetea actualRounds. Para mantenerlo habría que hacer diffing complejo.
+            await tx.routeStop.deleteMany({
+                where: { routeId: id },
+            });
+
+            await tx.routeStop.createMany({
+                data: stops.map((s, index) => ({
+                    routeId: id,
+                    name: s.name,
+                    address: s.address ?? "",
+                    lat: s.lat,
+                    lng: s.lng,
+                    order: index,
+                    plannedRounds: s.plannedRounds ?? 1,
+                    maxRounds: s.maxRounds ?? null,
+                    googlePlaceId: s.googlePlaceId ?? null,
+                    actualRounds: 0, // Reset
+                })),
+            });
+
+            return route;
+        });
+
+        return NextResponse.json({ ok: true, route: updatedRoute });
+    } catch (error) {
+        console.error("Error PUT route:", error);
+        return NextResponse.json(
+            { ok: false, error: "Error al actualizar la ruta" },
+            { status: 500 }
+        );
+    }
+}
