@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { sendInvitationEmail } from "@/lib/email";
 
 // GET - Obtener invitaciones de la ruta (solo creador)
 export async function GET(
@@ -143,11 +144,22 @@ export async function POST(
       include: {
         invitedUser: { select: { id: true, name: true, email: true, image: true } },
         invitedBy: { select: { id: true, name: true, image: true } },
-        route: { select: { name: true } },
+        route: { select: { name: true, date: true } },
       },
     });
 
-    // TODO: Enviar email de notificación aquí
+    // Enviar email de notificación
+    const recipientEmail = invitedUser?.email || email.toLowerCase();
+    const inviterName = user.name || "Alguien";
+
+    await sendInvitationEmail({
+      to: recipientEmail,
+      inviterName,
+      routeName: invitation.route.name,
+      routeDate: invitation.route.date,
+      message: message || null,
+      routeId,
+    });
 
     return NextResponse.json({ ok: true, invitation }, { status: 201 });
   } catch (error) {
