@@ -27,20 +27,28 @@ type UpdateRouteBody = {
 
 // Verifica si el usuario es creador o participante de la ruta
 async function canModifyRoute(routeId: string, userId: string): Promise<boolean> {
+    console.log(`[canModifyRoute] Checking permissions for user ${userId} on route ${routeId}`);
+
     const route = await prisma.route.findUnique({
         where: { id: routeId },
         select: { creatorId: true },
     });
+    console.log(`[canModifyRoute] Route creatorId: ${route?.creatorId}`);
 
     // Si es el creador, puede modificar
-    if (route?.creatorId === userId) return true;
+    if (route?.creatorId === userId) {
+        console.log(`[canModifyRoute] User is creator, allowing`);
+        return true;
+    }
 
     // Si es participante, también puede modificar
     const participant = await prisma.participant.findUnique({
         where: { routeId_userId: { routeId, userId } },
     });
+    console.log(`[canModifyRoute] Participant found: ${!!participant}`);
     if (participant) return true;
 
+    console.log(`[canModifyRoute] User is neither creator nor participant, denying`);
     return false;
 }
 
