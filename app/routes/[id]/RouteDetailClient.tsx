@@ -11,6 +11,7 @@ import BarTimer from "@/components/BarTimer";
 import BarRating from "@/components/BarRating";
 import RouteSummary from "@/components/RouteSummary";
 import AddToCalendar from "@/components/AddToCalendar";
+import ParticipantsList from "@/components/ParticipantsList";
 
 type StopClient = {
   id: string;
@@ -88,7 +89,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [simActive, setSimActive] = useState(false);
 
   // Tabs para diferentes secciones
-  const [activeTab, setActiveTab] = useState<"route" | "photos" | "drinks" | "ratings">("route");
+  const [activeTab, setActiveTab] = useState<"route" | "photos" | "drinks" | "ratings" | "group">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
 
   // Estado local de rondas (optimista)
@@ -384,7 +385,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         />
       )}
 
-      {/* Tabs: Ruta / Fotos / Bebidas / Valoraciones */}
+      {/* Tabs: Ruta / Grupo / Fotos / Bebidas / Valoraciones */}
       <div className="flex bg-slate-100 rounded-xl p-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab("route")}
@@ -395,6 +396,16 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           }`}
         >
           🗺️ Ruta
+        </button>
+        <button
+          onClick={() => setActiveTab("group")}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+            activeTab === "group"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          👥 Grupo
         </button>
         <button
           onClick={() => setActiveTab("photos")}
@@ -427,6 +438,21 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           ⭐ Valorar
         </button>
       </div>
+
+      {activeTab === "group" && (
+        /* Lista de Participantes */
+        <ParticipantsList
+          routeId={routeId}
+          currentUserId={currentUserId}
+          currentStop={activeStop ? {
+            id: activeStop.id,
+            name: activeStop.name,
+            lat: activeStop.lat,
+            lng: activeStop.lng,
+          } : null}
+          userPosition={position}
+        />
+      )}
 
       {activeTab === "photos" && (
         /* Galeria de Fotos */
