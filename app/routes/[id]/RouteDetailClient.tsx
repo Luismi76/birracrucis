@@ -16,6 +16,7 @@ type StopClient = {
 type RouteDetailClientProps = {
   stops: StopClient[];
   onPositionChange?: (position: { lat: number; lng: number } | null) => void;
+  isCreator?: boolean;
 };
 
 const RADIUS_METERS = 75;
@@ -37,7 +38,7 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
   return R * c;
 }
 
-export default function RouteDetailClient({ stops, onPositionChange }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, onPositionChange, isCreator = false }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locError, setLocError] = useState<string | null>(null);

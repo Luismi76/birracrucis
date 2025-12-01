@@ -1,9 +1,9 @@
 // app/routes/[id]/page.tsx
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import RouteDetailWrapper from "./RouteDetailWrapper";
-import ShareInviteCode from "@/components/ShareInviteCode";
 
 type RoutePageProps = {
   // En Next 16 params es una Promise
@@ -18,17 +18,38 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     return notFound();
   }
 
-  const route = await prisma.route.findUnique({
-    where: { id },
-    include: {
-      stops: {
-        orderBy: { order: "asc" },
+  // Obtener sesión y ruta en paralelo
+  const [session, route] = await Promise.all([
+    getServerSession(authOptions),
+    prisma.route.findUnique({
+      where: { id },
+      include: {
+        stops: {
+          orderBy: { order: "asc" },
+        },
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+        _count: {
+          select: { participants: true },
+        },
       },
-    },
-  });
+    }),
+  ]);
 
   if (!route) {
     return notFound();
+  }
+
+  // Determinar si el usuario actual es el creador
+  let isCreator = false;
+  if (session?.user?.email && route.creator?.email) {
+    isCreator = session.user.email === route.creator.email;
   }
 
   // Adaptamos los stops al tipo que espera el componente cliente
@@ -44,33 +65,15 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
   }));
 
   return (
-    <div className="flex flex-col h-screen">
-      {/* Header - Fixed */}
-      <div className="bg-white border-b px-4 py-3 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold">{route.name}</h1>
-          <p className="text-xs text-slate-600">
-            {new Date(route.date).toLocaleString()}
-          </p>
-        </div>
-        <div className="flex gap-4 items-center">
-          <Link href={`/routes/${id}/edit`} className="text-sm text-amber-700 underline">
-            ✏️ Editar
-          </Link>
-          <Link href="/routes" className="text-sm text-amber-700 underline">
-            ← Volver
-          </Link>
-        </div>
-      </div>
-
-      {/* Compartir - Solo si tiene inviteCode */}
-      {route.inviteCode && (
-        <div className="px-4 py-3 bg-white border-b">
-          <ShareInviteCode inviteCode={route.inviteCode} routeName={route.name} />
-        </div>
-      )}
-
-      <RouteDetailWrapper stops={clientStops} />
-    </div>
+    <RouteDetailWrapper
+      routeId={route.id}
+      routeName={route.name}
+      routeDate={route.date.toISOString()}
+      inviteCode={route.inviteCode}
+      stops={clientStops}
+      isCreator={isCreator}
+      creatorName={route.creator?.name || null}
+      participantsCount={route._count.participants}
+    />
   );
 }
