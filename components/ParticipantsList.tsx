@@ -10,8 +10,9 @@ type Participant = {
   image: string | null;
   lat: number;
   lng: number;
-  lastSeenAt: string;
+  lastSeenAt: string | null;
   isActive?: boolean;
+  joinedAt?: string;
 };
 
 type Stop = {
@@ -46,7 +47,8 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
   return R * c;
 }
 
-function timeAgo(dateStr: string): string {
+function timeAgo(dateStr: string | null): string {
+  if (!dateStr) return "Sin conexion";
   const now = new Date();
   const date = new Date(dateStr);
   const diffMs = now.getTime() - date.getTime();
@@ -93,7 +95,11 @@ export default function ParticipantsList({
 
   // Clasificar participantes
   const classifyParticipant = (p: Participant) => {
-    if (!currentStop || !p.lat || !p.lng) return "unknown";
+    // Si no tiene ubicación válida (lat/lng = 0 o no tiene lastSeenAt)
+    if (!p.lat || !p.lng || p.lat === 0 || p.lng === 0 || !p.lastSeenAt) {
+      return "unknown";
+    }
+    if (!currentStop) return "unknown";
     const dist = distanceInMeters(p.lat, p.lng, currentStop.lat, currentStop.lng);
     if (dist <= RADIUS_METERS) return "atBar";
     return "away";

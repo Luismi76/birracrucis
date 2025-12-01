@@ -13,7 +13,7 @@ export async function GET(
     const { id: routeId } = await params;
 
     const participants = await prisma.participant.findMany({
-      where: { routeId },
+      where: { routeId, isActive: true },
       include: {
         user: {
           select: {
@@ -23,24 +23,24 @@ export async function GET(
           },
         },
       },
+      orderBy: { joinedAt: "asc" },
     });
 
-    // Filtrar solo los que tienen ubicación reciente (últimos 5 minutos)
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    // Devolver todos los participantes con su info
+    const allParticipants = participants.map(p => ({
+      id: p.user.id,
+      odId: p.id,
+      odIduserId: p.userId,
+      name: p.user.name,
+      image: p.user.image,
+      lat: p.lastLat || 0,
+      lng: p.lastLng || 0,
+      lastSeenAt: p.lastSeenAt?.toISOString() || null,
+      isActive: p.isActive,
+      joinedAt: p.joinedAt.toISOString(),
+    }));
 
-    const activeParticipants = participants
-      .filter(p => p.lastLat && p.lastLng && p.lastSeenAt && p.lastSeenAt > fiveMinutesAgo)
-      .map(p => ({
-        odId: p.id,
-        odIduserId: p.userId,
-        name: p.user.name,
-        image: p.user.image,
-        lat: p.lastLat,
-        lng: p.lastLng,
-        lastSeenAt: p.lastSeenAt,
-      }));
-
-    return NextResponse.json({ ok: true, participants: activeParticipants });
+    return NextResponse.json({ ok: true, participants: allParticipants });
   } catch (error) {
     console.error("Error en GET /api/routes/[id]/participants:", error);
     return NextResponse.json({ ok: false, error: "Error al obtener participantes" }, { status: 500 });
