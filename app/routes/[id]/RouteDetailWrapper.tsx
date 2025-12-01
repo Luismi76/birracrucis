@@ -1,11 +1,33 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, Suspense } from "react";
 import Link from "next/link";
-import RouteDetailMap from "@/components/RouteDetailMap";
-import RouteDetailClient from "./RouteDetailClient";
+import dynamic from "next/dynamic";
 import ShareInviteCode from "@/components/ShareInviteCode";
 import UserMenu from "@/components/UserMenu";
+import { MapSkeleton, BarCardSkeleton } from "@/components/ui/Skeleton";
+
+// Lazy loading de componentes pesados
+const RouteDetailMap = dynamic(
+    () => import("@/components/RouteDetailMap"),
+    {
+        loading: () => <MapSkeleton />,
+        ssr: false
+    }
+);
+
+const RouteDetailClient = dynamic(
+    () => import("./RouteDetailClient"),
+    {
+        loading: () => (
+            <div className="space-y-4">
+                <div className="bg-gradient-to-r from-amber-400 to-orange-500 rounded-2xl p-4 h-24 animate-pulse" />
+                <BarCardSkeleton />
+                <BarCardSkeleton />
+            </div>
+        ),
+    }
+);
 
 type Stop = {
   id: string;
@@ -65,7 +87,7 @@ export default function RouteDetailWrapper({
   }, []);
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50">
+    <div className="flex flex-col h-screen-safe bg-slate-50">
       {/* Header Compacto */}
       <header className="bg-white border-b shadow-sm safe-area-top">
         <div className="px-4 py-3">
@@ -73,7 +95,8 @@ export default function RouteDetailWrapper({
           <div className="flex items-center justify-between gap-2">
             <Link
               href="/routes"
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors shrink-0"
+              className="flex items-center justify-center w-11 h-11 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors shrink-0 active-scale"
+              aria-label="Volver a mis rutas"
             >
               <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -98,10 +121,10 @@ export default function RouteDetailWrapper({
               {/* Botón Mapa */}
               <button
                 onClick={() => setShowMap(!showMap)}
-                className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+                className={`flex items-center justify-center w-11 h-11 rounded-full transition-colors active-scale ${
                   showMap ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
-                title={showMap ? "Ocultar mapa" : "Ver mapa"}
+                aria-label={showMap ? "Ocultar mapa" : "Ver mapa"}
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
@@ -112,10 +135,10 @@ export default function RouteDetailWrapper({
               {inviteCode && (
                 <button
                   onClick={() => setShowShare(!showShare)}
-                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
+                  className={`flex items-center justify-center w-11 h-11 rounded-full transition-colors active-scale ${
                     showShare ? "bg-amber-500 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
-                  title="Compartir"
+                  aria-label="Compartir ruta"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -127,8 +150,8 @@ export default function RouteDetailWrapper({
               {isCreator && (
                 <Link
                   href={`/routes/${routeId}/edit`}
-                  className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-                  title="Editar ruta"
+                  className="flex items-center justify-center w-11 h-11 rounded-full bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors active-scale"
+                  aria-label="Editar ruta"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />

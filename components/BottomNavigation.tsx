@@ -62,7 +62,7 @@ export default function BottomNavigation() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 safe-area-bottom z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href) && item.href !== "/routes/new");
@@ -72,7 +72,8 @@ export default function BottomNavigation() {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex flex-col items-center justify-center"
+                className="flex flex-col items-center justify-center touch-target active-scale"
+                aria-label="Crear nueva ruta"
               >
                 {item.icon(isActive)}
               </Link>
@@ -83,7 +84,8 @@ export default function BottomNavigation() {
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center justify-center gap-1 py-2 px-4"
+              className="flex flex-col items-center justify-center gap-1 py-2 px-4 touch-target active-scale"
+              aria-label={item.label}
             >
               {item.icon(isActive)}
               <span className={`text-xs font-medium ${isActive ? "text-amber-500" : "text-slate-400"}`}>

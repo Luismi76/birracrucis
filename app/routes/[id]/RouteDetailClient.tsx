@@ -646,7 +646,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <button
                     onClick={() => handleRemoveBeer(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors"
+                    className="w-11 h-11 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors active-scale"
+                    aria-label="Quitar cerveza"
                   >
                     -
                   </button>
@@ -654,7 +655,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <button
                     onClick={() => handleAddBeer(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-10 h-10 rounded-full bg-amber-500 text-white font-bold text-xl hover:bg-amber-600 disabled:opacity-50 transition-colors"
+                    className="w-11 h-11 rounded-full bg-amber-500 text-white font-bold text-xl hover:bg-amber-600 disabled:opacity-50 transition-colors active-scale"
+                    aria-label="Añadir cerveza"
                   >
                     +
                   </button>
@@ -682,7 +684,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <button
                     onClick={() => handleRemoveTapa(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors"
+                    className="w-11 h-11 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors active-scale"
+                    aria-label="Quitar tapa"
                   >
                     -
                   </button>
@@ -690,7 +693,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <button
                     onClick={() => handleAddTapa(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-10 h-10 rounded-full bg-orange-500 text-white font-bold text-xl hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                    className="w-11 h-11 rounded-full bg-orange-500 text-white font-bold text-xl hover:bg-orange-600 disabled:opacity-50 transition-colors active-scale"
+                    aria-label="Añadir tapa"
                   >
                     +
                   </button>

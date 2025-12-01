@@ -9,7 +9,7 @@ export default function Home() {
   const { data: session, status } = useSession();
 
   return (
-    <div className="flex min-h-screen flex-col bg-gradient-to-b from-amber-50 to-orange-100 px-4">
+    <div className="flex min-h-screen-safe flex-col bg-gradient-to-b from-amber-50 to-orange-100 px-4 safe-area-top">
       {/* Header */}
       <header className="flex justify-between items-center py-4">
         <div /> {/* Spacer */}
