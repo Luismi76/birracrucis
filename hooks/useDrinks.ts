@@ -2,62 +2,55 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-export type DrinkType = "beer" | "wine" | "cocktail" | "soft" | "tapa" | "other";
-
 export type Drink = {
     id: string;
-    type: DrinkType;
-    stopId: string;
-    userId: string;
+    type: string;
     createdAt: string;
+    user: { id: string; name: string | null; image: string | null };
+    paidBy: { id: string; name: string | null; image: string | null } | null;
+    stop: { id: string; name: string };
 };
 
-type DrinkStats = {
+type DrinksResponse = {
     drinks: Drink[];
-    stats: {
-        total: number;
-        byType: Record<DrinkType, number>;
-        byUser: Record<string, number>;
-    };
 };
+
+async function fetchDrinks(routeId: string): Promise<DrinksResponse> {
+    const res = await fetch(`/api/routes/${routeId}/drinks`);
+    if (!res.ok) throw new Error("Error al obtener bebidas");
+    const data = await res.json();
+    return data.ok ? { drinks: data.drinks } : { drinks: [] };
+}
 
 type AddDrinkParams = {
     routeId: string;
     stopId: string;
-    type: DrinkType;
+    type: string;
+    paidById?: string;
 };
 
-const emptyStats: DrinkStats = {
-    drinks: [],
-    stats: {
-        total: 0,
-        byType: { beer: 0, wine: 0, cocktail: 0, soft: 0, tapa: 0, other: 0 },
-        byUser: {},
-    },
-};
-
-async function fetchDrinks(routeId: string): Promise<DrinkStats> {
-    const res = await fetch(`/api/routes/${routeId}/drinks`);
-    if (!res.ok) throw new Error("Error al obtener bebidas");
-    const data = await res.json();
-    return data.ok ? data : emptyStats;
-}
-
-async function addDrink({ routeId, stopId, type }: AddDrinkParams): Promise<void> {
+async function addDrink({ routeId, stopId, type, paidById }: AddDrinkParams): Promise<Drink> {
     const res = await fetch(`/api/routes/${routeId}/drinks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stopId, type }),
+        body: JSON.stringify({ stopId, type, paidById }),
     });
-    if (!res.ok) throw new Error("Error al registrar bebida");
+    if (!res.ok) throw new Error("Error al añadir bebida");
+    const data = await res.json();
+    return data.drink;
 }
 
-export function useDrinks(routeId: string) {
+export function useDrinks(routeId: string, stopId?: string) {
     return useQuery({
         queryKey: ["drinks", routeId],
         queryFn: () => fetchDrinks(routeId),
         staleTime: 10000, // 10 segundos
+        refetchInterval: 10000, // Refetch cada 10 segundos (reemplaza el polling manual)
         enabled: !!routeId,
+        select: (data) => ({
+            drinks: stopId ? data.drinks.filter(d => d.stop.id === stopId) : data.drinks,
+            allDrinks: data.drinks,
+        }),
     });
 }
 
@@ -65,36 +58,13 @@ export function useAddDrink(routeId: string) {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (params: { stopId: string; type: DrinkType }) =>
+        mutationFn: (params: { stopId: string; type: string; paidById?: string }) =>
             addDrink({ routeId, ...params }),
-        // Optimistic update
-        onMutate: async ({ stopId, type }) => {
-            await queryClient.cancelQueries({ queryKey: ["drinks", routeId] });
-            const previousData = queryClient.getQueryData<DrinkStats>(["drinks", routeId]);
-
-            if (previousData) {
-                queryClient.setQueryData<DrinkStats>(["drinks", routeId], {
-                    ...previousData,
-                    stats: {
-                        ...previousData.stats,
-                        total: previousData.stats.total + 1,
-                        byType: {
-                            ...previousData.stats.byType,
-                            [type]: (previousData.stats.byType[type] || 0) + 1,
-                        },
-                    },
-                });
-            }
-
-            return { previousData };
-        },
-        onError: (_err, _vars, context) => {
-            if (context?.previousData) {
-                queryClient.setQueryData(["drinks", routeId], context.previousData);
-            }
-        },
-        onSettled: () => {
-            queryClient.invalidateQueries({ queryKey: ["drinks", routeId] });
+        onSuccess: (newDrink) => {
+            // Añadir la nueva bebida al cache
+            queryClient.setQueryData<DrinksResponse>(["drinks", routeId], (old) =>
+                old ? { drinks: [newDrink, ...old.drinks] } : { drinks: [newDrink] }
+            );
         },
     });
 }

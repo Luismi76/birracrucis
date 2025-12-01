@@ -8,14 +8,19 @@ const nextConfig = {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
       },
+      {
+        protocol: "https",
+        hostname: "minio.lmsc.es",
+      },
     ],
   },
 };
 
-// Deshabilitar PWA en Vercel para evitar que el service worker intercepte las API routes
+// Deshabilitar PWA en Vercel y durante build para evitar problemas de prerendering
 const isVercel = !!process.env.VERCEL;
+const isProduction = process.env.NODE_ENV === "production";
 
-export default isVercel
+export default isVercel || isProduction
   ? nextConfig
   : withPWA({
       dest: "public",

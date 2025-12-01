@@ -1,15 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-type Drink = {
-  id: string;
-  type: string;
-  createdAt: string;
-  user: { id: string; name: string | null; image: string | null };
-  paidBy: { id: string; name: string | null; image: string | null } | null;
-  stop: { id: string; name: string };
-};
+import { useState, useMemo } from "react";
+import { useDrinks, useAddDrink, type Drink } from "@/hooks/useDrinks";
 
 type Participant = {
   id: string;
@@ -39,62 +31,30 @@ export default function DrinkCounter({
   currentUserId,
   participants,
 }: DrinkCounterProps) {
-  const [drinks, setDrinks] = useState<Drink[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedType, setSelectedType] = useState("beer");
   const [paidById, setPaidById] = useState<string | null>(null);
-  const [adding, setAdding] = useState(false);
 
-  useEffect(() => {
-    const fetchDrinks = async () => {
-      try {
-        const res = await fetch(`/api/routes/${routeId}/drinks`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok) {
-            // Filtrar por stop actual
-            const stopDrinks = data.drinks.filter((d: Drink) => d.stop.id === stopId);
-            setDrinks(stopDrinks);
-          }
-        }
-      } catch (err) {
-        console.warn("Error fetching drinks:", err);
-      }
-    };
+  // React Query hooks
+  const { data } = useDrinks(routeId, stopId);
+  const drinks = data?.drinks ?? [];
 
-    fetchDrinks();
-    const interval = setInterval(fetchDrinks, 10000);
-    return () => clearInterval(interval);
-  }, [routeId, stopId]);
+  const addDrinkMutation = useAddDrink(routeId);
 
   const handleAddDrink = async () => {
-    if (adding) return;
-    setAdding(true);
+    if (addDrinkMutation.isPending) return;
 
     try {
-      const res = await fetch(`/api/routes/${routeId}/drinks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stopId,
-          type: selectedType,
-          paidById: paidById || undefined,
-        }),
+      await addDrinkMutation.mutateAsync({
+        stopId,
+        type: selectedType,
+        paidById: paidById || undefined,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          setDrinks((prev) => [data.drink, ...prev]);
-          setShowAddModal(false);
-          setSelectedType("beer");
-          setPaidById(null);
-        }
-      }
+      setShowAddModal(false);
+      setSelectedType("beer");
+      setPaidById(null);
     } catch (err) {
       console.error("Error adding drink:", err);
-    } finally {
-      setAdding(false);
     }
   };
 
@@ -241,10 +201,10 @@ export default function DrinkCounter({
               </button>
               <button
                 onClick={handleAddDrink}
-                disabled={adding}
+                disabled={addDrinkMutation.isPending}
                 className="flex-1 py-2 px-4 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 disabled:opacity-50"
               >
-                {adding ? "Anadiendo..." : "Anadir"}
+                {addDrinkMutation.isPending ? "Anadiendo..." : "Anadir"}
               </button>
             </div>
           </div>

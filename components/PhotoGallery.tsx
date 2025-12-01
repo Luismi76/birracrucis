@@ -1,53 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import OptimizedImage from "@/components/ui/OptimizedImage";
-
-type Photo = {
-  id: string;
-  url: string;
-  caption: string | null;
-  createdAt: string;
-  user: {
-    name: string | null;
-    image: string | null;
-  };
-  stop: {
-    name: string;
-  } | null;
-};
+import { usePhotos, type Photo } from "@/hooks/usePhotos";
 
 type PhotoGalleryProps = {
   routeId: string;
   refreshTrigger?: number;
 };
 
-export default function PhotoGallery({ routeId, refreshTrigger }: PhotoGalleryProps) {
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [hashtag, setHashtag] = useState("");
-  const [loading, setLoading] = useState(true);
+export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
 
-  const fetchPhotos = async () => {
-    try {
-      const res = await fetch(`/api/routes/${routeId}/photos`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          setPhotos(data.photos);
-          setHashtag(data.hashtag);
-        }
-      }
-    } catch (err) {
-      console.error("Error fetching photos:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchPhotos();
-  }, [routeId, refreshTrigger]);
+  const { data, isLoading } = usePhotos(routeId);
+  const photos = data?.photos ?? [];
+  const hashtag = data?.hashtag ?? "";
 
   const handleShare = async (photo: Photo, platform: "twitter" | "whatsapp" | "copy") => {
     const text = photo.caption
@@ -74,7 +41,7 @@ export default function PhotoGallery({ routeId, refreshTrigger }: PhotoGalleryPr
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />

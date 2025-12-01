@@ -1,14 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-type Rating = {
-  id: string;
-  rating: number;
-  comment: string | null;
-  user: { id: string; name: string | null; image: string | null };
-  stop: { id: string; name: string };
-};
+import { useRatings, useAddRating, type Rating } from "@/hooks/useRatings";
 
 type BarRatingProps = {
   routeId: string;
@@ -23,80 +16,38 @@ export default function BarRating({
   stopName,
   currentUserId,
 }: BarRatingProps) {
-  const [ratings, setRatings] = useState<Rating[]>([]);
-  const [average, setAverage] = useState<number | null>(null);
   const [myRating, setMyRating] = useState<number>(0);
   const [myComment, setMyComment] = useState("");
   const [showForm, setShowForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
 
-  useEffect(() => {
-    const fetchRatings = async () => {
-      try {
-        const res = await fetch(`/api/routes/${routeId}/ratings?stopId=${stopId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok) {
-            setRatings(data.ratings);
-            // Calcular media
-            const avg = data.averages.find(
-              (a: { stopId: string; _avg: { rating: number } }) => a.stopId === stopId
-            );
-            if (avg) {
-              setAverage(avg._avg.rating);
-            }
-            // Buscar mi valoración
-            const mine = data.ratings.find((r: Rating) => r.user.id === currentUserId);
-            if (mine) {
-              setMyRating(mine.rating);
-              setMyComment(mine.comment || "");
-            }
-          }
-        }
-      } catch (err) {
-        console.warn("Error fetching ratings:", err);
-      }
-    };
+  // React Query hooks
+  const { data } = useRatings(routeId, stopId);
+  const ratings = data?.ratings ?? [];
+  const average = data?.average ?? null;
 
-    fetchRatings();
-  }, [routeId, stopId, currentUserId]);
+  const addRatingMutation = useAddRating(routeId, stopId, currentUserId);
+
+  // Sincronizar myRating con la valoración existente
+  useEffect(() => {
+    const mine = ratings.find((r) => r.user.id === currentUserId);
+    if (mine) {
+      setMyRating(mine.rating);
+      setMyComment(mine.comment || "");
+    }
+  }, [ratings, currentUserId]);
 
   const handleSubmit = async () => {
-    if (myRating === 0 || submitting) return;
-    setSubmitting(true);
+    if (myRating === 0 || addRatingMutation.isPending) return;
 
     try {
-      const res = await fetch(`/api/routes/${routeId}/ratings`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          stopId,
-          rating: myRating,
-          comment: myComment || null,
-        }),
+      await addRatingMutation.mutateAsync({
+        rating: myRating,
+        comment: myComment || null,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          // Actualizar lista
-          setRatings((prev) => {
-            const filtered = prev.filter((r) => r.user.id !== currentUserId);
-            return [data.rating, ...filtered];
-          });
-          // Recalcular media
-          const newRatings = ratings.filter((r) => r.user.id !== currentUserId);
-          newRatings.push(data.rating);
-          const sum = newRatings.reduce((acc, r) => acc + r.rating, 0);
-          setAverage(sum / newRatings.length);
-          setShowForm(false);
-        }
-      }
+      setShowForm(false);
     } catch (err) {
       console.error("Error submitting rating:", err);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -195,10 +146,10 @@ export default function BarRating({
             </button>
             <button
               onClick={handleSubmit}
-              disabled={myRating === 0 || submitting}
+              disabled={myRating === 0 || addRatingMutation.isPending}
               className="flex-1 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 disabled:opacity-50"
             >
-              {submitting ? "Guardando..." : "Guardar"}
+              {addRatingMutation.isPending ? "Guardando..." : "Guardar"}
             </button>
           </div>
         </div>

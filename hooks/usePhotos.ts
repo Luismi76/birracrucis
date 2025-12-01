@@ -6,18 +6,29 @@ export type Photo = {
     id: string;
     url: string;
     caption: string | null;
-    stopId: string | null;
-    userId: string;
-    userName: string | null;
-    userImage: string | null;
+    stopId?: string | null;
+    userId?: string;
     createdAt: string;
+    user: {
+        name: string | null;
+        image: string | null;
+    };
+    stop: {
+        name: string;
+    } | null;
 };
 
-async function fetchPhotos(routeId: string): Promise<Photo[]> {
+type PhotosResponse = {
+    photos: Photo[];
+    hashtag: string;
+    routeName: string;
+};
+
+async function fetchPhotos(routeId: string): Promise<PhotosResponse> {
     const res = await fetch(`/api/routes/${routeId}/photos`);
     if (!res.ok) throw new Error("Error al obtener fotos");
     const data = await res.json();
-    return data.ok ? data.photos : [];
+    return data.ok ? { photos: data.photos, hashtag: data.hashtag, routeName: data.routeName } : { photos: [], hashtag: "", routeName: "" };
 }
 
 type UploadPhotoParams = {
@@ -44,6 +55,7 @@ export function usePhotos(routeId: string) {
         queryFn: () => fetchPhotos(routeId),
         staleTime: 30000, // 30 segundos
         enabled: !!routeId,
+        select: (data) => data, // Return full response
     });
 }
 
@@ -55,8 +67,8 @@ export function useUploadPhoto(routeId: string) {
             uploadPhoto({ routeId, ...params }),
         onSuccess: (newPhoto) => {
             // Añadir la nueva foto al cache
-            queryClient.setQueryData<Photo[]>(["photos", routeId], (old) =>
-                old ? [newPhoto, ...old] : [newPhoto]
+            queryClient.setQueryData<PhotosResponse>(["photos", routeId], (old) =>
+                old ? { ...old, photos: [newPhoto, ...old.photos] } : { photos: [newPhoto], hashtag: "", routeName: "" }
             );
         },
     });
