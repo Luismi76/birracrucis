@@ -1,4 +1,4 @@
-// app/api/stops/[stopid]/route.ts
+// app/api/stops/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -8,12 +8,12 @@ type PatchBody = {
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: Promise<{ stopid: string }> }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { stopid } = await params;
-    if (!stopid) {
-      return NextResponse.json({ ok: false, error: "stopid es obligatorio en la ruta" }, { status: 400 });
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json({ ok: false, error: "id es obligatorio en la ruta" }, { status: 400 });
     }
 
     const body = (await req.json()) as PatchBody;
@@ -23,7 +23,7 @@ export async function PATCH(
 
     // Obtenemos el stop actual
     const stop = await prisma.routeStop.findUnique({
-      where: { id: stopid },
+      where: { id },
     });
 
     if (!stop) {
@@ -41,13 +41,13 @@ export async function PATCH(
     }
 
     const updated = await prisma.routeStop.update({
-      where: { id: stopid },
+      where: { id },
       data: { actualRounds: newRounds },
     });
 
     return NextResponse.json({ ok: true, stop: updated });
   } catch (error) {
-    console.error("Error en PATCH /api/stops/[stopId]:", error);
+    console.error("Error en PATCH /api/stops/[id]:", error);
     return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 500 });
   }
 }
