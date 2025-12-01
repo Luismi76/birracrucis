@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { compressImage, getDataUrlSize, formatFileSize } from "@/lib/image-utils";
 
 type PhotoCaptureProps = {
   routeId: string;
@@ -28,23 +29,47 @@ export default function PhotoCapture({
 
   const hashtag = `#${routeName.replace(/\s+/g, "")}Birracrucis`;
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Verificar tamaño (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError("La imagen es demasiado grande (max 5MB)");
+    // Verificar tamaño original (max 10MB antes de comprimir)
+    if (file.size > 10 * 1024 * 1024) {
+      setError("La imagen es demasiado grande (max 10MB)");
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-      setIsCapturing(true);
+    try {
       setError(null);
-    };
-    reader.readAsDataURL(file);
+
+      // Comprimir imagen para móvil (max 1200px, calidad 80%)
+      const compressed = await compressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.8,
+        format: "jpeg",
+      });
+
+      // Verificar tamaño comprimido (max 2MB después de comprimir)
+      const compressedSize = getDataUrlSize(compressed);
+      if (compressedSize > 2 * 1024 * 1024) {
+        // Intentar con menor calidad
+        const moreCompressed = await compressImage(file, {
+          maxWidth: 1000,
+          maxHeight: 1000,
+          quality: 0.6,
+          format: "jpeg",
+        });
+        setPreview(moreCompressed);
+      } else {
+        setPreview(compressed);
+      }
+
+      setIsCapturing(true);
+    } catch (err) {
+      console.error("Error comprimiendo imagen:", err);
+      setError("Error al procesar la imagen");
+    }
   };
 
   const handleUpload = async () => {

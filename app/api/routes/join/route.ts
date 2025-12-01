@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 type JoinRouteBody = {
   inviteCode: string;
@@ -10,6 +11,13 @@ type JoinRouteBody = {
 
 // POST /api/routes/join - Unirse a una ruta con código de invitación
 export async function POST(req: NextRequest) {
+  // Rate limiting - endpoint estándar
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`routes:join:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     // Requiere autenticación
     const session = await getServerSession(authOptions);
@@ -114,6 +122,13 @@ export async function POST(req: NextRequest) {
 
 // GET /api/routes/join?code=ABC123 - Obtener info de ruta por código (sin unirse)
 export async function GET(req: NextRequest) {
+  // Rate limiting - endpoint estándar
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`routes:join-info:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const inviteCode = searchParams.get("code");

@@ -123,6 +123,10 @@ model Route {
   barRatings   BarRating[]
   earnedBadges UserBadge[]
   invitations  Invitation[]
+
+  @@index([creatorId]) // Para listar rutas por creador
+  @@index([status, date(sort: Desc)]) // Para listar rutas por estado
+  @@index([date(sort: Desc)]) // Para listar rutas ordenadas por fecha
 }
 
 model RouteStop {
@@ -155,6 +159,8 @@ model RouteStop {
   skipVotes     SkipVote[]
   drinks        Drink[]
   ratings       BarRating[]
+
+  @@index([routeId, order]) // Para ordenar stops de una ruta
 }
 
 model Participant {
@@ -172,6 +178,8 @@ model Participant {
   lastSeenAt DateTime?
 
   @@unique([routeId, userId])
+  @@index([routeId, isActive]) // Para listar participantes activos de una ruta
+  @@index([routeId, lastSeenAt]) // Para ordenar por última actividad
 }
 
 model Round {
@@ -195,6 +203,8 @@ model Photo {
   url       String     // URL de la imagen (base64 o cloudinary)
   caption   String?
   createdAt DateTime   @default(now())
+
+  @@index([routeId, createdAt(sort: Desc)]) // Para cargar fotos recientes
 }
 
 // Modelo para "meter prisa" a los rezagados
@@ -216,6 +226,8 @@ model Message {
   userId    String
   content   String
   createdAt DateTime @default(now())
+
+  @@index([routeId, createdAt(sort: Desc)]) // Para cargar mensajes recientes
 }
 
 // Votación para saltarse un bar
@@ -246,6 +258,10 @@ model Drink {
   paidBy      User?     @relation("DrinkPayer", fields: [paidById], references: [id])
   paidById    String?
   createdAt   DateTime  @default(now())
+
+  @@index([routeId, createdAt]) // Para listar bebidas de una ruta
+  @@index([routeId, userId]) // Para estadísticas por usuario
+  @@index([routeId, stopId]) // Para estadísticas por bar
 }
 
 // Valoración de bares visitados

@@ -2,12 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 // GET - Obtener bebidas de la ruta
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting - endpoint frecuente
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`drinks:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -59,6 +67,13 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting - endpoint estándar
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`drinks:add:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {

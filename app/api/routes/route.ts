@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 type StopInput = {
   name: string;
@@ -33,6 +34,13 @@ function generateInviteCode(): string {
 }
 
 export async function POST(req: NextRequest) {
+  // Rate limiting - endpoint de escritura (crear rutas)
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`routes:create:${clientId}`, RATE_LIMIT_CONFIGS.write);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     // Obtener sesión del usuario (opcional por ahora para no romper funcionalidad existente)
     const session = await getServerSession(authOptions);

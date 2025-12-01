@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 type StopInput = {
     name: string;
@@ -56,6 +57,13 @@ export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    // Rate limiting - endpoint de escritura (eliminar ruta)
+    const clientId = getClientIdentifier(req);
+    const rateLimitResult = rateLimit(`routes:delete:${clientId}`, RATE_LIMIT_CONFIGS.write);
+    if (!rateLimitResult.success) {
+        return rateLimitExceededResponse(rateLimitResult.reset);
+    }
+
     try {
         const session = await getServerSession(authOptions);
         const { id } = await params;
@@ -110,6 +118,13 @@ export async function PUT(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    // Rate limiting - endpoint de escritura (actualizar ruta)
+    const clientId = getClientIdentifier(req);
+    const rateLimitResult = rateLimit(`routes:update:${clientId}`, RATE_LIMIT_CONFIGS.write);
+    if (!rateLimitResult.success) {
+        return rateLimitExceededResponse(rateLimitResult.reset);
+    }
+
     try {
         const session = await getServerSession(authOptions);
         const { id } = await params;

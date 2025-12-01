@@ -3,12 +3,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 // GET /api/routes/[id]/participants - Obtener participantes con sus ubicaciones
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting - endpoint frecuente
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`participants:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     const { id: routeId } = await params;
 

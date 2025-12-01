@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import OptimizedImage from "@/components/ui/OptimizedImage";
 
 type Photo = {
   id: string;
@@ -97,16 +98,17 @@ export default function PhotoGallery({ routeId, refreshTrigger }: PhotoGalleryPr
     <>
       {/* Grid de fotos */}
       <div className="grid grid-cols-3 gap-1">
-        {photos.map((photo) => (
+        {photos.map((photo, index) => (
           <button
             key={photo.id}
             onClick={() => setSelectedPhoto(photo)}
-            className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity"
+            className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity active-scale"
           >
-            <img
+            <OptimizedImage
               src={photo.url}
               alt={photo.caption || "Foto"}
-              className="w-full h-full object-cover"
+              className="w-full h-full"
+              priority={index < 6} // Priorizar las primeras 6 fotos (2 filas)
             />
           </button>
         ))}

@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
+import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
+import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
+import { uploadImage, ensureBucket } from "@/lib/minio";
 
 // POST - Subir una foto
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting - endpoint de escritura (subir fotos)
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`photos:upload:${clientId}`, RATE_LIMIT_CONFIGS.write);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
@@ -51,12 +61,36 @@ export async function POST(
       }
     }
 
+    // Determinar la URL final de la imagen
+    let finalUrl = url;
+
+    // Si es base64 y MinIO está configurado, subir a MinIO
+    const isBase64 = url.startsWith("data:image/");
+    const minioConfigured = !!process.env.MINIO_ENDPOINT;
+
+    console.log(`[Photos] Base64: ${isBase64}, MinIO configured: ${minioConfigured}, Endpoint: ${process.env.MINIO_ENDPOINT || 'not set'}`);
+
+    if (isBase64 && minioConfigured) {
+      try {
+        console.log("[Photos] Intentando subir a MinIO...");
+        await ensureBucket();
+        const fileName = `${routeId}/${nanoid(12)}`;
+        finalUrl = await uploadImage(url, fileName);
+        console.log(`[Photos] Subido exitosamente a MinIO: ${finalUrl}`);
+      } catch (minioError) {
+        console.error("[Photos] Error subiendo a MinIO, guardando base64:", minioError);
+        // Si falla MinIO, guardamos base64 como fallback
+      }
+    } else {
+      console.log("[Photos] Guardando como base64 (MinIO no configurado o URL externa)");
+    }
+
     // Crear la foto
     const photo = await prisma.photo.create({
       data: {
         routeId,
         userId: user.id,
-        url,
+        url: finalUrl,
         caption: caption || null,
         stopId: stopId || null,
       },
@@ -78,6 +112,13 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // Rate limiting - endpoint estándar
+  const clientId = getClientIdentifier(req);
+  const rateLimitResult = rateLimit(`photos:get:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  if (!rateLimitResult.success) {
+    return rateLimitExceededResponse(rateLimitResult.reset);
+  }
+
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
