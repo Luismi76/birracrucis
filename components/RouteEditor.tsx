@@ -559,6 +559,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
     // Handler para clic en el mapa (modo manual)
     const handleMapClick = (lat: number, lng: number) => {
+        console.log("Map clicked at:", lat, lng, "Manual mode:", manualAddMode);
         setPendingManualBar({ lat, lng });
         setManualBarName("");
         setManualBarAddress("");
@@ -961,7 +962,10 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
                             {/* Botón para añadir bar manualmente */}
                             <button
-                                onClick={() => setManualAddMode(!manualAddMode)}
+                                onClick={() => {
+                                    console.log("Toggle manual mode, current:", manualAddMode, "-> new:", !manualAddMode);
+                                    setManualAddMode(!manualAddMode);
+                                }}
                                 className={`w-full px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 border ${
                                     manualAddMode
                                         ? "bg-purple-500 text-white border-purple-600 hover:bg-purple-600"
@@ -1274,8 +1278,12 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     </div>
                 </div>
 
-                {/* Panel Derecho (Mapa) */}
-                <div className="w-full md:w-2/3 h-[60dvh] md:h-full order-first md:order-last relative border-b md:border-l border-slate-200">
+                {/* Panel Derecho (Mapa) - Más grande en modo manual */}
+                <div className={`relative border-b md:border-l border-slate-200 transition-all duration-300 ${
+                    manualAddMode
+                        ? "fixed inset-0 z-50 h-screen w-screen"
+                        : "w-full md:w-2/3 h-[60dvh] md:h-full order-first md:order-last"
+                }`}>
                     <BarSearchMap
                         center={mapCenter}
                         radius={parseInt(radius)}

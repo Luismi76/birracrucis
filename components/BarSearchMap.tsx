@@ -184,7 +184,9 @@ export default function BarSearchMap({
     }
 
     const handleMapClick = (e: google.maps.MapMouseEvent) => {
+        console.log("BarSearchMap click event, manualAddMode:", manualAddMode, "hasCallback:", !!onMapClick);
         if (manualAddMode && onMapClick && e.latLng) {
+            console.log("Calling onMapClick with:", e.latLng.lat(), e.latLng.lng());
             onMapClick(e.latLng.lat(), e.latLng.lng());
         }
     };
