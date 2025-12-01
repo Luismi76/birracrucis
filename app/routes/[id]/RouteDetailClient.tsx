@@ -13,6 +13,9 @@ import RouteSummary from "@/components/RouteSummary";
 import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
 import InvitationManager from "@/components/InvitationManager";
+import ExpenseCalculator from "@/components/ExpenseCalculator";
+import AutoCheckin from "@/components/AutoCheckin";
+import ExportRoutePDF from "@/components/ExportRoutePDF";
 
 type StopClient = {
   id: string;
@@ -90,7 +93,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [simActive, setSimActive] = useState(false);
 
   // Tabs para diferentes secciones
-  const [activeTab, setActiveTab] = useState<"route" | "photos" | "drinks" | "ratings" | "group">("route");
+  const [activeTab, setActiveTab] = useState<"route" | "photos" | "drinks" | "ratings" | "group" | "expenses">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
 
   // Estado local de rondas (optimista)
@@ -386,7 +389,18 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         />
       )}
 
-      {/* Tabs: Ruta / Grupo / Fotos / Bebidas / Valoraciones */}
+      {/* Auto Check-in por geolocalización */}
+      {!isRouteComplete && activeStop && (
+        <AutoCheckin
+          routeId={routeId}
+          stops={stops.map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng }))}
+          currentStopId={activeStop.id}
+          userPosition={position}
+          onCheckin={(stopId) => handleAddRound(stopId)}
+        />
+      )}
+
+      {/* Tabs: Ruta / Grupo / Fotos / Bebidas / Gastos / Valoraciones */}
       <div className="flex bg-slate-100 rounded-xl p-1 overflow-x-auto">
         <button
           onClick={() => setActiveTab("route")}
@@ -427,6 +441,16 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           }`}
         >
           🍺 Bebidas
+        </button>
+        <button
+          onClick={() => setActiveTab("expenses")}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+            activeTab === "expenses"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          💰 Gastos
         </button>
         <button
           onClick={() => setActiveTab("ratings")}
@@ -509,6 +533,18 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         )
       )}
 
+      {activeTab === "expenses" && (
+        /* Calculadora de Gastos */
+        <ExpenseCalculator
+          routeId={routeId}
+          participants={participants.map(p => ({
+            id: p.id,
+            name: p.name,
+            image: p.image,
+          }))}
+        />
+      )}
+
       {activeTab === "route" && (
         /* 4. Timeline de la Ruta (Pasaporte) */
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
@@ -573,12 +609,39 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* Boton Ver Resumen (cuando ruta completada) */}
       {isRouteComplete && (
-        <button
-          onClick={() => setShowSummary(true)}
-          className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
-        >
-          🎉 Ver Resumen de la Ruta
-        </button>
+        <div className="space-y-3">
+          <button
+            onClick={() => setShowSummary(true)}
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+          >
+            🎉 Ver Resumen de la Ruta
+          </button>
+          <div className="flex justify-center">
+            <ExportRoutePDF
+              route={{
+                id: routeId,
+                name: routeName,
+                date: routeDate,
+                status: routeStatus,
+                stops: stops.map(s => ({
+                  id: s.id,
+                  name: s.name,
+                  address: s.address,
+                  plannedRounds: s.plannedRounds,
+                  actualRounds: rounds[s.id] || s.actualRounds,
+                  arrivedAt: s.arrivalTime || null,
+                  leftAt: s.departureTime || null,
+                })),
+                participants: participants.map(p => ({
+                  id: p.id,
+                  name: p.name,
+                  image: p.image,
+                })),
+                totalDrinks: totalRounds,
+              }}
+            />
+          </div>
+        </div>
       )}
 
       {/* Modal de Resumen */}

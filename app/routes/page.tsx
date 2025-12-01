@@ -63,6 +63,13 @@ export default async function RoutesPage() {
         <h1 className="text-2xl font-bold">Mis Birracrucis</h1>
         <div className="flex items-center gap-3">
           <Link
+            href="/routes/history"
+            className="text-sm px-3 py-2 rounded bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+            title="Historial"
+          >
+            📜
+          </Link>
+          <Link
             href="/routes/new"
             className="text-sm px-3 py-2 rounded bg-amber-600 text-white hover:bg-amber-700 transition-colors"
           >

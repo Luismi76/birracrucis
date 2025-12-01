@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import PushNotificationManager from "@/components/PushNotificationManager";
 
 type Badge = {
   id: string;
@@ -256,6 +257,9 @@ export default function ProfilePage() {
             );
           })()}
         </div>
+
+        {/* Notificaciones Push */}
+        <PushNotificationManager />
 
         {/* Actions */}
         <div className="space-y-3">

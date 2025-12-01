@@ -261,8 +261,10 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
                     />
                 )}
 
-                {/* Marcadores de otros participantes */}
-                {participants.map((participant, index) => (
+                {/* Marcadores de otros participantes (solo con ubicación válida) */}
+                {participants
+                    .filter((p) => p.lat !== 0 && p.lng !== 0 && p.lastSeenAt)
+                    .map((participant, index) => (
                     <Marker
                         key={participant.odIduserId}
                         position={{ lat: participant.lat, lng: participant.lng }}
@@ -312,6 +314,26 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
                     </InfoWindow>
                 )}
             </GoogleMap>
+
+            {/* Leyenda del mapa */}
+            <div className="absolute top-2 left-2 bg-white/95 backdrop-blur rounded-lg p-2 shadow-md text-xs">
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="w-3 h-3 rounded-full bg-gray-500"></span>
+                    <span>Pendiente</span>
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="w-3 h-3 rounded-full bg-amber-500"></span>
+                    <span>En progreso</span>
+                </div>
+                <div className="flex items-center gap-2 mb-1">
+                    <span className="w-3 h-3 rounded-full bg-green-500"></span>
+                    <span>Completado</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                    <span>Tu ubicacion</span>
+                </div>
+            </div>
 
             {/* Floating Action Button - Center on User */}
             {userPosition && (
