@@ -105,7 +105,10 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const [pendingManualBar, setPendingManualBar] = useState<{ lat: number; lng: number } | null>(null);
     const [manualBarName, setManualBarName] = useState("");
     const [manualBarAddress, setManualBarAddress] = useState("");
-    const mapFunctionsRef = useRef<{ getClickCoordinates: (x: number, y: number, rect: DOMRect) => { lat: number; lng: number } | null } | null>(null);
+    const mapFunctionsRef = useRef<{
+        getClickCoordinates: (x: number, y: number, rect: DOMRect) => { lat: number; lng: number } | null;
+        getMapCenter: () => { lat: number; lng: number } | null;
+    } | null>(null);
 
     // Inicializar datos si estamos editando
     useEffect(() => {
@@ -1303,51 +1306,13 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                         onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
                     />
 
-                    {/* Overlay para capturar clics en modo manual */}
+                    {/* Banner y botón flotante para modo manual */}
                     {manualAddMode && (
                         <>
-                            {/* Overlay transparente clickeable */}
-                            <div
-                                className="absolute inset-0 z-10 cursor-crosshair"
-                                onClick={(e) => {
-                                    // Obtener coordenadas del clic relativas al mapa
-                                    const rect = e.currentTarget.getBoundingClientRect();
-                                    const x = e.clientX - rect.left;
-                                    const y = e.clientY - rect.top;
-
-                                    // Usar la función del mapa para obtener coordenadas precisas
-                                    if (mapFunctionsRef.current) {
-                                        const coords = mapFunctionsRef.current.getClickCoordinates(x, y, rect);
-                                        if (coords) {
-                                            console.log("Overlay click at pixel:", x, y, "-> coords:", coords.lat, coords.lng);
-                                            handleMapClick(coords.lat, coords.lng);
-                                            return;
-                                        }
-                                    }
-
-                                    // Fallback: aproximación basada en el centro y zoom
-                                    const mapWidth = rect.width;
-                                    const mapHeight = rect.height;
-
-                                    // Calcular offset desde el centro (en píxeles)
-                                    const offsetX = x - mapWidth / 2;
-                                    const offsetY = y - mapHeight / 2;
-
-                                    // Aproximación de grados por píxel según el zoom
-                                    const zoomLevel = parseInt(radius) <= 300 ? 16 : parseInt(radius) <= 800 ? 15 : parseInt(radius) <= 1500 ? 14 : 13;
-                                    const degreesPerPixel = 360 / (256 * Math.pow(2, zoomLevel));
-
-                                    const clickLat = mapCenter.lat - (offsetY * degreesPerPixel);
-                                    const clickLng = mapCenter.lng + (offsetX * degreesPerPixel);
-
-                                    console.log("Overlay click (fallback) at pixel:", x, y, "-> coords:", clickLat, clickLng);
-                                    handleMapClick(clickLat, clickLng);
-                                }}
-                            />
                             {/* Banner indicador */}
                             <div className="absolute top-4 left-4 right-4 z-20 pointer-events-none">
                                 <div className="bg-purple-500 text-white rounded-xl px-4 py-2 shadow-lg flex items-center justify-between pointer-events-auto">
-                                    <span className="font-bold text-sm">✏️ Modo manual: Clica donde quieras añadir el bar</span>
+                                    <span className="font-bold text-sm">✏️ Navega el mapa y pulsa el botón para añadir</span>
                                     <button
                                         onClick={() => setManualAddMode(false)}
                                         className="bg-white/20 hover:bg-white/30 rounded-lg px-2 py-1 text-xs font-bold transition-colors"
@@ -1355,6 +1320,37 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                         Cancelar
                                     </button>
                                 </div>
+                            </div>
+
+                            {/* Marcador central fijo */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                                <div className="flex flex-col items-center">
+                                    <div className="text-4xl animate-bounce">📍</div>
+                                    <div className="w-2 h-2 bg-purple-500 rounded-full -mt-1"></div>
+                                </div>
+                            </div>
+
+                            {/* Botón para confirmar ubicación */}
+                            <div className="absolute bottom-8 left-4 right-4 z-20">
+                                <button
+                                    onClick={() => {
+                                        // Obtener el centro actual del mapa directamente
+                                        if (mapFunctionsRef.current) {
+                                            const coords = mapFunctionsRef.current.getMapCenter();
+                                            if (coords) {
+                                                console.log("Adding bar at map center:", coords.lat, coords.lng);
+                                                handleMapClick(coords.lat, coords.lng);
+                                                return;
+                                            }
+                                        }
+                                        // Fallback: usar el centro del estado
+                                        console.log("Adding bar at state center (fallback):", mapCenter.lat, mapCenter.lng);
+                                        handleMapClick(mapCenter.lat, mapCenter.lng);
+                                    }}
+                                    className="w-full py-4 bg-purple-500 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-purple-600 active:scale-95 transition-all flex items-center justify-center gap-2"
+                                >
+                                    <span>✓</span> Añadir bar aquí
+                                </button>
                             </div>
                         </>
                     )}

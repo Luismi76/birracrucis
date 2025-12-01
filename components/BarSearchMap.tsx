@@ -25,7 +25,10 @@ type BarSearchMapProps = {
     manualAddMode?: boolean; // Indica si está activo el modo de añadir bar manual
     isLoaded: boolean;
     loadError?: Error;
-    onMapRef?: (mapRef: { getClickCoordinates: (x: number, y: number, rect: DOMRect) => { lat: number; lng: number } | null }) => void;
+    onMapRef?: (mapRef: {
+        getClickCoordinates: (x: number, y: number, rect: DOMRect) => { lat: number; lng: number } | null;
+        getMapCenter: () => { lat: number; lng: number } | null;
+    }) => void;
 };
 
 const mapContainerStyle = {
@@ -221,12 +224,20 @@ export default function BarSearchMap({
         return { lat, lng };
     };
 
+    // Función para obtener el centro actual del mapa
+    const getMapCenter = (): { lat: number; lng: number } | null => {
+        if (!mapRef.current) return null;
+        const center = mapRef.current.getCenter();
+        if (!center) return null;
+        return { lat: center.lat(), lng: center.lng() };
+    };
+
     // Callback para guardar referencia al mapa
     const onMapLoad = (map: google.maps.Map) => {
         mapRef.current = map;
         // Notificar al padre con las funciones del mapa
         if (onMapRef) {
-            onMapRef({ getClickCoordinates });
+            onMapRef({ getClickCoordinates, getMapCenter });
         }
     };
 
