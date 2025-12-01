@@ -140,6 +140,15 @@
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
 }
 
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Espacio para bottom navigation */
+.has-bottom-nav {
+  padding-bottom: 5rem;
+}
+
 /* Animación suave para bounce */
 @keyframes bounce-slow {
   0%, 100% {
@@ -152,4 +161,36 @@
 
 .animate-bounce-slow {
   animation: bounce-slow 2s ease-in-out infinite;
+}
+
+/* Animacion para modales */
+@keyframes scale-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.2s ease-out forwards;
+}
+
+/* Animacion slide down para notificaciones */
+@keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
 }

@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import SplashScreen from "./SplashScreen";
+import BackButtonHandler from "./BackButtonHandler";
+import BottomNavigation from "./BottomNavigation";
 
 export default function AppWrapper({ children }: { children: React.ReactNode }) {
   const [showSplash, setShowSplash] = useState(true);
@@ -25,5 +27,10 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     return <SplashScreen onFinish={handleSplashFinish} />;
   }
 
-  return <>{children}</>;
+  return (
+    <BackButtonHandler>
+      {children}
+      <BottomNavigation />
+    </BackButtonHandler>
+  );
 }

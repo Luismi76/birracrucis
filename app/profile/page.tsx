@@ -144,7 +144,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-6">
         {/* Badges */}
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">

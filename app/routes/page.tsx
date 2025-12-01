@@ -58,7 +58,7 @@ export default async function RoutesPage() {
   const hasRoutes = createdRoutes.length > 0 || invitedRoutes.length > 0;
 
   return (
-    <div className="max-w-3xl mx-auto p-4 space-y-6">
+    <div className="max-w-3xl mx-auto p-4 pb-24 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Mis Birracrucis</h1>
         <div className="flex items-center gap-3">
