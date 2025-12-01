@@ -57,6 +57,10 @@ model User {
   paidDrinks     Drink[]       @relation("DrinkPayer")
   barRatings     BarRating[]
   badges         UserBadge[]
+
+  // Invitaciones
+  sentInvitations     Invitation[] @relation("InvitationsSent")
+  receivedInvitations Invitation[] @relation("InvitationsReceived")
 }
 
 model VerificationToken {
@@ -91,6 +95,9 @@ model Route {
   creatorId    String?
   creator      User?         @relation("RouteCreator", fields: [creatorId], references: [id])
 
+  // Configuracion de acceso
+  requiresApproval Boolean @default(false) // Si requiere aprobacion del creador
+
   // Relaciones
   stops        RouteStop[]
   participants Participant[]
@@ -101,6 +108,7 @@ model Route {
   drinks       Drink[]
   barRatings   BarRating[]
   earnedBadges UserBadge[]
+  invitations  Invitation[]
 }
 
 model RouteStop {
@@ -265,4 +273,33 @@ model UserBadge {
   earnedAt  DateTime @default(now())
 
   @@unique([userId, badgeId])
+}
+
+// Invitaciones a rutas
+model Invitation {
+  id          String   @id @default(cuid())
+  route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId     String
+
+  // Quien invita
+  invitedBy   User     @relation("InvitationsSent", fields: [invitedById], references: [id], onDelete: Cascade)
+  invitedById String
+
+  // Invitado (puede ser por email o usuario existente)
+  invitedUser   User?    @relation("InvitationsReceived", fields: [invitedUserId], references: [id], onDelete: Cascade)
+  invitedUserId String?
+  invitedEmail  String?  // Si el usuario no existe todavia
+
+  // Estado: pending, accepted, rejected, expired
+  status      String   @default("pending")
+
+  // Mensaje opcional del que invita
+  message     String?
+
+  createdAt   DateTime @default(now())
+  respondedAt DateTime?
+  expiresAt   DateTime? // Fecha de expiracion opcional
+
+  @@unique([routeId, invitedUserId])
+  @@unique([routeId, invitedEmail])
 }

@@ -12,6 +12,7 @@ import BarRating from "@/components/BarRating";
 import RouteSummary from "@/components/RouteSummary";
 import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
+import InvitationManager from "@/components/InvitationManager";
 
 type StopClient = {
   id: string;
@@ -440,18 +441,26 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       </div>
 
       {activeTab === "group" && (
-        /* Lista de Participantes */
-        <ParticipantsList
-          routeId={routeId}
-          currentUserId={currentUserId}
-          currentStop={activeStop ? {
-            id: activeStop.id,
-            name: activeStop.name,
-            lat: activeStop.lat,
-            lng: activeStop.lng,
-          } : null}
-          userPosition={position}
-        />
+        <div className="space-y-4">
+          {/* Lista de Participantes */}
+          <ParticipantsList
+            routeId={routeId}
+            currentUserId={currentUserId}
+            currentStop={activeStop ? {
+              id: activeStop.id,
+              name: activeStop.name,
+              lat: activeStop.lat,
+              lng: activeStop.lng,
+            } : null}
+            userPosition={position}
+          />
+
+          {/* Panel de Invitaciones (solo creador o participante) */}
+          <InvitationManager
+            routeId={routeId}
+            isCreator={isCreator}
+          />
+        </div>
       )}
 
       {activeTab === "photos" && (

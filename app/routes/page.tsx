@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import DeleteRouteButton from "@/components/DeleteRouteButton";
 import UserMenu from "@/components/UserMenu";
+import MyInvitations from "@/components/MyInvitations";
 
 // Desactivar caché para que siempre muestre datos frescos
 export const dynamic = "force-dynamic";
@@ -70,6 +71,9 @@ export default async function RoutesPage() {
           <UserMenu />
         </div>
       </div>
+
+      {/* Invitaciones pendientes */}
+      <MyInvitations />
 
       {!hasRoutes && (
         <div className="text-center py-12 bg-slate-50 rounded-xl border border-slate-200">
