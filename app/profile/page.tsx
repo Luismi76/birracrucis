@@ -15,6 +15,11 @@ type Badge = {
   earnedAt: string;
 };
 
+type Settings = {
+  autoCheckinEnabled: boolean;
+  notificationsEnabled: boolean;
+};
+
 type ProfileData = {
   profile: {
     id: string;
@@ -23,6 +28,7 @@ type ProfileData = {
     image: string | null;
     badges: Badge[];
   };
+  settings: Settings;
   stats: {
     routesCreated: number;
     routesParticipated: number;
@@ -40,6 +46,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [savingSettings, setSavingSettings] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -65,6 +72,51 @@ export default function ProfilePage() {
       console.error("Error fetching profile:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateSetting = async (key: keyof Settings, value: boolean) => {
+    if (!profileData) return;
+
+    // Optimistic update
+    setProfileData({
+      ...profileData,
+      settings: {
+        ...profileData.settings,
+        [key]: value,
+      },
+    });
+
+    setSavingSettings(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+      const data = await res.json();
+      if (!data.ok) {
+        // Revert on error
+        setProfileData({
+          ...profileData,
+          settings: {
+            ...profileData.settings,
+            [key]: !value,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Error updating setting:", err);
+      // Revert on error
+      setProfileData({
+        ...profileData,
+        settings: {
+          ...profileData.settings,
+          [key]: !value,
+        },
+      });
+    } finally {
+      setSavingSettings(false);
     }
   };
 
@@ -256,6 +308,66 @@ export default function ProfilePage() {
               </div>
             );
           })()}
+        </div>
+
+        {/* Configuracion */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+            <span className="text-xl">⚙️</span>
+            Configuracion
+          </h3>
+
+          <div className="space-y-4">
+            {/* Auto Check-in */}
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="font-medium text-slate-800">Check-in automatico</p>
+                <p className="text-xs text-slate-500">
+                  Registrar rondas automaticamente cuando llegas a un bar
+                </p>
+              </div>
+              <button
+                onClick={() => updateSetting("autoCheckinEnabled", !profileData.settings.autoCheckinEnabled)}
+                disabled={savingSettings}
+                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
+                  profileData.settings.autoCheckinEnabled
+                    ? "bg-amber-500"
+                    : "bg-slate-300"
+                } ${savingSettings ? "opacity-50" : ""}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${
+                    profileData.settings.autoCheckinEnabled ? "translate-x-5" : ""
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Notificaciones */}
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="font-medium text-slate-800">Notificaciones</p>
+                <p className="text-xs text-slate-500">
+                  Recibir avisos de tus amigos y rutas
+                </p>
+              </div>
+              <button
+                onClick={() => updateSetting("notificationsEnabled", !profileData.settings.notificationsEnabled)}
+                disabled={savingSettings}
+                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
+                  profileData.settings.notificationsEnabled
+                    ? "bg-amber-500"
+                    : "bg-slate-300"
+                } ${savingSettings ? "opacity-50" : ""}`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${
+                    profileData.settings.notificationsEnabled ? "translate-x-5" : ""
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Notificaciones Push */}

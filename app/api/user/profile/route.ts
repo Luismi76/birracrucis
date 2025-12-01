@@ -72,6 +72,10 @@ export async function GET(req: NextRequest) {
           earnedAt: ub.earnedAt,
         })),
       },
+      settings: {
+        autoCheckinEnabled: user.autoCheckinEnabled,
+        notificationsEnabled: user.notificationsEnabled,
+      },
       stats: {
         routesCreated,
         routesParticipated,
@@ -86,5 +90,51 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error("Error en GET /api/user/profile:", error);
     return NextResponse.json({ ok: false, error: "Error al obtener perfil" }, { status: 500 });
+  }
+}
+
+// PATCH - Actualizar configuracion del usuario
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) {
+      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { autoCheckinEnabled, notificationsEnabled } = body;
+
+    const updateData: { autoCheckinEnabled?: boolean; notificationsEnabled?: boolean } = {};
+
+    if (typeof autoCheckinEnabled === "boolean") {
+      updateData.autoCheckinEnabled = autoCheckinEnabled;
+    }
+    if (typeof notificationsEnabled === "boolean") {
+      updateData.notificationsEnabled = notificationsEnabled;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ ok: false, error: "Nada que actualizar" }, { status: 400 });
+    }
+
+    const user = await prisma.user.update({
+      where: { email: session.user.email },
+      data: updateData,
+      select: {
+        autoCheckinEnabled: true,
+        notificationsEnabled: true,
+      },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      settings: {
+        autoCheckinEnabled: user.autoCheckinEnabled,
+        notificationsEnabled: user.notificationsEnabled,
+      },
+    });
+  } catch (error) {
+    console.error("Error en PATCH /api/user/profile:", error);
+    return NextResponse.json({ ok: false, error: "Error al actualizar configuracion" }, { status: 500 });
   }
 }

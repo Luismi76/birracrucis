@@ -45,6 +45,10 @@ model User {
   accounts      Account[]
   sessions      Session[]
 
+  // Configuracion del usuario
+  autoCheckinEnabled    Boolean @default(true)
+  notificationsEnabled  Boolean @default(true)
+
   // Relaciones con la app
   createdRoutes  Route[]       @relation("RouteCreator")
   participations Participant[]

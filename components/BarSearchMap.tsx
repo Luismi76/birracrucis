@@ -21,6 +21,8 @@ type BarSearchMapProps = {
     routePreview?: { lat: number; lng: number }[]; // Array de coordenadas ordenadas
     onBarClick?: (placeId: string) => void;
     onDistanceCalculated?: (distanceMeters: number, durationSeconds: number) => void;
+    onMapClick?: (lat: number, lng: number) => void; // Para añadir bares manualmente
+    manualAddMode?: boolean; // Indica si está activo el modo de añadir bar manual
     isLoaded: boolean;
     loadError?: Error;
 };
@@ -30,13 +32,14 @@ const mapContainerStyle = {
     height: "100%",
 };
 
-const mapOptions = {
+const getMapOptions = (manualMode: boolean) => ({
     disableDefaultUI: false,
     zoomControl: true,
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
-};
+    draggableCursor: manualMode ? "crosshair" : undefined,
+});
 
 // Crear una key única para comparar rutas
 const getRouteKey = (routePreview?: { lat: number; lng: number }[]): string => {
@@ -52,6 +55,8 @@ export default function BarSearchMap({
     routePreview,
     onBarClick,
     onDistanceCalculated,
+    onMapClick,
+    manualAddMode = false,
     isLoaded,
     loadError,
 }: BarSearchMapProps) {
@@ -178,12 +183,19 @@ export default function BarSearchMap({
         );
     }
 
+    const handleMapClick = (e: google.maps.MapMouseEvent) => {
+        if (manualAddMode && onMapClick && e.latLng) {
+            onMapClick(e.latLng.lat(), e.latLng.lng());
+        }
+    };
+
     return (
         <GoogleMap
             mapContainerStyle={mapContainerStyle}
             center={center}
             zoom={zoom}
-            options={mapOptions}
+            options={getMapOptions(manualAddMode)}
+            onClick={handleMapClick}
         >
             {/* Círculo mostrando el radio de búsqueda */}
             <Circle

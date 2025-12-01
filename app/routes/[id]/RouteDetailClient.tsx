@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import PhotoCapture from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
 import NudgeButton from "@/components/NudgeButton";
@@ -12,7 +12,6 @@ import RouteSummary from "@/components/RouteSummary";
 import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
 import InvitationManager from "@/components/InvitationManager";
-import AutoCheckin from "@/components/AutoCheckin";
 import ExportRoutePDF from "@/components/ExportRoutePDF";
 import PricePicker from "@/components/PricePicker";
 import PotManager from "@/components/PotManager";
@@ -99,6 +98,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Tabs simplificadas
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
+
+  // Auto-checkin silencioso
+  const [autoCheckinEnabled, setAutoCheckinEnabled] = useState(true);
+  const autoCheckinStopsRef = useRef<Set<string>>(new Set());
+  const [autoCheckinNotification, setAutoCheckinNotification] = useState<string | null>(null);
+  const AUTOCHECKIN_RADIUS = 50; // metros
 
   // Price picker modal
   const [pricePickerOpen, setPricePickerOpen] = useState<{ type: 'beer' | 'tapa'; stopId: string } | null>(null);
@@ -202,6 +207,56 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       handleStartWatch();
     }
   }, []);
+
+  // Cargar configuracion de auto-checkin del usuario
+  useEffect(() => {
+    const fetchUserSettings = async () => {
+      try {
+        const res = await fetch("/api/user/profile");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.settings) {
+            setAutoCheckinEnabled(data.settings.autoCheckinEnabled);
+          }
+        }
+      } catch (err) {
+        console.warn("Error obteniendo configuracion:", err);
+      }
+    };
+    fetchUserSettings();
+  }, []);
+
+  // Auto-checkin silencioso basado en ubicacion
+  useEffect(() => {
+    if (!autoCheckinEnabled || !position || !activeStop || isRouteComplete) return;
+
+    // Si ya hicimos auto-checkin en esta parada, no repetir
+    if (autoCheckinStopsRef.current.has(activeStop.id)) return;
+
+    const distToBar = distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng);
+
+    if (distToBar <= AUTOCHECKIN_RADIUS) {
+      // Registrar auto-checkin
+      autoCheckinStopsRef.current.add(activeStop.id);
+      handleAddRound(activeStop.id);
+
+      // Mostrar notificacion temporal
+      setAutoCheckinNotification(`Llegaste a ${activeStop.name}`);
+      setTimeout(() => setAutoCheckinNotification(null), 3000);
+
+      // Vibrar si esta disponible
+      if ("vibrate" in navigator) {
+        navigator.vibrate([200, 100, 200]);
+      }
+
+      // Registrar llegada en el servidor
+      fetch(`/api/stops/${activeStop.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ arrivedAt: new Date().toISOString() }),
+      }).catch(console.error);
+    }
+  }, [position, activeStop, autoCheckinEnabled, isRouteComplete]);
 
   // Enviar ubicación al servidor periódicamente
   useEffect(() => {
@@ -411,6 +466,19 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   return (
     <div className="space-y-4 pb-20">
+
+      {/* Notificacion de Auto-checkin */}
+      {autoCheckinNotification && (
+        <div className="fixed top-4 left-4 right-4 z-50 animate-slide-down">
+          <div className="bg-green-500 text-white rounded-xl p-4 shadow-lg flex items-center gap-3">
+            <span className="text-2xl">✅</span>
+            <div>
+              <p className="font-bold">Check-in automatico</p>
+              <p className="text-sm text-green-100">{autoCheckinNotification}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 1. Barra de Progreso Global */}
       <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
@@ -678,16 +746,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         />
       )}
 
-      {/* Auto Check-in por geolocalizacion */}
-      {!isRouteComplete && activeStop && (
-        <AutoCheckin
-          routeId={routeId}
-          stops={stops.map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng }))}
-          currentStopId={activeStop.id}
-          userPosition={position}
-          onCheckin={(stopId) => handleAddRound(stopId)}
-        />
-      )}
 
       {/* Tabs simplificadas: Ruta / Fotos / Valorar / Grupo */}
       <div className="flex bg-slate-100 rounded-xl p-1">

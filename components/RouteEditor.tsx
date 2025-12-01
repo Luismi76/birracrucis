@@ -100,6 +100,12 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const [routeDuration, setRouteDuration] = useState<number | null>(null); // en segundos
     const [preOptimizeDistance, setPreOptimizeDistance] = useState<number | null>(null);
 
+    // Estado para añadir bar manual (clicando en el mapa)
+    const [manualAddMode, setManualAddMode] = useState(false);
+    const [pendingManualBar, setPendingManualBar] = useState<{ lat: number; lng: number } | null>(null);
+    const [manualBarName, setManualBarName] = useState("");
+    const [manualBarAddress, setManualBarAddress] = useState("");
+
     // Inicializar datos si estamos editando
     useEffect(() => {
         if (initialData && initialData.stops.length > 0) {
@@ -551,6 +557,64 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         setOrderedIds(newOrder);
     };
 
+    // Handler para clic en el mapa (modo manual)
+    const handleMapClick = (lat: number, lng: number) => {
+        setPendingManualBar({ lat, lng });
+        setManualBarName("");
+        setManualBarAddress("");
+    };
+
+    // Confirmar la creación del bar manual
+    const handleConfirmManualBar = () => {
+        if (!pendingManualBar || !manualBarName.trim()) return;
+
+        // Crear un ID único para el bar manual
+        const manualPlaceId = `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        const manualPlace: PlaceResult = {
+            placeId: manualPlaceId,
+            name: manualBarName.trim(),
+            address: manualBarAddress.trim() || `${pendingManualBar.lat.toFixed(6)}, ${pendingManualBar.lng.toFixed(6)}`,
+            lat: pendingManualBar.lat,
+            lng: pendingManualBar.lng,
+            rating: null,
+            userRatingsTotal: 0,
+        };
+
+        // Añadir a places
+        setPlaces(prev => [...prev, manualPlace]);
+
+        // Añadir a seleccionados
+        setSelectedBars(prev => {
+            const newMap = new Map(prev);
+            const isFirst = newMap.size === 0;
+            newMap.set(manualPlaceId, {
+                placeId: manualPlaceId,
+                bar: manualPlace,
+                plannedRounds: 1,
+                maxRounds: undefined,
+                isStart: isFirst,
+                stayDuration: defaultStayDuration,
+            });
+            return newMap;
+        });
+
+        setOrderedIds(prev => [...prev, manualPlaceId]);
+
+        // Limpiar estado
+        setPendingManualBar(null);
+        setManualBarName("");
+        setManualBarAddress("");
+        setManualAddMode(false);
+    };
+
+    // Cancelar la creación del bar manual
+    const handleCancelManualBar = () => {
+        setPendingManualBar(null);
+        setManualBarName("");
+        setManualBarAddress("");
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -895,6 +959,24 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                 </button>
                             </div>
 
+                            {/* Botón para añadir bar manualmente */}
+                            <button
+                                onClick={() => setManualAddMode(!manualAddMode)}
+                                className={`w-full px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 border ${
+                                    manualAddMode
+                                        ? "bg-purple-500 text-white border-purple-600 hover:bg-purple-600"
+                                        : "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100"
+                                }`}
+                            >
+                                <span>✏️</span>
+                                {manualAddMode ? "Modo manual activo - Clica en el mapa" : "Añadir bar que no aparece"}
+                            </button>
+                            {manualAddMode && (
+                                <p className="text-xs text-purple-600 bg-purple-50 p-2 rounded-lg border border-purple-100 text-center">
+                                    💡 Haz clic en el mapa para añadir un bar que no aparece en Google Maps
+                                </p>
+                            )}
+
                             <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
                                 <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-wide">
                                     <span>Radio de sed</span>
@@ -1205,9 +1287,85 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             setRouteDistance(distance);
                             setRouteDuration(duration);
                         }}
+                        onMapClick={handleMapClick}
+                        manualAddMode={manualAddMode}
                         isLoaded={isLoaded}
                         loadError={loadError}
                     />
+
+                    {/* Indicador de modo manual activo */}
+                    {manualAddMode && (
+                        <div className="absolute top-4 left-4 right-4 z-20">
+                            <div className="bg-purple-500 text-white rounded-xl px-4 py-2 shadow-lg flex items-center justify-between">
+                                <span className="font-bold text-sm">✏️ Modo manual: Clica donde quieras añadir el bar</span>
+                                <button
+                                    onClick={() => setManualAddMode(false)}
+                                    className="bg-white/20 hover:bg-white/30 rounded-lg px-2 py-1 text-xs font-bold transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Modal para introducir nombre del bar manual */}
+                    {pendingManualBar && (
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-30 p-4">
+                            <div className="bg-white rounded-2xl p-6 shadow-2xl max-w-sm w-full space-y-4">
+                                <div className="text-center">
+                                    <span className="text-4xl">📍</span>
+                                    <h3 className="font-bold text-slate-800 text-lg mt-2">Nuevo Bar Manual</h3>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Coordenadas: {pendingManualBar.lat.toFixed(6)}, {pendingManualBar.lng.toFixed(6)}
+                                    </p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                                            Nombre del bar *
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: Bar de Pepe, La Taberna..."
+                                            value={manualBarName}
+                                            onChange={(e) => setManualBarName(e.target.value)}
+                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 uppercase tracking-wide">
+                                            Direccion (opcional)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej: Calle Mayor 5"
+                                            value={manualBarAddress}
+                                            onChange={(e) => setManualBarAddress(e.target.value)}
+                                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={handleCancelManualBar}
+                                        className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={handleConfirmManualBar}
+                                        disabled={!manualBarName.trim()}
+                                        className="flex-1 py-3 bg-purple-500 text-white rounded-xl font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                        ✓ Añadir Bar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Overlay de instrucciones si está vacío */}
                     {places.length === 0 && selectedBars.size === 0 && (
