@@ -14,9 +14,20 @@ type Stop = {
     maxRounds: number | null;
 };
 
+type Participant = {
+    odId: string;
+    odIduserId: string;
+    name: string | null;
+    image: string | null;
+    lat: number;
+    lng: number;
+    lastSeenAt: string;
+};
+
 type RouteDetailMapProps = {
     stops: Stop[];
     userPosition?: { lat: number; lng: number } | null;
+    participants?: Participant[];
 };
 
 const mapContainerStyle = {
@@ -39,7 +50,19 @@ const mapOptions = {
     ],
 };
 
-export default function RouteDetailMap({ stops, userPosition }: RouteDetailMapProps) {
+// Colores para los avatares de participantes
+const PARTICIPANT_COLORS = [
+    "#ef4444", // red
+    "#f97316", // orange
+    "#eab308", // yellow
+    "#22c55e", // green
+    "#06b6d4", // cyan
+    "#3b82f6", // blue
+    "#8b5cf6", // violet
+    "#ec4899", // pink
+];
+
+export default function RouteDetailMap({ stops, userPosition, participants = [] }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY!,
     });
@@ -72,7 +95,7 @@ export default function RouteDetailMap({ stops, userPosition }: RouteDetailMapPr
     const createMarkerIcon = (number: number, color: string) => {
         const svg = `
       <svg width="40" height="50" viewBox="0 0 40 50" xmlns="http://www.w3.org/2000/svg">
-        <path d="M20 0C8.954 0 0 8.954 0 20c0 11.046 20 30 20 30s20-18.954 20-30C40 8.954 31.046 0 20 0z" 
+        <path d="M20 0C8.954 0 0 8.954 0 20c0 11.046 20 30 20 30s20-18.954 20-30C40 8.954 31.046 0 20 0z"
               fill="${color}" stroke="#fff" stroke-width="2"/>
         <circle cx="20" cy="20" r="12" fill="#fff"/>
         <text x="20" y="25" font-size="14" font-weight="bold" text-anchor="middle" fill="${color}">
@@ -80,6 +103,37 @@ export default function RouteDetailMap({ stops, userPosition }: RouteDetailMapPr
         </text>
       </svg>
     `;
+        return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    };
+
+    // Crear SVG para avatar de participante
+    const createParticipantMarker = (name: string | null, color: string, imageUrl: string | null) => {
+        const initial = name ? name.charAt(0).toUpperCase() : "?";
+
+        // Si tiene imagen, usamos un marcador con imagen
+        if (imageUrl) {
+            const svg = `
+            <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <clipPath id="avatarClip">
+                        <circle cx="22" cy="22" r="18"/>
+                    </clipPath>
+                </defs>
+                <circle cx="22" cy="22" r="21" fill="${color}" stroke="#fff" stroke-width="3"/>
+                <circle cx="22" cy="22" r="18" fill="#fff"/>
+                <text x="22" y="28" font-size="16" font-weight="bold" text-anchor="middle" fill="${color}">${initial}</text>
+            </svg>
+            `;
+            return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+        }
+
+        // Sin imagen, solo inicial
+        const svg = `
+        <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="22" cy="22" r="21" fill="${color}" stroke="#fff" stroke-width="3"/>
+            <text x="22" y="28" font-size="18" font-weight="bold" text-anchor="middle" fill="#fff">${initial}</text>
+        </svg>
+        `;
         return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     };
 
@@ -206,6 +260,25 @@ export default function RouteDetailMap({ stops, userPosition }: RouteDetailMapPr
                         title="Tu ubicación"
                     />
                 )}
+
+                {/* Marcadores de otros participantes */}
+                {participants.map((participant, index) => (
+                    <Marker
+                        key={participant.odIduserId}
+                        position={{ lat: participant.lat, lng: participant.lng }}
+                        icon={{
+                            url: createParticipantMarker(
+                                participant.name,
+                                PARTICIPANT_COLORS[index % PARTICIPANT_COLORS.length],
+                                participant.image
+                            ),
+                            scaledSize: new google.maps.Size(44, 44),
+                            anchor: new google.maps.Point(22, 22),
+                        }}
+                        title={participant.name || "Participante"}
+                        zIndex={100 + index}
+                    />
+                ))}
 
                 {/* Info Window */}
                 {selectedStop && (

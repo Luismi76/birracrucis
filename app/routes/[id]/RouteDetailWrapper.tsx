@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import RouteDetailMap from "@/components/RouteDetailMap";
 import RouteDetailClient from "./RouteDetailClient";
@@ -15,6 +15,16 @@ type Stop = {
   plannedRounds: number;
   maxRounds: number | null;
   actualRounds: number;
+};
+
+type Participant = {
+  odId: string;
+  odIduserId: string;
+  name: string | null;
+  image: string | null;
+  lat: number;
+  lng: number;
+  lastSeenAt: string;
 };
 
 type RouteDetailWrapperProps = {
@@ -39,8 +49,13 @@ export default function RouteDetailWrapper({
   participantsCount,
 }: RouteDetailWrapperProps) {
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [showMap, setShowMap] = useState(false);
   const [showShare, setShowShare] = useState(false);
+
+  const handleParticipantsChange = useCallback((newParticipants: Participant[]) => {
+    setParticipants(newParticipants);
+  }, []);
 
   return (
     <div className="flex flex-col h-screen bg-slate-50">
@@ -148,7 +163,7 @@ export default function RouteDetailWrapper({
       {/* Mapa Colapsable */}
       {showMap && (
         <div className="h-48 md:h-64 relative border-b shrink-0">
-          <RouteDetailMap stops={stops} userPosition={userPosition} />
+          <RouteDetailMap stops={stops} userPosition={userPosition} participants={participants} />
           {/* Botón para cerrar el mapa */}
           <button
             onClick={() => setShowMap(false)}
@@ -166,7 +181,9 @@ export default function RouteDetailWrapper({
         <div className="p-4 pb-safe">
           <RouteDetailClient
             stops={stops}
+            routeId={routeId}
             onPositionChange={setUserPosition}
+            onParticipantsChange={handleParticipantsChange}
             isCreator={isCreator}
           />
         </div>

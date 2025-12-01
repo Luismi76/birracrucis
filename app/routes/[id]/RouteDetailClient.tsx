@@ -13,9 +13,21 @@ type StopClient = {
   actualRounds: number;
 };
 
+type Participant = {
+  odId: string;
+  odIduserId: string;
+  name: string | null;
+  image: string | null;
+  lat: number;
+  lng: number;
+  lastSeenAt: string;
+};
+
 type RouteDetailClientProps = {
   stops: StopClient[];
+  routeId: string;
   onPositionChange?: (position: { lat: number; lng: number } | null) => void;
+  onParticipantsChange?: (participants: Participant[]) => void;
   isCreator?: boolean;
 };
 
@@ -38,7 +50,10 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
   return R * c;
 }
 
-export default function RouteDetailClient({ stops, onPositionChange, isCreator = false }: RouteDetailClientProps) {
+const LOCATION_UPDATE_INTERVAL = 10000; // Enviar ubicación cada 10 segundos
+const PARTICIPANTS_FETCH_INTERVAL = 5000; // Obtener participantes cada 5 segundos
+
+export default function RouteDetailClient({ stops, routeId, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
@@ -68,6 +83,9 @@ export default function RouteDetailClient({ stops, onPositionChange, isCreator =
   const totalRounds = Object.values(rounds).reduce((sum, r) => sum + r, 0);
   const progressPercent = (completedStops / stops.length) * 100;
 
+  // Referencia para el último envío de ubicación
+  const lastLocationSentRef = useRef<number>(0);
+
   useEffect(() => {
     return () => {
       if (watchIdRef.current != null && "geolocation" in navigator) {
@@ -82,6 +100,48 @@ export default function RouteDetailClient({ stops, onPositionChange, isCreator =
       handleStartWatch();
     }
   }, []);
+
+  // Enviar ubicación al servidor periódicamente
+  useEffect(() => {
+    if (!position || !routeId) return;
+
+    const now = Date.now();
+    if (now - lastLocationSentRef.current < LOCATION_UPDATE_INTERVAL) return;
+
+    lastLocationSentRef.current = now;
+
+    fetch(`/api/routes/${routeId}/participants`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat: position.lat, lng: position.lng }),
+    }).catch(err => console.warn("Error enviando ubicación:", err));
+  }, [position, routeId]);
+
+  // Obtener ubicaciones de otros participantes periódicamente
+  useEffect(() => {
+    if (!routeId || !onParticipantsChange) return;
+
+    const fetchParticipants = async () => {
+      try {
+        const res = await fetch(`/api/routes/${routeId}/participants`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.ok && data.participants) {
+            onParticipantsChange(data.participants);
+          }
+        }
+      } catch (err) {
+        console.warn("Error obteniendo participantes:", err);
+      }
+    };
+
+    // Fetch inicial
+    fetchParticipants();
+
+    // Polling periódico
+    const interval = setInterval(fetchParticipants, PARTICIPANTS_FETCH_INTERVAL);
+    return () => clearInterval(interval);
+  }, [routeId, onParticipantsChange]);
 
   const handleStartWatch = () => {
     if (!("geolocation" in navigator)) return;
