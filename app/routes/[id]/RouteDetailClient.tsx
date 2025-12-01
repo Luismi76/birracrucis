@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import dynamic from "next/dynamic";
 import PhotoCapture from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
 import NudgeButton from "@/components/NudgeButton";
@@ -12,9 +13,20 @@ import RouteSummary from "@/components/RouteSummary";
 import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
 import InvitationManager from "@/components/InvitationManager";
-import ExportRoutePDF from "@/components/ExportRoutePDF";
 import PricePicker from "@/components/PricePicker";
-import PotManager from "@/components/PotManager";
+
+// Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
+const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
+  loading: () => (
+    <button className="opacity-50 cursor-wait bg-slate-100 text-slate-400 px-4 py-2 rounded-lg text-sm">
+      Cargando...
+    </button>
+  ),
+});
+
+const PotManager = dynamic(() => import("@/components/PotManager"), {
+  loading: () => <div className="h-24 bg-slate-100 rounded-xl animate-pulse" />,
+});
 
 type StopClient = {
   id: string;

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouteStream } from "@/hooks/useRouteStream";
 
 type Message = {
   id: string;
@@ -25,46 +26,37 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastFetchRef = useRef<string | null>(null);
+  const initialLoadDone = useRef(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Polling para nuevos mensajes
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const url = lastFetchRef.current
-          ? `/api/routes/${routeId}/chat?since=${lastFetchRef.current}`
-          : `/api/routes/${routeId}/chat`;
-
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.messages.length > 0) {
-            if (lastFetchRef.current) {
-              // Nuevos mensajes
-              setMessages(prev => [...prev, ...data.messages]);
-              if (!isOpen) {
-                setUnreadCount(prev => prev + data.messages.length);
-              }
-            } else {
-              // Carga inicial
-              setMessages(data.messages);
-            }
-            lastFetchRef.current = data.messages[data.messages.length - 1].createdAt;
-          }
+  // Callback para nuevos mensajes del SSE
+  const handleNewMessages = useCallback((newMsgs: Message[]) => {
+    if (!initialLoadDone.current) {
+      // Primera carga - reemplazar todo
+      setMessages(newMsgs);
+      initialLoadDone.current = true;
+    } else {
+      // Mensajes nuevos - añadir
+      setMessages(prev => {
+        const existingIds = new Set(prev.map(m => m.id));
+        const uniqueNew = newMsgs.filter(m => !existingIds.has(m.id));
+        if (uniqueNew.length > 0 && !isOpen) {
+          setUnreadCount(c => c + uniqueNew.length);
         }
-      } catch (err) {
-        console.warn("Error fetching messages:", err);
-      }
-    };
+        return [...prev, ...uniqueNew];
+      });
+    }
+  }, [isOpen]);
 
-    fetchMessages();
-    const interval = setInterval(fetchMessages, 3000);
-    return () => clearInterval(interval);
-  }, [routeId, isOpen]);
+  // Usar SSE para actualizaciones en tiempo real
+  const { status } = useRouteStream({
+    routeId,
+    enabled: true,
+    onMessages: handleNewMessages,
+  });
 
   useEffect(() => {
     if (isOpen) {
@@ -89,7 +81,6 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
         if (data.ok) {
           setMessages(prev => [...prev, data.message]);
           setNewMessage("");
-          lastFetchRef.current = data.message.createdAt;
         }
       }
     } catch (err) {

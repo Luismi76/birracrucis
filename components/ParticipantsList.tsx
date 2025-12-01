@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
+import { useRouteStream } from "@/hooks/useRouteStream";
+import { distanceInMeters, timeAgo } from "@/lib/geo-utils";
 
 type Participant = {
   id: string;
@@ -31,36 +33,6 @@ type ParticipantsListProps = {
 
 const RADIUS_METERS = 100;
 
-function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return Infinity;
-  if ((lat1 === 0 && lon1 === 0) || (lat2 === 0 && lon2 === 0)) return Infinity;
-
-  const R = 6371000;
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function timeAgo(dateStr: string | null): string {
-  if (!dateStr) return "Sin conexion";
-  const now = new Date();
-  const date = new Date(dateStr);
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-
-  if (diffMins < 1) return "Ahora";
-  if (diffMins < 60) return `Hace ${diffMins} min`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `Hace ${diffHours}h`;
-  return "Hace mucho";
-}
-
 export default function ParticipantsList({
   routeId,
   currentUserId,
@@ -68,46 +40,39 @@ export default function ParticipantsList({
   userPosition,
 }: ParticipantsListProps) {
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  useEffect(() => {
-    const fetchParticipants = async () => {
-      try {
-        const res = await fetch(`/api/routes/${routeId}/participants`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.participants) {
-            setParticipants(data.participants);
-          }
-        }
-      } catch (err) {
-        console.warn("Error fetching participants:", err);
-      } finally {
-        setLoading(false);
+  // Usar SSE para actualizaciones en tiempo real
+  const handleParticipants = useCallback((data: Participant[]) => {
+    setParticipants(data);
+  }, []);
+
+  const { status } = useRouteStream({
+    routeId,
+    enabled: true,
+    onParticipants: handleParticipants,
+  });
+
+  const loading = status === "connecting" && participants.length === 0;
+
+  // Clasificar participantes con memoización
+  const { atBar, away, unknown } = useMemo(() => {
+    const classifyParticipant = (p: Participant) => {
+      if (!p.lat || !p.lng || p.lat === 0 || p.lng === 0 || !p.lastSeenAt) {
+        return "unknown";
       }
+      if (!currentStop) return "unknown";
+      const dist = distanceInMeters(p.lat, p.lng, currentStop.lat, currentStop.lng);
+      if (dist <= RADIUS_METERS) return "atBar";
+      return "away";
     };
 
-    fetchParticipants();
-    const interval = setInterval(fetchParticipants, 5000);
-    return () => clearInterval(interval);
-  }, [routeId]);
-
-  // Clasificar participantes
-  const classifyParticipant = (p: Participant) => {
-    // Si no tiene ubicación válida (lat/lng = 0 o no tiene lastSeenAt)
-    if (!p.lat || !p.lng || p.lat === 0 || p.lng === 0 || !p.lastSeenAt) {
-      return "unknown";
-    }
-    if (!currentStop) return "unknown";
-    const dist = distanceInMeters(p.lat, p.lng, currentStop.lat, currentStop.lng);
-    if (dist <= RADIUS_METERS) return "atBar";
-    return "away";
-  };
-
-  const atBar = participants.filter(p => classifyParticipant(p) === "atBar");
-  const away = participants.filter(p => classifyParticipant(p) === "away");
-  const unknown = participants.filter(p => classifyParticipant(p) === "unknown");
+    return {
+      atBar: participants.filter(p => classifyParticipant(p) === "atBar"),
+      away: participants.filter(p => classifyParticipant(p) === "away"),
+      unknown: participants.filter(p => classifyParticipant(p) === "unknown"),
+    };
+  }, [participants, currentStop]);
 
   if (loading) {
     return (
@@ -252,7 +217,7 @@ export default function ParticipantsList({
   );
 }
 
-function ParticipantRow({
+const ParticipantRow = memo(function ParticipantRow({
   participant,
   isCurrentUser,
   status,
@@ -263,9 +228,10 @@ function ParticipantRow({
   status: "atBar" | "away" | "unknown";
   currentStop?: Stop | null;
 }) {
-  const distance = currentStop && participant.lat && participant.lng
-    ? Math.round(distanceInMeters(participant.lat, participant.lng, currentStop.lat, currentStop.lng))
-    : null;
+  const distance = useMemo(() => {
+    if (!currentStop || !participant.lat || !participant.lng) return null;
+    return Math.round(distanceInMeters(participant.lat, participant.lng, currentStop.lat, currentStop.lng));
+  }, [currentStop, participant.lat, participant.lng]);
 
   return (
     <div className={`flex items-center gap-3 p-2 rounded-lg ${isCurrentUser ? "bg-amber-50" : "bg-slate-50"}`}>
@@ -331,4 +297,4 @@ function ParticipantRow({
       )}
     </div>
   );
-}
+});
