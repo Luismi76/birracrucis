@@ -25,6 +25,7 @@ type BarSearchMapProps = {
     manualAddMode?: boolean; // Indica si está activo el modo de añadir bar manual
     isLoaded: boolean;
     loadError?: Error;
+    onMapRef?: (mapRef: { getClickCoordinates: (x: number, y: number, rect: DOMRect) => { lat: number; lng: number } | null }) => void;
 };
 
 const mapContainerStyle = {
@@ -59,10 +60,12 @@ export default function BarSearchMap({
     manualAddMode = false,
     isLoaded,
     loadError,
+    onMapRef,
 }: BarSearchMapProps) {
     const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
     const lastRouteKeyRef = useRef<string>("");
     const directionsServiceRef = useRef<google.maps.DirectionsService | null>(null);
+    const mapRef = useRef<google.maps.Map | null>(null);
 
     // Calcular zoom según el radio
     const zoom = useMemo(() => {
@@ -191,6 +194,42 @@ export default function BarSearchMap({
         }
     };
 
+    // Función para obtener coordenadas del clic usando la referencia del mapa
+    const getClickCoordinates = (pixelX: number, pixelY: number, containerRect: DOMRect): { lat: number; lng: number } | null => {
+        if (!mapRef.current) return null;
+
+        const map = mapRef.current;
+        const bounds = map.getBounds();
+
+        if (!bounds) return null;
+
+        // Obtener el punto del mundo basado en la posición del clic
+        const ne = bounds.getNorthEast();
+        const sw = bounds.getSouthWest();
+
+        const mapWidth = containerRect.width;
+        const mapHeight = containerRect.height;
+
+        // Calcular el porcentaje de posición dentro del mapa
+        const percentX = pixelX / mapWidth;
+        const percentY = pixelY / mapHeight;
+
+        // Interpolar las coordenadas
+        const lng = sw.lng() + (ne.lng() - sw.lng()) * percentX;
+        const lat = ne.lat() - (ne.lat() - sw.lat()) * percentY;
+
+        return { lat, lng };
+    };
+
+    // Callback para guardar referencia al mapa
+    const onMapLoad = (map: google.maps.Map) => {
+        mapRef.current = map;
+        // Notificar al padre con las funciones del mapa
+        if (onMapRef) {
+            onMapRef({ getClickCoordinates });
+        }
+    };
+
     return (
         <GoogleMap
             mapContainerStyle={mapContainerStyle}
@@ -198,6 +237,7 @@ export default function BarSearchMap({
             zoom={zoom}
             options={getMapOptions(manualAddMode)}
             onClick={handleMapClick}
+            onLoad={onMapLoad}
         >
             {/* Círculo mostrando el radio de búsqueda */}
             <Circle
