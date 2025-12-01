@@ -60,9 +60,19 @@ export async function DELETE(
         const session = await getServerSession(authOptions);
         const { id } = await params;
 
-        // Verificar permisos (solo si hay sesión)
-        if (session?.user?.id) {
-            const canModify = await canModifyRoute(id, session.user.id);
+        // Obtener el userId real de la BD (no el de Google/JWT)
+        let userId: string | null = null;
+        if (session?.user?.email) {
+            const user = await prisma.user.findUnique({
+                where: { email: session.user.email },
+                select: { id: true },
+            });
+            userId = user?.id || null;
+        }
+
+        // Verificar permisos
+        if (userId) {
+            const canModify = await canModifyRoute(id, userId);
             if (!canModify) {
                 return NextResponse.json(
                     { ok: false, error: "No tienes permiso para eliminar esta ruta" },
@@ -104,11 +114,20 @@ export async function PUT(
         const session = await getServerSession(authOptions);
         const { id } = await params;
 
-        console.log(`[PUT /routes/${id}] Session:`, session?.user?.id || 'NO SESSION');
+        // Obtener el userId real de la BD (no el de Google/JWT)
+        let userId: string | null = null;
+        if (session?.user?.email) {
+            const user = await prisma.user.findUnique({
+                where: { email: session.user.email },
+                select: { id: true },
+            });
+            userId = user?.id || null;
+            console.log(`[PUT /routes/${id}] Session email: ${session.user.email}, DB userId: ${userId}`);
+        }
 
-        // Verificar permisos (solo si hay sesión)
-        if (session?.user?.id) {
-            const canModify = await canModifyRoute(id, session.user.id);
+        // Verificar permisos (solo si hay usuario en DB)
+        if (userId) {
+            const canModify = await canModifyRoute(id, userId);
             console.log(`[PUT /routes/${id}] canModify result:`, canModify);
             if (!canModify) {
                 return NextResponse.json(
@@ -117,8 +136,11 @@ export async function PUT(
                 );
             }
         } else {
-            // Sin sesión, permitir temporalmente para debug
-            console.log(`[PUT /routes/${id}] No session, allowing anyway`);
+            console.log(`[PUT /routes/${id}] No user in DB, denying`);
+            return NextResponse.json(
+                { ok: false, error: "Usuario no encontrado" },
+                { status: 401 }
+            );
         }
 
         const body = (await req.json()) as UpdateRouteBody;
