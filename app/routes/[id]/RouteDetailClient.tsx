@@ -129,10 +129,20 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     return initial;
   });
 
-  // Determinar el bar actual (el primero que no ha completado sus rondas)
-  const currentStopIndex = stops.findIndex(s => (rounds[s.id] || 0) < s.plannedRounds);
-  const activeStop = currentStopIndex !== -1 ? stops[currentStopIndex] : stops[stops.length - 1];
-  const isRouteComplete = currentStopIndex === -1;
+  // Indice del bar actual (manual, no automatico)
+  const [currentBarIndex, setCurrentBarIndex] = useState(() => {
+    // Inicializar en el primer bar que no ha completado sus rondas
+    const index = stops.findIndex(s => s.actualRounds < s.plannedRounds);
+    return index !== -1 ? index : stops.length - 1;
+  });
+
+  // El bar activo es el que el usuario tiene seleccionado
+  const activeStop = stops[currentBarIndex] || stops[stops.length - 1];
+  const isRouteComplete = currentBarIndex >= stops.length;
+  const currentStopIndex = currentBarIndex; // Alias para compatibilidad
+
+  // Detectar si nos hemos pasado de rondas planificadas
+  const isOverPlannedRounds = activeStop && (rounds[activeStop.id] || 0) >= activeStop.plannedRounds;
 
   // Calcular progreso
   const completedStops = stops.filter(s => (rounds[s.id] || 0) >= s.plannedRounds).length;
@@ -273,6 +283,16 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     // +1 por el usuario actual si está en el bar
     const userAtBar = canCheckIn ? 1 : 0;
     return Math.max(1, atBar.length + userAtBar);
+  };
+
+  // Avanzar al siguiente bar manualmente
+  const handleNextBar = () => {
+    if (currentBarIndex < stops.length - 1) {
+      setCurrentBarIndex(prev => prev + 1);
+    } else {
+      // Ultimo bar, marcar ruta como completada
+      setCurrentBarIndex(stops.length);
+    }
   };
 
   const handleAddRound = async (stopId: string) => {
@@ -431,11 +451,22 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
             {/* Rondas completadas */}
             <div className="flex items-center justify-center gap-2 py-2">
-              <span className="text-3xl font-black text-slate-800">
+              <span className={`text-3xl font-black ${isOverPlannedRounds ? 'text-orange-500' : 'text-slate-800'}`}>
                 {rounds[activeStop.id] || 0}
               </span>
               <span className="text-lg text-slate-400">/ {activeStop.plannedRounds} rondas</span>
             </div>
+
+            {/* Aviso de rondas completadas - Sugerir pasar al siguiente bar */}
+            {isOverPlannedRounds && currentBarIndex < stops.length - 1 && (
+              <div className="bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 rounded-xl p-3 flex items-center gap-3">
+                <div className="text-2xl">🎯</div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-orange-800">Objetivo cumplido!</p>
+                  <p className="text-xs text-orange-600">Ya completaste las rondas planificadas. Puedes seguir o ir al siguiente bar.</p>
+                </div>
+              </div>
+            )}
 
             {/* Boton principal: Pedir Ronda */}
             {(() => {
@@ -446,13 +477,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   disabled={!canCheckIn && !showDebug}
                   className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex flex-col items-center justify-center gap-1 ${
                     (canCheckIn || showDebug)
-                      ? "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
+                      ? isOverPlannedRounds
+                        ? "bg-orange-500 text-white hover:bg-orange-600 active:scale-95 shadow-lg"
+                        : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
                       : "bg-slate-100 text-slate-400 cursor-not-allowed"
                   }`}
                 >
                   {(canCheckIn || showDebug) ? (
                     <>
-                      <span>🍺 Siguiente Ronda</span>
+                      <span>{isOverPlannedRounds ? '🍺 Otra Ronda Mas!' : '🍺 Pedir Ronda'}</span>
                       <span className="text-xs opacity-80">+{peopleAtBar} {peopleAtBar === 1 ? 'cerveza' : 'cervezas'} ({peopleAtBar} {peopleAtBar === 1 ? 'persona' : 'personas'})</span>
                     </>
                   ) : (
@@ -461,6 +494,26 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 </button>
               );
             })()}
+
+            {/* Boton Siguiente Bar - Solo aparece cuando hemos completado las rondas */}
+            {isOverPlannedRounds && currentBarIndex < stops.length - 1 && (
+              <button
+                onClick={handleNextBar}
+                className="w-full py-3 rounded-xl font-bold text-base bg-green-500 text-white hover:bg-green-600 active:scale-95 shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <span>➡️ Siguiente Bar: {stops[currentBarIndex + 1]?.name}</span>
+              </button>
+            )}
+
+            {/* Boton Finalizar Ruta - Solo en el ultimo bar cuando completado */}
+            {isOverPlannedRounds && currentBarIndex === stops.length - 1 && (
+              <button
+                onClick={handleNextBar}
+                className="w-full py-3 rounded-xl font-bold text-base bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 active:scale-95 shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <span>🎉 Finalizar Ruta</span>
+              </button>
+            )}
 
             {/* Seccion de consumiciones */}
             <div className="bg-slate-50 rounded-xl p-3 space-y-3">
