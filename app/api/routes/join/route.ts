@@ -13,12 +13,26 @@ export async function POST(req: NextRequest) {
   try {
     // Requiere autenticación
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { ok: false, error: "Debes iniciar sesión para unirte a una ruta" },
         { status: 401 }
       );
     }
+
+    // Crear usuario si no existe (JWT mode sin adapter)
+    const user = await prisma.user.upsert({
+      where: { email: session.user.email },
+      update: {
+        name: session.user.name,
+        image: session.user.image,
+      },
+      create: {
+        email: session.user.email,
+        name: session.user.name,
+        image: session.user.image,
+      },
+    });
 
     const body = (await req.json()) as JoinRouteBody;
     const { inviteCode } = body;
@@ -60,7 +74,7 @@ export async function POST(req: NextRequest) {
       where: {
         routeId_userId: {
           routeId: route.id,
-          userId: session.user.id,
+          userId: user.id,
         },
       },
     });
@@ -79,7 +93,7 @@ export async function POST(req: NextRequest) {
     await prisma.participant.create({
       data: {
         routeId: route.id,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 

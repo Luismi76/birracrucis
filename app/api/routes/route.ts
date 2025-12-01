@@ -30,7 +30,24 @@ export async function POST(req: NextRequest) {
   try {
     // Obtener sesión del usuario (opcional por ahora para no romper funcionalidad existente)
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id;
+    let userId = session?.user?.id || null;
+
+    // Si hay sesión pero el usuario no existe en DB, crearlo (JWT mode sin adapter)
+    if (session?.user?.email) {
+      const user = await prisma.user.upsert({
+        where: { email: session.user.email },
+        update: {
+          name: session.user.name,
+          image: session.user.image,
+        },
+        create: {
+          email: session.user.email,
+          name: session.user.name,
+          image: session.user.image,
+        },
+      });
+      userId = user.id;
+    }
 
     const body = (await req.json()) as CreateRouteBody;
     const { name, date, stops } = body;
