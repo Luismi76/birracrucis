@@ -70,6 +70,17 @@ model Route {
   createdAt    DateTime      @default(now())
   inviteCode   String?       @unique
 
+  // Configuración de tiempo
+  startMode    String        @default("manual") // "manual" | "scheduled" | "all_present"
+  startTime    DateTime?     // Hora programada de inicio (si startMode = "scheduled")
+  endTime      DateTime?     // Hora límite de fin (ej: reserva en restaurante)
+  hasEndTime   Boolean       @default(false)    // Si hay hora de fin obligatoria
+
+  // Estado de la ruta
+  status       String        @default("pending") // "pending" | "active" | "completed"
+  actualStartTime DateTime?  // Cuando realmente empezó
+  actualEndTime   DateTime?  // Cuando realmente terminó
+
   // Creador de la ruta (opcional para rutas existentes)
   creatorId    String?
   creator      User?         @relation("RouteCreator", fields: [creatorId], references: [id])
@@ -94,6 +105,16 @@ model RouteStop {
   maxRounds     Int?
   actualRounds  Int      @default(0)
   googlePlaceId String?
+
+  // Tiempo de estancia estimado en minutos (por defecto 30 min por bar)
+  stayDuration  Int      @default(30)
+
+  // Tiempo de caminata al siguiente bar en minutos (calculado)
+  walkTimeToNext Int?
+
+  // Hora real de llegada y salida
+  arrivedAt     DateTime?
+  departedAt    DateTime?
 
   // Relaciones
   rounds        Round[]

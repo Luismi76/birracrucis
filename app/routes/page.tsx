@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import DeleteRouteButton from "@/components/DeleteRouteButton";
 import UserMenu from "@/components/UserMenu";
 
+// Desactivar caché para que siempre muestre datos frescos
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function RoutesPage() {
   const routes = await prisma.route.findMany({
     include: { stops: true },

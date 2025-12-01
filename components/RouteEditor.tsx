@@ -22,6 +22,7 @@ type BarConfig = {
     plannedRounds: number;
     maxRounds?: number;
     isStart: boolean;
+    stayDuration: number; // minutos de estancia en el bar
 };
 
 type RouteStop = {
@@ -58,6 +59,13 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     );
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    // Estado de configuración de tiempo
+    const [startMode, setStartMode] = useState<"manual" | "scheduled" | "all_present">("scheduled");
+    const [startTime, setStartTime] = useState("");
+    const [hasEndTime, setHasEndTime] = useState(false);
+    const [endTime, setEndTime] = useState("");
+    const [defaultStayDuration, setDefaultStayDuration] = useState(30); // minutos por defecto por bar
 
     // Estado de búsqueda
     const [centerLat, setCenterLat] = useState("");
@@ -122,7 +130,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     bar: place,
                     plannedRounds: stop.plannedRounds,
                     maxRounds: stop.maxRounds ?? undefined,
-                    isStart: index === 0, // Asumimos que el primero es el start por defecto al cargar
+                    isStart: index === 0,
+                    stayDuration: 30, // Por defecto 30 min
                 });
             });
 
@@ -354,6 +363,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     plannedRounds: 1,
                     maxRounds: undefined,
                     isStart: isFirst,
+                    stayDuration: defaultStayDuration,
                 });
                 return newMap;
             });
@@ -382,7 +392,6 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             const target = newMap.get(placeId);
             if (target) {
                 if (field === "plannedRounds") {
-                    // plannedRounds should have a number fallback (no empty allowed)
                     newMap.set(placeId, { ...target, plannedRounds: numVal ?? target.plannedRounds });
                 } else {
                     newMap.set(placeId, { ...target, maxRounds: numVal });
@@ -391,6 +400,60 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             return newMap;
         });
     };
+
+    const handleUpdateStayDuration = (placeId: string, value: string) => {
+        const numVal = parseInt(value, 10);
+        if (isNaN(numVal) || numVal < 5) return;
+
+        setSelectedBars((prev) => {
+            const newMap = new Map(prev);
+            const target = newMap.get(placeId);
+            if (target) {
+                newMap.set(placeId, { ...target, stayDuration: numVal });
+            }
+            return newMap;
+        });
+    };
+
+    // Calcular tiempo total de la ruta (estancia + caminata)
+    const calculateTotalTime = () => {
+        const totalStayTime = orderedIds.reduce((sum, id) => {
+            const config = selectedBars.get(id);
+            return sum + (config?.stayDuration || 30);
+        }, 0);
+
+        const walkTime = routeDuration ? Math.round(routeDuration / 60) : 0;
+        return { totalStayTime, walkTime, total: totalStayTime + walkTime };
+    };
+
+    // Calcular hora estimada de llegada a cada bar
+    const calculateArrivalTimes = () => {
+        if (!startTime || orderedIds.length === 0) return [];
+
+        const arrivalTimes: { id: string; arrivalTime: Date; departureTime: Date }[] = [];
+        let currentTime = new Date(startTime);
+
+        orderedIds.forEach((id, index) => {
+            const config = selectedBars.get(id);
+            if (!config) return;
+
+            // El primer bar es el punto de partida
+            const arrivalTime = new Date(currentTime);
+            const departureTime = new Date(currentTime.getTime() + config.stayDuration * 60 * 1000);
+
+            arrivalTimes.push({ id, arrivalTime, departureTime });
+
+            // Añadir tiempo de caminata al siguiente bar (estimación)
+            // Por ahora usamos un promedio de 5 min entre bares si no tenemos datos exactos
+            const walkTimeToNext = 5; // minutos (podría mejorarse con datos reales de la API)
+            currentTime = new Date(departureTime.getTime() + walkTimeToNext * 60 * 1000);
+        });
+
+        return arrivalTimes;
+    };
+
+    const arrivalTimes = calculateArrivalTimes();
+    const totalTimes = calculateTotalTime();
 
     // Algoritmo Nearest Neighbor para optimizar ruta
     const handleOptimizeRoute = () => {
@@ -508,7 +571,22 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 maxRounds: b.maxRounds ?? null,
                 googlePlaceId: b.placeId,
                 order: index,
+                stayDuration: b.stayDuration,
             }));
+
+            // Construir fecha/hora de inicio completa si hay startTime
+            let fullStartTime: string | null = null;
+            if (startTime && date) {
+                const dateOnly = date.split("T")[0]; // YYYY-MM-DD
+                fullStartTime = new Date(`${dateOnly}T${startTime}`).toISOString();
+            }
+
+            // Construir fecha/hora de fin completa si hay endTime
+            let fullEndTime: string | null = null;
+            if (hasEndTime && endTime && date) {
+                const dateOnly = date.split("T")[0];
+                fullEndTime = new Date(`${dateOnly}T${endTime}`).toISOString();
+            }
 
             const url = isEditing ? `/api/routes/${initialData?.id}` : "/api/routes";
             const method = isEditing ? "PUT" : "POST";
@@ -520,6 +598,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     name,
                     date: new Date(date).toISOString(),
                     stops: stopsPayload,
+                    // Campos de tiempo
+                    startMode,
+                    startTime: fullStartTime,
+                    hasEndTime,
+                    endTime: fullEndTime,
                 }),
             });
 
@@ -583,6 +666,133 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                         value={date}
                                         onChange={(e) => setDate(e.target.value)}
                                     />
+                                </div>
+                            </div>
+
+                            {/* Configuración de Tiempo */}
+                            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-4">
+                                <h3 className="font-bold text-blue-800 text-sm flex items-center gap-2">
+                                    <span>⏰</span> Configuración de Horarios
+                                </h3>
+
+                                {/* Modo de inicio */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-blue-700 uppercase tracking-wide">¿Cuándo empezamos?</label>
+                                    <div className="grid grid-cols-1 gap-2">
+                                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startMode === "scheduled" ? "border-blue-500 bg-blue-100" : "border-slate-200 bg-white hover:border-blue-200"}`}>
+                                            <input
+                                                type="radio"
+                                                name="startMode"
+                                                value="scheduled"
+                                                checked={startMode === "scheduled"}
+                                                onChange={() => setStartMode("scheduled")}
+                                                className="hidden"
+                                            />
+                                            <span className="text-xl">🕐</span>
+                                            <div className="flex-1">
+                                                <div className="font-medium text-slate-800">A una hora fija</div>
+                                                <div className="text-xs text-slate-500">Empezamos puntualmente</div>
+                                            </div>
+                                        </label>
+
+                                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startMode === "all_present" ? "border-blue-500 bg-blue-100" : "border-slate-200 bg-white hover:border-blue-200"}`}>
+                                            <input
+                                                type="radio"
+                                                name="startMode"
+                                                value="all_present"
+                                                checked={startMode === "all_present"}
+                                                onChange={() => setStartMode("all_present")}
+                                                className="hidden"
+                                            />
+                                            <span className="text-xl">👥</span>
+                                            <div className="flex-1">
+                                                <div className="font-medium text-slate-800">Cuando estemos todos</div>
+                                                <div className="text-xs text-slate-500">Esperamos a que lleguen al primer bar</div>
+                                            </div>
+                                        </label>
+
+                                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startMode === "manual" ? "border-blue-500 bg-blue-100" : "border-slate-200 bg-white hover:border-blue-200"}`}>
+                                            <input
+                                                type="radio"
+                                                name="startMode"
+                                                value="manual"
+                                                checked={startMode === "manual"}
+                                                onChange={() => setStartMode("manual")}
+                                                className="hidden"
+                                            />
+                                            <span className="text-xl">🎯</span>
+                                            <div className="flex-1">
+                                                <div className="font-medium text-slate-800">Inicio manual</div>
+                                                <div className="text-xs text-slate-500">El creador decide cuándo empezar</div>
+                                            </div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                {/* Hora de inicio (si es scheduled o all_present) */}
+                                {(startMode === "scheduled" || startMode === "all_present") && (
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-blue-700 uppercase tracking-wide">
+                                            {startMode === "scheduled" ? "Hora de inicio" : "Hora estimada de quedada"}
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3 top-3 text-slate-400">🕐</span>
+                                            <input
+                                                type="time"
+                                                className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                                                value={startTime}
+                                                onChange={(e) => setStartTime(e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Hora de fin (reserva) */}
+                                <div className="space-y-2">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasEndTime}
+                                            onChange={(e) => setHasEndTime(e.target.checked)}
+                                            className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm font-medium text-slate-700">Tenemos hora de fin (reserva)</span>
+                                    </label>
+
+                                    {hasEndTime && (
+                                        <div className="relative mt-2">
+                                            <span className="absolute left-3 top-3 text-slate-400">🍽️</span>
+                                            <input
+                                                type="time"
+                                                className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                                                value={endTime}
+                                                onChange={(e) => setEndTime(e.target.value)}
+                                                placeholder="Hora de la reserva"
+                                            />
+                                            <p className="text-xs text-slate-500 mt-1">Te avisaremos si vais justos de tiempo</p>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Tiempo por bar por defecto */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-xs font-bold text-blue-700 uppercase tracking-wide">Tiempo por bar (por defecto)</label>
+                                        <span className="text-sm font-bold text-blue-600">{defaultStayDuration} min</span>
+                                    </div>
+                                    <input
+                                        type="range"
+                                        min="15"
+                                        max="60"
+                                        step="5"
+                                        value={defaultStayDuration}
+                                        onChange={(e) => setDefaultStayDuration(parseInt(e.target.value))}
+                                        className="w-full accent-blue-500 h-2 bg-blue-200 rounded-lg appearance-none cursor-pointer"
+                                    />
+                                    <div className="flex justify-between text-xs text-slate-400">
+                                        <span>15 min (rápido)</span>
+                                        <span>60 min (tranqui)</span>
+                                    </div>
                                 </div>
                             </div>
                         </section>
@@ -734,26 +944,57 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                             )}
                                         </div>
 
-                                        {/* Información de Distancia */}
-                                        {routeDistance !== null && (
-                                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-100 rounded-xl p-3 space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-2xl">🚶</span>
-                                                        <div>
-                                                            <div className="text-xs text-slate-500 font-medium">Distancia Total</div>
-                                                            <div className="text-lg font-bold text-slate-800">
-                                                                {routeDistance >= 1000 ? `${(routeDistance / 1000).toFixed(2)} km` : `${Math.round(routeDistance)} m`}
-                                                            </div>
-                                                        </div>
+                                        {/* Información de Tiempo Total */}
+                                        {orderedIds.length > 0 && (
+                                            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-100 rounded-xl p-3 space-y-3">
+                                                <div className="grid grid-cols-3 gap-2 text-center">
+                                                    <div>
+                                                        <div className="text-xs text-slate-500 font-medium">🍺 En bares</div>
+                                                        <div className="text-lg font-bold text-slate-800">{totalTimes.totalStayTime} min</div>
                                                     </div>
-                                                    {routeDuration !== null && (
-                                                        <div className="text-right">
-                                                            <div className="text-xs text-slate-500 font-medium">⏱️ Tiempo</div>
-                                                            <div className="text-lg font-bold text-slate-800">{Math.round(routeDuration / 60)} min</div>
-                                                        </div>
-                                                    )}
+                                                    <div>
+                                                        <div className="text-xs text-slate-500 font-medium">🚶 Caminando</div>
+                                                        <div className="text-lg font-bold text-slate-800">{totalTimes.walkTime} min</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-slate-500 font-medium">⏱️ Total</div>
+                                                        <div className="text-lg font-bold text-amber-600">{Math.floor(totalTimes.total / 60)}h {totalTimes.total % 60}m</div>
+                                                    </div>
                                                 </div>
+                                                {routeDistance !== null && (
+                                                    <div className="text-center text-xs text-slate-500 border-t border-blue-100 pt-2">
+                                                        📍 {routeDistance >= 1000 ? `${(routeDistance / 1000).toFixed(2)} km` : `${Math.round(routeDistance)} m`} de recorrido
+                                                    </div>
+                                                )}
+                                                {startTime && arrivalTimes.length > 0 && (
+                                                    <div className="bg-white rounded-lg p-2 border border-blue-100">
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-slate-600">🚀 Inicio:</span>
+                                                            <span className="font-bold text-slate-800">{startTime}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-sm">
+                                                            <span className="text-slate-600">🏁 Fin estimado:</span>
+                                                            <span className="font-bold text-slate-800">
+                                                                {arrivalTimes[arrivalTimes.length - 1]?.departureTime.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                                                            </span>
+                                                        </div>
+                                                        {hasEndTime && endTime && (
+                                                            <div className="flex justify-between text-sm mt-1 pt-1 border-t border-blue-50">
+                                                                <span className="text-slate-600">🍽️ Reserva:</span>
+                                                                <span className={`font-bold ${
+                                                                    arrivalTimes[arrivalTimes.length - 1]?.departureTime.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) > endTime
+                                                                        ? "text-red-600"
+                                                                        : "text-green-600"
+                                                                }`}>
+                                                                    {endTime}
+                                                                    {arrivalTimes[arrivalTimes.length - 1]?.departureTime.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) > endTime
+                                                                        ? " ⚠️ ¡Vais tarde!"
+                                                                        : " ✅"}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
                                                 {preOptimizeDistance !== null && routeDistance !== null && preOptimizeDistance > routeDistance && (
                                                     <div className="bg-green-100 border border-green-200 rounded-lg px-3 py-2 flex items-center gap-2">
                                                         <span className="text-green-600 font-bold text-sm">🎉 Ahorraste {Math.round(preOptimizeDistance - routeDistance)} m</span>
@@ -822,8 +1063,21 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                                                     </button>
                                                                 </div>
 
-                                                                <div className="mt-3 flex items-center gap-3">
-                                                                    <div className="flex items-center gap-2 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
+                                                                {/* Hora estimada de llegada */}
+                                                                {arrivalTimes.find(a => a.id === id) && (
+                                                                    <div className="mt-2 flex items-center gap-2 text-xs">
+                                                                        <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                                                                            🕐 {arrivalTimes.find(a => a.id === id)?.arrivalTime.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                                                                        </span>
+                                                                        <span className="text-slate-400">→</span>
+                                                                        <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-medium">
+                                                                            {arrivalTimes.find(a => a.id === id)?.departureTime.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+
+                                                                <div className="mt-3 flex flex-wrap items-center gap-2">
+                                                                    <div className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-100">
                                                                         <span className="text-xs">🍺</span>
                                                                         <input
                                                                             type="number"
@@ -833,6 +1087,20 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                                                             onChange={(e) => handleUpdateRounds(id, "plannedRounds", e.target.value)}
                                                                             className="w-8 text-sm bg-transparent text-center font-bold outline-none"
                                                                         />
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-1 bg-blue-50 px-2 py-1 rounded-lg border border-blue-100">
+                                                                        <span className="text-xs">⏱️</span>
+                                                                        <input
+                                                                            type="number"
+                                                                            min="5"
+                                                                            max="120"
+                                                                            step="5"
+                                                                            value={config.stayDuration}
+                                                                            onChange={(e) => handleUpdateStayDuration(id, e.target.value)}
+                                                                            className="w-10 text-sm bg-transparent text-center font-bold outline-none text-blue-700"
+                                                                        />
+                                                                        <span className="text-xs text-blue-500">min</span>
                                                                     </div>
 
                                                                     <label className={`flex items-center gap-1 text-xs font-medium cursor-pointer px-2 py-1 rounded-lg border transition-colors ${config.isStart
@@ -846,7 +1114,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                                                             onChange={() => handleSetStartBar(id)}
                                                                             className="hidden"
                                                                         />
-                                                                        <span>{config.isStart ? "🚩 Inicio" : "🏁 Empezar aquí"}</span>
+                                                                        <span>{config.isStart ? "🚩 Inicio" : "🏁 Aquí"}</span>
                                                                     </label>
                                                                 </div>
                                                             </div>

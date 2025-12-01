@@ -11,12 +11,18 @@ type StopInput = {
     plannedRounds?: number;
     maxRounds?: number | null;
     googlePlaceId?: string | null;
+    stayDuration?: number; // minutos de estancia en el bar
 };
 
 type UpdateRouteBody = {
     name: string;
     date: string;
     stops: StopInput[];
+    // Campos de configuración de tiempo
+    startMode?: "manual" | "scheduled" | "all_present";
+    startTime?: string | null; // ISO string
+    hasEndTime?: boolean;
+    endTime?: string | null; // ISO string
 };
 
 // Verifica si el usuario es creador o participante de la ruta
@@ -104,7 +110,7 @@ export async function PUT(
         }
 
         const body = (await req.json()) as UpdateRouteBody;
-        const { name, date, stops } = body;
+        const { name, date, stops, startMode, startTime, hasEndTime, endTime } = body;
 
         if (!name || !date || !Array.isArray(stops) || stops.length === 0) {
             return NextResponse.json(
@@ -115,12 +121,17 @@ export async function PUT(
 
         // Transacción para actualizar
         const updatedRoute = await prisma.$transaction(async (tx) => {
-            // 1. Actualizar datos básicos
+            // 1. Actualizar datos básicos y campos de tiempo
             const route = await tx.route.update({
                 where: { id },
                 data: {
                     name,
                     date: new Date(date),
+                    // Campos de tiempo
+                    startMode: startMode ?? "manual",
+                    startTime: startTime ? new Date(startTime) : null,
+                    hasEndTime: hasEndTime ?? false,
+                    endTime: endTime ? new Date(endTime) : null,
                 },
             });
 
@@ -141,6 +152,7 @@ export async function PUT(
                     plannedRounds: s.plannedRounds ?? 1,
                     maxRounds: s.maxRounds ?? null,
                     googlePlaceId: s.googlePlaceId ?? null,
+                    stayDuration: s.stayDuration ?? 30,
                     actualRounds: 0, // Reset
                 })),
             });

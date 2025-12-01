@@ -13,12 +13,18 @@ type StopInput = {
   plannedRounds?: number;
   maxRounds?: number | null;
   googlePlaceId?: string | null;
+  stayDuration?: number; // minutos de estancia en el bar
 };
 
 type CreateRouteBody = {
   name: string;
   date: string;
   stops: StopInput[];
+  // Campos de configuración de tiempo
+  startMode?: "manual" | "scheduled" | "all_present";
+  startTime?: string | null; // ISO string
+  hasEndTime?: boolean;
+  endTime?: string | null; // ISO string
 };
 
 // Genera un código de invitación único (8 caracteres, alfanumérico)
@@ -50,7 +56,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json()) as CreateRouteBody;
-    const { name, date, stops } = body;
+    const { name, date, stops, startMode, startTime, hasEndTime, endTime } = body;
 
     if (!name || !date || !Array.isArray(stops) || stops.length === 0) {
       return NextResponse.json(
@@ -96,6 +102,11 @@ export async function POST(req: NextRequest) {
         date: new Date(date),
         inviteCode,
         creatorId: userId || null,
+        // Campos de tiempo
+        startMode: startMode ?? "manual",
+        startTime: startTime ? new Date(startTime) : null,
+        hasEndTime: hasEndTime ?? false,
+        endTime: endTime ? new Date(endTime) : null,
         stops: {
           create: stops.map((s, index) => ({
             name: s.name,
@@ -106,6 +117,7 @@ export async function POST(req: NextRequest) {
             plannedRounds: s.plannedRounds ?? 1,
             maxRounds: s.maxRounds ?? null,
             googlePlaceId: s.googlePlaceId ?? null,
+            stayDuration: s.stayDuration ?? 30,
           })),
         },
         // Si hay usuario, agregarlo como participante automáticamente
