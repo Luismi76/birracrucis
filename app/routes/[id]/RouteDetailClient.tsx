@@ -14,6 +14,7 @@ import ParticipantsList from "@/components/ParticipantsList";
 import InvitationManager from "@/components/InvitationManager";
 import AutoCheckin from "@/components/AutoCheckin";
 import ExportRoutePDF from "@/components/ExportRoutePDF";
+import PricePicker from "@/components/PricePicker";
 
 type StopClient = {
   id: string;
@@ -76,8 +77,8 @@ const LOCATION_UPDATE_INTERVAL = 10000;
 const PARTICIPANTS_FETCH_INTERVAL = 5000;
 
 // Precio por defecto de la cerveza
-const DEFAULT_BEER_PRICE = 3.0;
-const DEFAULT_TAPA_PRICE = 4.0;
+const DEFAULT_BEER_PRICE = 1.50;
+const DEFAULT_TAPA_PRICE = 3.00;
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -97,6 +98,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Tabs simplificadas
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
+
+  // Price picker modal
+  const [pricePickerOpen, setPricePickerOpen] = useState<{ type: 'beer' | 'tapa'; stopId: string } | null>(null);
 
   // Precios por bar (cerveza y tapa)
   const [barPrices, setBarPrices] = useState<Record<string, { beer: number; tapa: number }>>(() => {
@@ -415,37 +419,35 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               </div>
 
               {/* Cervezas */}
-              <div className="flex items-center justify-between bg-white rounded-lg p-2 border">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🍺</span>
+              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🍺</span>
                   <div>
                     <span className="font-medium text-slate-800">Cerveza</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        value={barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE}
-                        onChange={(e) => handleUpdatePrice(activeStop.id, 'beer', e.target.value)}
-                        className="w-12 text-xs text-center border rounded px-1 py-0.5"
-                      />
-                      <span className="text-xs text-slate-400">€/u</span>
-                    </div>
+                    <button
+                      onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
+                      className="flex items-center gap-1 text-amber-600 text-sm font-medium hover:text-amber-700"
+                    >
+                      {(barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE).toFixed(2)}€
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => handleRemoveBeer(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold hover:bg-slate-300 disabled:opacity-50"
+                    className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors"
                   >
                     -
                   </button>
-                  <span className="w-8 text-center font-bold text-lg">{beers[activeStop.id] || 0}</span>
+                  <span className="w-8 text-center font-bold text-xl">{beers[activeStop.id] || 0}</span>
                   <button
                     onClick={() => handleAddBeer(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-8 h-8 rounded-full bg-amber-500 text-white font-bold hover:bg-amber-600 disabled:opacity-50"
+                    className="w-10 h-10 rounded-full bg-amber-500 text-white font-bold text-xl hover:bg-amber-600 disabled:opacity-50 transition-colors"
                   >
                     +
                   </button>
@@ -453,37 +455,35 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               </div>
 
               {/* Tapas */}
-              <div className="flex items-center justify-between bg-white rounded-lg p-2 border">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🍢</span>
+              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🍢</span>
                   <div>
                     <span className="font-medium text-slate-800">Tapeo</span>
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE}
-                        onChange={(e) => handleUpdatePrice(activeStop.id, 'tapa', e.target.value)}
-                        className="w-12 text-xs text-center border rounded px-1 py-0.5"
-                      />
-                      <span className="text-xs text-slate-400">€/u</span>
-                    </div>
+                    <button
+                      onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
+                      className="flex items-center gap-1 text-orange-600 text-sm font-medium hover:text-orange-700"
+                    >
+                      {(barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE).toFixed(2)}€
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <button
                     onClick={() => handleRemoveTapa(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold hover:bg-slate-300 disabled:opacity-50"
+                    className="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors"
                   >
                     -
                   </button>
-                  <span className="w-8 text-center font-bold text-lg">{tapas[activeStop.id] || 0}</span>
+                  <span className="w-8 text-center font-bold text-xl">{tapas[activeStop.id] || 0}</span>
                   <button
                     onClick={() => handleAddTapa(activeStop.id)}
                     disabled={!canCheckIn && !showDebug}
-                    className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold hover:bg-orange-600 disabled:opacity-50"
+                    className="w-10 h-10 rounded-full bg-orange-500 text-white font-bold text-xl hover:bg-orange-600 disabled:opacity-50 transition-colors"
                   >
                     +
                   </button>
@@ -805,6 +805,30 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             Acc: {accuracy}m | Dist: {distToActive}m
           </div>
         </div>
+      )}
+
+      {/* Price Picker Modal */}
+      {pricePickerOpen && (
+        <PricePicker
+          isOpen={true}
+          onClose={() => setPricePickerOpen(null)}
+          onSelect={(price) => {
+            setBarPrices(prev => ({
+              ...prev,
+              [pricePickerOpen.stopId]: {
+                ...prev[pricePickerOpen.stopId],
+                [pricePickerOpen.type]: price
+              }
+            }));
+          }}
+          currentPrice={
+            pricePickerOpen.type === 'beer'
+              ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE)
+              : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)
+          }
+          title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
+          icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
+        />
       )}
 
     </div>
