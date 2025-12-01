@@ -35,13 +35,11 @@ async function canModifyRoute(routeId: string, userId: string): Promise<boolean>
     // Si es el creador, puede modificar
     if (route?.creatorId === userId) return true;
 
-    // Si no hay creador asignado (rutas antiguas), permitir a cualquier participante
-    if (!route?.creatorId) {
-        const participant = await prisma.participant.findUnique({
-            where: { routeId_userId: { routeId, userId } },
-        });
-        return !!participant;
-    }
+    // Si es participante, también puede modificar
+    const participant = await prisma.participant.findUnique({
+        where: { routeId_userId: { routeId, userId } },
+    });
+    if (participant) return true;
 
     return false;
 }
