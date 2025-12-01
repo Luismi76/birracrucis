@@ -15,9 +15,10 @@ type Nudge = {
 type NudgeButtonProps = {
   routeId: string;
   isAtCurrentStop: boolean;
+  compact?: boolean;
 };
 
-export default function NudgeButton({ routeId, isAtCurrentStop }: NudgeButtonProps) {
+export default function NudgeButton({ routeId, isAtCurrentStop, compact = false }: NudgeButtonProps) {
   const [sending, setSending] = useState(false);
   const [lastNudge, setLastNudge] = useState<Nudge | null>(null);
   const [showNotification, setShowNotification] = useState(false);
@@ -96,27 +97,24 @@ export default function NudgeButton({ routeId, isAtCurrentStop }: NudgeButtonPro
         <button
           onClick={handleSendNudge}
           disabled={sending || cooldown > 0}
-          className={`w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold transition-all ${
+          className={`flex items-center justify-center gap-2 rounded-xl font-bold transition-all ${
+            compact ? "py-2 px-3 text-sm" : "w-full py-3 px-4"
+          } ${
             cooldown > 0
               ? "bg-slate-200 text-slate-400 cursor-not-allowed"
               : "bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-lg"
           }`}
         >
           {cooldown > 0 ? (
-            <>
-              <span>Espera {cooldown}s</span>
-            </>
+            <span>{cooldown}s</span>
           ) : sending ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-              Enviando...
-            </>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
           ) : (
             <>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className={compact ? "w-4 h-4" : "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              Meter Prisa a los Rezagados
+              {compact ? "Prisa" : "Meter Prisa a los Rezagados"}
             </>
           )}
         </button>

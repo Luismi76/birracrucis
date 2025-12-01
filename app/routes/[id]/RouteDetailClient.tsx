@@ -6,14 +6,12 @@ import PhotoGallery from "@/components/PhotoGallery";
 import NudgeButton from "@/components/NudgeButton";
 import RouteChat from "@/components/RouteChat";
 import SkipVoteButton from "@/components/SkipVoteButton";
-import DrinkCounter from "@/components/DrinkCounter";
 import BarTimer from "@/components/BarTimer";
 import BarRating from "@/components/BarRating";
 import RouteSummary from "@/components/RouteSummary";
 import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
 import InvitationManager from "@/components/InvitationManager";
-import ExpenseCalculator from "@/components/ExpenseCalculator";
 import AutoCheckin from "@/components/AutoCheckin";
 import ExportRoutePDF from "@/components/ExportRoutePDF";
 
@@ -74,8 +72,12 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
   return R * c;
 }
 
-const LOCATION_UPDATE_INTERVAL = 10000; // Enviar ubicación cada 10 segundos
-const PARTICIPANTS_FETCH_INTERVAL = 5000; // Obtener participantes cada 5 segundos
+const LOCATION_UPDATE_INTERVAL = 10000;
+const PARTICIPANTS_FETCH_INTERVAL = 5000;
+
+// Precio por defecto de la cerveza
+const DEFAULT_BEER_PRICE = 3.0;
+const DEFAULT_TAPA_PRICE = 4.0;
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -92,9 +94,29 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [simLng, setSimLng] = useState("");
   const [simActive, setSimActive] = useState(false);
 
-  // Tabs para diferentes secciones
-  const [activeTab, setActiveTab] = useState<"route" | "photos" | "drinks" | "ratings" | "group" | "expenses">("route");
+  // Tabs simplificadas
+  const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
+
+  // Precios por bar (cerveza y tapa)
+  const [barPrices, setBarPrices] = useState<Record<string, { beer: number; tapa: number }>>(() => {
+    const initial: Record<string, { beer: number; tapa: number }> = {};
+    stops.forEach((s) => { initial[s.id] = { beer: DEFAULT_BEER_PRICE, tapa: DEFAULT_TAPA_PRICE }; });
+    return initial;
+  });
+
+  // Contador de cervezas y tapas por bar
+  const [beers, setBeers] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    stops.forEach((s) => { initial[s.id] = 0; });
+    return initial;
+  });
+
+  const [tapas, setTapas] = useState<Record<string, number>>(() => {
+    const initial: Record<string, number> = {};
+    stops.forEach((s) => { initial[s.id] = 0; });
+    return initial;
+  });
 
   // Estado local de rondas (optimista)
   const [rounds, setRounds] = useState<Record<string, number>>(() => {
@@ -112,6 +134,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const completedStops = stops.filter(s => (rounds[s.id] || 0) >= s.plannedRounds).length;
   const totalRounds = Object.values(rounds).reduce((sum, r) => sum + r, 0);
   const progressPercent = (completedStops / stops.length) * 100;
+
+  // Calcular gasto total
+  const totalSpent = stops.reduce((sum, stop) => {
+    const prices = barPrices[stop.id] || { beer: DEFAULT_BEER_PRICE, tapa: DEFAULT_TAPA_PRICE };
+    return sum + (beers[stop.id] || 0) * prices.beer + (tapas[stop.id] || 0) * prices.tapa;
+  }, 0);
+
+  const totalBeers = Object.values(beers).reduce((sum, b) => sum + b, 0);
+  const totalTapas = Object.values(tapas).reduce((sum, t) => sum + t, 0);
 
   // Referencia para el último envío de ubicación
   const lastLocationSentRef = useRef<number>(0);
@@ -166,10 +197,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       }
     };
 
-    // Fetch inicial
     fetchParticipants();
-
-    // Polling periódico
     const interval = setInterval(fetchParticipants, PARTICIPANTS_FETCH_INTERVAL);
     return () => clearInterval(interval);
   }, [routeId, onParticipantsChange]);
@@ -238,7 +266,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       const res = await fetch(`/api/stops/${stopId}/checkin`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to check in');
     } catch (err) {
-      // Rollback
       console.error(err);
       setRounds(prev => ({
         ...prev,
@@ -248,13 +275,57 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
+  const handleAddBeer = (stopId: string) => {
+    setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
+    // Registrar en servidor
+    fetch(`/api/routes/${routeId}/drinks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stopId, type: 'beer' }),
+    }).catch(console.error);
+  };
+
+  const handleRemoveBeer = (stopId: string) => {
+    if ((beers[stopId] || 0) <= 0) return;
+    setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) - 1 }));
+  };
+
+  const handleAddTapa = (stopId: string) => {
+    setTapas(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
+    fetch(`/api/routes/${routeId}/drinks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stopId, type: 'tapa' }),
+    }).catch(console.error);
+  };
+
+  const handleRemoveTapa = (stopId: string) => {
+    if ((tapas[stopId] || 0) <= 0) return;
+    setTapas(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) - 1 }));
+  };
+
+  const handleUpdatePrice = (stopId: string, type: 'beer' | 'tapa', value: string) => {
+    const price = parseFloat(value);
+    if (isNaN(price) || price < 0) return;
+    setBarPrices(prev => ({
+      ...prev,
+      [stopId]: { ...prev[stopId], [type]: price }
+    }));
+  };
+
+  // Gasto en el bar actual
+  const currentBarSpent = activeStop
+    ? (beers[activeStop.id] || 0) * (barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE) +
+      (tapas[activeStop.id] || 0) * (barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE)
+    : 0;
+
   return (
-    <div className="space-y-6 pb-20">
+    <div className="space-y-4 pb-20">
 
       {/* 1. Barra de Progreso Global */}
       <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
         <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium opacity-90">Progreso de la Ruta</span>
+          <span className="text-sm font-medium opacity-90">Progreso</span>
           <span className="text-lg font-bold">
             {completedStops}/{stops.length} Bares
           </span>
@@ -266,8 +337,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           />
         </div>
         <div className="mt-3 flex justify-between text-xs opacity-90">
-          <span>🍺 {totalRounds} rondas totales</span>
-          <span>⏱️ ~{stops.length * 20} min estimados</span>
+          <span>🍺 {totalBeers} cervezas</span>
+          <span>🍢 {totalTapas} tapas</span>
+          <span>💰 {totalSpent.toFixed(2)}€</span>
         </div>
       </div>
 
@@ -284,96 +356,174 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         </button>
       </div>
 
-      {/* 3. Tarjeta Principal (Bar Actual) */}
+      {/* 3. Tarjeta Principal (Bar Actual) - TODO INTEGRADO */}
       {!isRouteComplete && activeStop && (
-        <div className="bg-white rounded-2xl shadow-xl border border-amber-100 overflow-hidden relative">
+        <div className="bg-white rounded-2xl shadow-xl border border-amber-100 overflow-hidden">
+          {/* Header del bar */}
           <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 text-white">
-            <h2 className="text-2xl font-bold truncate">{activeStop.name}</h2>
-            <p className="text-amber-100 text-sm truncate">{activeStop.address}</p>
-          </div>
-
-          <div className="p-6 flex flex-col items-center gap-4">
-            {/* Estado de Distancia */}
-            <div className="text-center">
-              {distToActive !== null ? (
-                distToActive <= RADIUS_METERS ? (
-                  <span className="text-green-600 font-bold flex items-center gap-2 bg-green-50 px-3 py-1 rounded-full animate-pulse">
-                    📍 ¡Estás aquí!
-                  </span>
-                ) : (
-                  <span className="text-slate-500 font-medium flex items-center gap-2 bg-slate-100 px-3 py-1 rounded-full">
-                    👣 A {distToActive} metros
-                  </span>
-                )
-              ) : (
-                <span className="text-slate-400 text-sm">Buscando ubicación...</span>
-              )}
-            </div>
-
-            {/* Contador de Rondas */}
-            <div className="flex items-center gap-6">
-              <div className="text-center">
-                <div className="text-4xl font-black text-slate-800">
-                  {rounds[activeStop.id] || 0}
-                  <span className="text-lg text-slate-400 font-normal">/{activeStop.plannedRounds}</span>
-                </div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider font-bold mt-1">Rondas</div>
+            <div className="flex justify-between items-start">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-bold truncate">{activeStop.name}</h2>
+                <p className="text-amber-100 text-sm truncate">{activeStop.address}</p>
+              </div>
+              {/* Distancia */}
+              <div className="ml-2 shrink-0">
+                {distToActive !== null ? (
+                  distToActive <= RADIUS_METERS ? (
+                    <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
+                      📍 Aqui
+                    </span>
+                  ) : (
+                    <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
+                      {distToActive}m
+                    </span>
+                  )
+                ) : null}
               </div>
             </div>
+          </div>
 
-            {/* Botón de Acción Principal */}
+          {/* Contenido principal */}
+          <div className="p-4 space-y-4">
+
+            {/* Rondas completadas */}
+            <div className="flex items-center justify-center gap-2 py-2">
+              <span className="text-3xl font-black text-slate-800">
+                {rounds[activeStop.id] || 0}
+              </span>
+              <span className="text-lg text-slate-400">/ {activeStop.plannedRounds} rondas</span>
+            </div>
+
+            {/* Boton principal: Pedir Ronda */}
             <button
               onClick={() => handleAddRound(activeStop.id)}
               disabled={!canCheckIn && !showDebug}
-              className={`w-full py-4 rounded-xl font-bold text-lg shadow-lg transition-all transform active:scale-95 flex items-center justify-center gap-2 ${(canCheckIn || showDebug)
-                  ? "bg-amber-500 text-white hover:bg-amber-600 hover:shadow-amber-200 hover:-translate-y-1"
+              className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-2 ${
+                (canCheckIn || showDebug)
+                  ? "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
                   : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                }`}
+              }`}
             >
-              {(canCheckIn || showDebug) ? "🍺 ¡Pedir Ronda!" : "Acércate para pedir"}
+              {(canCheckIn || showDebug) ? "🍺 Siguiente Ronda" : `Acercate (${distToActive || '...'}m)`}
             </button>
 
-            {!canCheckIn && !showDebug && distToActive !== null && (
-              <p className="text-xs text-slate-400 text-center">
-                Debes estar a menos de {RADIUS_METERS}m del bar.
-              </p>
-            )}
-
-            {/* Botones de Foto y Nudge */}
-            {(canCheckIn || showDebug) && (
-              <div className="w-full space-y-3 pt-2 border-t border-slate-100">
-                <PhotoCapture
-                  routeId={routeId}
-                  routeName={routeName}
-                  stopId={activeStop.id}
-                  stopName={activeStop.name}
-                  onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
-                />
-                <NudgeButton
-                  routeId={routeId}
-                  isAtCurrentStop={canCheckIn || showDebug}
-                />
+            {/* Seccion de consumiciones */}
+            <div className="bg-slate-50 rounded-xl p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-bold text-slate-700">Mi cuenta en este bar</h4>
+                <span className="text-lg font-bold text-green-600">{currentBarSpent.toFixed(2)}€</span>
               </div>
-            )}
+
+              {/* Cervezas */}
+              <div className="flex items-center justify-between bg-white rounded-lg p-2 border">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🍺</span>
+                  <div>
+                    <span className="font-medium text-slate-800">Cerveza</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0"
+                        value={barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE}
+                        onChange={(e) => handleUpdatePrice(activeStop.id, 'beer', e.target.value)}
+                        className="w-12 text-xs text-center border rounded px-1 py-0.5"
+                      />
+                      <span className="text-xs text-slate-400">€/u</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleRemoveBeer(activeStop.id)}
+                    disabled={!canCheckIn && !showDebug}
+                    className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold hover:bg-slate-300 disabled:opacity-50"
+                  >
+                    -
+                  </button>
+                  <span className="w-8 text-center font-bold text-lg">{beers[activeStop.id] || 0}</span>
+                  <button
+                    onClick={() => handleAddBeer(activeStop.id)}
+                    disabled={!canCheckIn && !showDebug}
+                    className="w-8 h-8 rounded-full bg-amber-500 text-white font-bold hover:bg-amber-600 disabled:opacity-50"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Tapas */}
+              <div className="flex items-center justify-between bg-white rounded-lg p-2 border">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🍢</span>
+                  <div>
+                    <span className="font-medium text-slate-800">Tapeo</span>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        step="0.5"
+                        min="0"
+                        value={barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE}
+                        onChange={(e) => handleUpdatePrice(activeStop.id, 'tapa', e.target.value)}
+                        className="w-12 text-xs text-center border rounded px-1 py-0.5"
+                      />
+                      <span className="text-xs text-slate-400">€/u</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => handleRemoveTapa(activeStop.id)}
+                    disabled={!canCheckIn && !showDebug}
+                    className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 font-bold hover:bg-slate-300 disabled:opacity-50"
+                  >
+                    -
+                  </button>
+                  <span className="w-8 text-center font-bold text-lg">{tapas[activeStop.id] || 0}</span>
+                  <button
+                    onClick={() => handleAddTapa(activeStop.id)}
+                    disabled={!canCheckIn && !showDebug}
+                    className="w-8 h-8 rounded-full bg-orange-500 text-white font-bold hover:bg-orange-600 disabled:opacity-50"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Acciones: Foto + Meter prisa */}
+            <div className="grid grid-cols-2 gap-2">
+              <PhotoCapture
+                routeId={routeId}
+                routeName={routeName}
+                stopId={activeStop.id}
+                stopName={activeStop.name}
+                onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
+                compact
+              />
+              <NudgeButton
+                routeId={routeId}
+                isAtCurrentStop={canCheckIn || showDebug}
+                compact
+              />
+            </div>
+
+            {/* Votar saltar bar */}
+            <SkipVoteButton
+              routeId={routeId}
+              stopId={activeStop.id}
+              currentUserId={currentUserId}
+            />
           </div>
         </div>
       )}
 
       {/* Nudge para los que no estan en el bar */}
-      {!canCheckIn && !showDebug && (
+      {!canCheckIn && !showDebug && !isRouteComplete && (
         <NudgeButton routeId={routeId} isAtCurrentStop={false} />
       )}
 
-      {/* Votacion para saltar bar - siempre visible si hay bar activo */}
-      {activeStop && !isRouteComplete && (
-        <SkipVoteButton
-          routeId={routeId}
-          stopId={activeStop.id}
-          currentUserId={currentUserId}
-        />
-      )}
-
-      {/* Anadir al calendario - siempre visible excepto si completada */}
+      {/* Anadir al calendario */}
       {!isRouteComplete && (
         <AddToCalendar
           routeName={routeName}
@@ -389,7 +539,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         />
       )}
 
-      {/* Auto Check-in por geolocalización */}
+      {/* Auto Check-in por geolocalizacion */}
       {!isRouteComplete && activeStop && (
         <AutoCheckin
           routeId={routeId}
@@ -400,11 +550,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         />
       )}
 
-      {/* Tabs: Ruta / Grupo / Fotos / Bebidas / Gastos / Valoraciones */}
-      <div className="flex bg-slate-100 rounded-xl p-1 overflow-x-auto">
+      {/* Tabs simplificadas: Ruta / Fotos / Valorar / Grupo */}
+      <div className="flex bg-slate-100 rounded-xl p-1">
         <button
           onClick={() => setActiveTab("route")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
             activeTab === "route"
               ? "bg-white text-slate-900 shadow-sm"
               : "text-slate-500 hover:text-slate-700"
@@ -413,18 +563,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           🗺️ Ruta
         </button>
         <button
-          onClick={() => setActiveTab("group")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
-            activeTab === "group"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          👥 Grupo
-        </button>
-        <button
           onClick={() => setActiveTab("photos")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
             activeTab === "photos"
               ? "bg-white text-slate-900 shadow-sm"
               : "text-slate-500 hover:text-slate-700"
@@ -433,28 +573,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           📸 Fotos
         </button>
         <button
-          onClick={() => setActiveTab("drinks")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
-            activeTab === "drinks"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          🍺 Bebidas
-        </button>
-        <button
-          onClick={() => setActiveTab("expenses")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
-            activeTab === "expenses"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
-        >
-          💰 Gastos
-        </button>
-        <button
           onClick={() => setActiveTab("ratings")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-xs transition-all whitespace-nowrap ${
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
             activeTab === "ratings"
               ? "bg-white text-slate-900 shadow-sm"
               : "text-slate-500 hover:text-slate-700"
@@ -462,11 +582,20 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         >
           ⭐ Valorar
         </button>
+        <button
+          onClick={() => setActiveTab("group")}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
+            activeTab === "group"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          👥 Grupo
+        </button>
       </div>
 
       {activeTab === "group" && (
         <div className="space-y-4">
-          {/* Lista de Participantes */}
           <ParticipantsList
             routeId={routeId}
             currentUserId={currentUserId}
@@ -478,8 +607,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             } : null}
             userPosition={position}
           />
-
-          {/* Panel de Invitaciones (solo creador o participante) */}
           <InvitationManager
             routeId={routeId}
             isCreator={isCreator}
@@ -488,7 +615,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       )}
 
       {activeTab === "photos" && (
-        /* Galeria de Fotos */
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
           <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
             <span>📸</span> Galeria de la Ruta
@@ -497,28 +623,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         </div>
       )}
 
-      {activeTab === "drinks" && (
-        /* Contador de Bebidas */
-        activeStop ? (
-          <DrinkCounter
-            routeId={routeId}
-            stopId={activeStop.id}
-            currentUserId={currentUserId}
-            participants={participants.map(p => ({
-              id: p.id,
-              name: p.name,
-              image: p.image,
-            }))}
-          />
-        ) : (
-          <div className="bg-white rounded-xl border p-4 text-center text-slate-500">
-            Selecciona un bar para ver las bebidas
-          </div>
-        )
-      )}
-
       {activeTab === "ratings" && (
-        /* Valoracion del Bar */
         activeStop ? (
           <BarRating
             routeId={routeId}
@@ -533,78 +638,87 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         )
       )}
 
-      {activeTab === "expenses" && (
-        /* Calculadora de Gastos */
-        <ExpenseCalculator
-          routeId={routeId}
-          participants={participants.map(p => ({
-            id: p.id,
-            name: p.name,
-            image: p.image,
-          }))}
-        />
-      )}
-
       {activeTab === "route" && (
-        /* 4. Timeline de la Ruta (Pasaporte) */
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-        <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-          <span>🗺️</span> Tu Pasaporte
-        </h3>
-        <div className="space-y-0 relative">
-          {/* Línea conectora vertical */}
-          <div className="absolute left-[1.15rem] top-2 bottom-2 w-0.5 bg-slate-100 -z-10"></div>
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <span>🗺️</span> Tu Pasaporte
+          </h3>
+          <div className="space-y-0 relative">
+            <div className="absolute left-[1.15rem] top-2 bottom-2 w-0.5 bg-slate-100 -z-10"></div>
 
-          {stops.map((stop, index) => {
-            const isCurrent = stop.id === activeStop?.id && !isRouteComplete;
-            const isDone = (rounds[stop.id] || 0) >= stop.plannedRounds;
+            {stops.map((stop, index) => {
+              const isCurrent = stop.id === activeStop?.id && !isRouteComplete;
+              const isDone = (rounds[stop.id] || 0) >= stop.plannedRounds;
+              const stopBeers = beers[stop.id] || 0;
+              const stopTapas = tapas[stop.id] || 0;
+              const stopPrices = barPrices[stop.id] || { beer: DEFAULT_BEER_PRICE, tapa: DEFAULT_TAPA_PRICE };
+              const stopSpent = stopBeers * stopPrices.beer + stopTapas * stopPrices.tapa;
 
-            return (
-              <div key={stop.id} className={`flex items-start gap-3 py-3 ${isCurrent ? 'scale-105 origin-left transition-transform' : 'opacity-80'}`}>
-                {/* Indicador Circular */}
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 shrink-0 transition-colors ${isDone
-                    ? "bg-green-500 border-green-100 text-white"
-                    : isCurrent
-                      ? "bg-amber-500 border-amber-100 text-white animate-bounce-slow"
-                      : "bg-white border-slate-200 text-slate-400"
+              return (
+                <div key={stop.id} className={`flex items-start gap-3 py-3 ${isCurrent ? 'scale-105 origin-left transition-transform' : 'opacity-80'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 shrink-0 transition-colors ${
+                    isDone
+                      ? "bg-green-500 border-green-100 text-white"
+                      : isCurrent
+                        ? "bg-amber-500 border-amber-100 text-white animate-bounce-slow"
+                        : "bg-white border-slate-200 text-slate-400"
                   }`}>
-                  {isDone ? "✓" : (index + 1)}
-                </div>
-
-                <div className="flex-1 min-w-0 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                  <div className="flex justify-between items-start">
-                    <h4 className={`font-bold truncate ${isCurrent ? 'text-slate-900' : 'text-slate-600'}`}>
-                      {stop.name}
-                    </h4>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDone ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-500"
-                      }`}>
-                      {rounds[stop.id] || 0}/{stop.plannedRounds}
-                    </span>
+                    {isDone ? "✓" : (index + 1)}
                   </div>
-                  {stop.address && <p className="text-xs text-slate-400 truncate">{stop.address}</p>}
 
-                  {/* Botón simular (solo debug) */}
-                  {showDebug && (
-                    <button
-                      onClick={() => {
-                        setSimLat(stop.lat.toString());
-                        setSimLng(stop.lng.toString());
-                        setSimActive(true);
-                        const newPos = { lat: stop.lat, lng: stop.lng };
-                        setPosition(newPos);
-                        onPositionChange?.(newPos);
-                      }}
-                      className="mt-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                    >
-                      📍 Teleport
-                    </button>
-                  )}
+                  <div className="flex-1 min-w-0 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <div className="flex justify-between items-start">
+                      <h4 className={`font-bold truncate ${isCurrent ? 'text-slate-900' : 'text-slate-600'}`}>
+                        {stop.name}
+                      </h4>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        isDone ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-500"
+                      }`}>
+                        {rounds[stop.id] || 0}/{stop.plannedRounds}
+                      </span>
+                    </div>
+
+                    {/* Mini resumen del bar */}
+                    {(stopBeers > 0 || stopTapas > 0) && (
+                      <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
+                        {stopBeers > 0 && <span>🍺 {stopBeers}</span>}
+                        {stopTapas > 0 && <span>🍢 {stopTapas}</span>}
+                        <span className="text-green-600 font-medium">{stopSpent.toFixed(2)}€</span>
+                      </div>
+                    )}
+
+                    {showDebug && (
+                      <button
+                        onClick={() => {
+                          setSimLat(stop.lat.toString());
+                          setSimLng(stop.lng.toString());
+                          setSimActive(true);
+                          const newPos = { lat: stop.lat, lng: stop.lng };
+                          setPosition(newPos);
+                          onPositionChange?.(newPos);
+                        }}
+                        className="mt-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
+                      >
+                        📍 Teleport
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {/* Resumen total de gastos */}
+          <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-green-800">Total gastado</span>
+              <span className="text-2xl font-black text-green-600">{totalSpent.toFixed(2)}€</span>
+            </div>
+            <div className="mt-1 text-xs text-green-600">
+              🍺 {totalBeers} cervezas · 🍢 {totalTapas} tapas
+            </div>
+          </div>
         </div>
-      </div>
       )}
 
       {/* Boton Ver Resumen (cuando ruta completada) */}
@@ -637,7 +751,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   name: p.name,
                   image: p.image,
                 })),
-                totalDrinks: totalRounds,
+                totalDrinks: totalBeers,
               }}
             />
           </div>
@@ -658,7 +772,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         currentUserId={currentUserId}
       />
 
-      {/* 5. Controles de Debug (Ocultos por defecto) */}
+      {/* Debug Console */}
       {showDebug && (
         <div className="bg-slate-900 text-slate-300 p-4 rounded-xl text-xs space-y-3">
           <h4 className="font-bold text-white uppercase tracking-wider">Debug Console</h4>
@@ -684,12 +798,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             onClick={applySimulatedPosition}
             className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-500"
           >
-            Aplicar Posición
+            Aplicar Posicion
           </button>
           <div className="font-mono text-[10px] break-all">
             Pos: {position?.lat.toFixed(5)}, {position?.lng.toFixed(5)} <br />
-            Acc: {accuracy}m <br />
-            Err: {locError}
+            Acc: {accuracy}m | Dist: {distToActive}m
           </div>
         </div>
       )}
