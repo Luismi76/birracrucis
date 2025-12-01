@@ -38,14 +38,14 @@ export default function PricePicker({
     onClose();
   };
 
-  const incrementEuros = () => setEuros(prev => Math.min(prev + 1, 20));
+  const incrementEuros = () => setEuros(prev => Math.min(prev + 1, 99));
   const decrementEuros = () => setEuros(prev => Math.max(prev - 1, 0));
 
   const incrementCentimos = () => {
     setCentimos(prev => {
       const next = prev + 10;
       if (next >= 100) {
-        if (euros < 20) {
+        if (euros < 99) {
           setEuros(e => e + 1);
           return 0;
         }

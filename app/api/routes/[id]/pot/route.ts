@@ -79,6 +79,9 @@ export async function POST(
         creatorId: true,
         potEnabled: true,
         potAmountPerPerson: true,
+        creator: {
+          select: { email: true }
+        }
       },
     });
 
@@ -86,9 +89,13 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Ruta no encontrada" }, { status: 404 });
     }
 
+    // Verificar si es el creador (por ID o por email)
+    const isCreator = route.creatorId === session.user.id ||
+                      (session.user.email && route.creator?.email === session.user.email);
+
     // Accion: Configurar bote (solo creador)
     if (action === "configure") {
-      if (route.creatorId !== session.user.id) {
+      if (!isCreator) {
         return NextResponse.json({ ok: false, error: "Solo el creador puede configurar el bote" }, { status: 403 });
       }
 
@@ -110,7 +117,7 @@ export async function POST(
 
     // Accion: Desactivar bote (solo creador)
     if (action === "disable") {
-      if (route.creatorId !== session.user.id) {
+      if (!isCreator) {
         return NextResponse.json({ ok: false, error: "Solo el creador puede desactivar el bote" }, { status: 403 });
       }
 
