@@ -151,12 +151,13 @@ export async function POST(
         return NextResponse.json({ ok: false, error: "Ya has contribuido al bote" }, { status: 400 });
       }
 
-      // Registrar contribucion
+      // Registrar contribucion con nombre
       await prisma.$transaction([
         prisma.potContribution.create({
           data: {
             routeId: id,
             userId: session.user.id,
+            userName: session.user.name || session.user.email || "Usuario",
             amount: route.potAmountPerPerson,
           },
         }),

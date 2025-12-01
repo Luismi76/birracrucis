@@ -69,6 +69,9 @@ export default function PotManager({
 
   useEffect(() => {
     fetchPot();
+    // Polling cada 10 segundos para actualizar en tiempo real
+    const interval = setInterval(fetchPot, 10000);
+    return () => clearInterval(interval);
   }, [routeId]);
 
   // Sincronizar gastos locales con el bote
@@ -270,148 +273,158 @@ export default function PotManager({
     );
   }
 
-  // Bote activado - mostrar estado
+  // Estado expandido/colapsado
+  const [expanded, setExpanded] = useState(false);
+
+  // Bote activado - mostrar estado compacto
   return (
-    <div className={`rounded-2xl border p-4 space-y-4 ${
+    <div className={`rounded-xl border overflow-hidden ${
       isNegativeBalance
-        ? "bg-gradient-to-r from-red-50 to-orange-50 border-red-200"
+        ? "bg-red-50 border-red-200"
         : isLowBalance
-          ? "bg-gradient-to-r from-amber-50 to-yellow-50 border-amber-200"
-          : "bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200"
+          ? "bg-amber-50 border-amber-200"
+          : "bg-emerald-50 border-emerald-200"
     }`}>
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h3 className="font-bold text-slate-800 flex items-center gap-2">
-          <span className="text-xl">💰</span> Bote Comun
-        </h3>
-        {isCreator && (
-          <button
-            onClick={handleDisable}
-            className="text-xs text-slate-400 hover:text-red-500"
-          >
-            Desactivar
-          </button>
-        )}
-      </div>
-
-      {/* Balance principal */}
-      <div className="text-center py-2">
-        <div className={`text-4xl font-black ${
-          isNegativeBalance ? "text-red-500" : isLowBalance ? "text-amber-500" : "text-emerald-600"
-        }`}>
-          {balanceAfterSpent.toFixed(2)}€
+      {/* Header compacto - siempre visible */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full p-3 flex items-center justify-between"
+      >
+        <div className="flex items-center gap-2">
+          <span>💰</span>
+          <span className="font-bold text-slate-800">Bote</span>
+          <span className={`text-lg font-black ${
+            isNegativeBalance ? "text-red-500" : isLowBalance ? "text-amber-500" : "text-emerald-600"
+          }`}>
+            {balanceAfterSpent.toFixed(2)}€
+          </span>
+          {isNegativeBalance && <span className="text-red-500 text-xs">⚠️</span>}
         </div>
-        <p className="text-sm text-slate-500 mt-1">disponible en el bote</p>
-      </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-slate-500">
+            {potData.contributions.length} pers.
+          </span>
+          <svg className={`w-4 h-4 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </div>
+      </button>
 
-      {/* Aviso de balance bajo */}
-      {isNegativeBalance && (
-        <div className="bg-red-100 border border-red-200 rounded-xl p-3 flex items-center gap-2">
-          <span className="text-xl">⚠️</span>
-          <div>
-            <p className="text-sm font-bold text-red-800">El bote está en negativo</p>
-            <p className="text-xs text-red-600">Hay que poner más dinero para cubrir los gastos</p>
-          </div>
+      {/* Botón contribuir - visible si no ha contribuido */}
+      {!hasContributed && currentUserId && !expanded && (
+        <div className="px-3 pb-3">
+          <button
+            onClick={handleContribute}
+            disabled={submitting}
+            className="w-full py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+          >
+            {submitting ? "..." : `💵 Poner mis ${potData.amountPerPerson?.toFixed(0)}€`}
+          </button>
         </div>
       )}
 
-      {isLowBalance && !isNegativeBalance && (
-        <div className="bg-amber-100 border border-amber-200 rounded-xl p-3 flex items-center gap-2">
-          <span className="text-xl">⚡</span>
-          <div>
-            <p className="text-sm font-bold text-amber-800">Bote bajo</p>
-            <p className="text-xs text-amber-600">Considera añadir más fondos</p>
-          </div>
-        </div>
-      )}
-
-      {/* Estadísticas */}
-      <div className="grid grid-cols-3 gap-2 text-center">
-        <div className="bg-white/50 rounded-xl p-2">
-          <div className="text-lg font-bold text-slate-700">{potData.amountPerPerson?.toFixed(0)}€</div>
-          <div className="text-xs text-slate-500">por persona</div>
-        </div>
-        <div className="bg-white/50 rounded-xl p-2">
-          <div className="text-lg font-bold text-emerald-600">{potData.totalCollected.toFixed(0)}€</div>
-          <div className="text-xs text-slate-500">recaudado</div>
-        </div>
-        <div className="bg-white/50 rounded-xl p-2">
-          <div className="text-lg font-bold text-orange-500">{totalSpent.toFixed(2)}€</div>
-          <div className="text-xs text-slate-500">gastado</div>
-        </div>
-      </div>
-
-      {/* Lista de contribuciones */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-sm font-medium text-slate-600">
-            Participantes ({potData.contributions.length})
-          </p>
-          <button
-            onClick={() => setShowAddExternal(!showAddExternal)}
-            className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-          >
-            + Añadir externo
-          </button>
-        </div>
-
-        {/* Añadir participante externo */}
-        {showAddExternal && (
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Nombre del participante"
-              value={externalName}
-              onChange={(e) => setExternalName(e.target.value)}
-              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 outline-none"
-            />
-            <button
-              onClick={handleAddExternal}
-              disabled={submitting}
-              className="px-4 py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold hover:bg-emerald-600 disabled:opacity-50"
-            >
-              {submitting ? "..." : "OK"}
-            </button>
-          </div>
-        )}
-
-        {/* Lista */}
-        <div className="bg-white/70 rounded-xl divide-y divide-slate-100 max-h-32 overflow-y-auto">
-          {potData.contributions.map((c) => (
-            <div key={c.id} className="flex items-center justify-between px-3 py-2">
-              <span className="text-sm text-slate-700">
-                {c.userName || "Usuario"}
-                {c.userId === currentUserId && <span className="text-emerald-600 ml-1">(tú)</span>}
-              </span>
-              <span className="text-sm font-bold text-emerald-600">
-                {c.amount.toFixed(0)}€ ✓
-              </span>
+      {/* Contenido expandido */}
+      {expanded && (
+        <div className="px-3 pb-3 space-y-3 border-t border-slate-200/50">
+          {/* Estadísticas */}
+          <div className="grid grid-cols-3 gap-2 text-center pt-3">
+            <div className="bg-white/50 rounded-lg p-2">
+              <div className="text-sm font-bold text-slate-700">{potData.amountPerPerson?.toFixed(0)}€</div>
+              <div className="text-[10px] text-slate-500">por persona</div>
             </div>
-          ))}
-        </div>
-      </div>
+            <div className="bg-white/50 rounded-lg p-2">
+              <div className="text-sm font-bold text-emerald-600">{potData.totalCollected.toFixed(0)}€</div>
+              <div className="text-[10px] text-slate-500">recaudado</div>
+            </div>
+            <div className="bg-white/50 rounded-lg p-2">
+              <div className="text-sm font-bold text-orange-500">{totalSpent.toFixed(2)}€</div>
+              <div className="text-[10px] text-slate-500">gastado</div>
+            </div>
+          </div>
 
-      {/* Botón para contribuir (si no ha contribuido) */}
-      {!hasContributed && currentUserId && (
-        <button
-          onClick={handleContribute}
-          disabled={submitting}
-          className="w-full py-3 bg-emerald-500 text-white rounded-xl font-bold hover:bg-emerald-600 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-        >
-          {submitting ? (
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-          ) : (
-            <>
-              <span>💵</span>
-              Poner mis {potData.amountPerPerson?.toFixed(0)}€
-            </>
+          {/* Aviso de balance bajo */}
+          {isNegativeBalance && (
+            <div className="bg-red-100 rounded-lg p-2 text-xs text-red-700">
+              ⚠️ Bote en negativo - hay que poner más
+            </div>
           )}
-        </button>
-      )}
 
-      {hasContributed && (
-        <div className="text-center text-sm text-emerald-600 font-medium">
-          ✓ Ya has puesto tu parte en el bote
+          {/* Lista de contribuciones */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-medium text-slate-600">
+                Participantes ({potData.contributions.length})
+              </p>
+              {isCreator && (
+                <button
+                  onClick={() => setShowAddExternal(!showAddExternal)}
+                  className="text-[10px] text-emerald-600 hover:text-emerald-700 font-medium"
+                >
+                  + Externo
+                </button>
+              )}
+            </div>
+
+            {/* Añadir participante externo */}
+            {showAddExternal && (
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  placeholder="Nombre"
+                  value={externalName}
+                  onChange={(e) => setExternalName(e.target.value)}
+                  className="flex-1 px-2 py-1 border border-slate-200 rounded text-xs focus:ring-1 focus:ring-emerald-500 outline-none"
+                />
+                <button
+                  onClick={handleAddExternal}
+                  disabled={submitting}
+                  className="px-2 py-1 bg-emerald-500 text-white rounded text-xs font-bold hover:bg-emerald-600 disabled:opacity-50"
+                >
+                  OK
+                </button>
+              </div>
+            )}
+
+            {/* Lista compacta */}
+            <div className="bg-white/70 rounded-lg divide-y divide-slate-100 max-h-24 overflow-y-auto text-xs">
+              {potData.contributions.map((c) => (
+                <div key={c.id} className="flex items-center justify-between px-2 py-1.5">
+                  <span className="text-slate-700">
+                    {c.userName || "Usuario"}
+                    {c.userId === currentUserId && <span className="text-emerald-600 ml-1">(tú)</span>}
+                  </span>
+                  <span className="font-bold text-emerald-600">{c.amount.toFixed(0)}€ ✓</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Botón para contribuir */}
+          {!hasContributed && currentUserId && (
+            <button
+              onClick={handleContribute}
+              disabled={submitting}
+              className="w-full py-2 bg-emerald-500 text-white rounded-lg text-sm font-bold hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+            >
+              {submitting ? "..." : `💵 Poner mis ${potData.amountPerPerson?.toFixed(0)}€`}
+            </button>
+          )}
+
+          {hasContributed && (
+            <div className="text-center text-xs text-emerald-600 font-medium">
+              ✓ Ya has puesto tu parte
+            </div>
+          )}
+
+          {/* Desactivar bote */}
+          {isCreator && (
+            <button
+              onClick={handleDisable}
+              className="w-full text-[10px] text-slate-400 hover:text-red-500"
+            >
+              Desactivar bote
+            </button>
+          )}
         </div>
       )}
     </div>
