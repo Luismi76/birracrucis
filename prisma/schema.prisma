@@ -101,8 +101,15 @@ model Route {
   // Configuracion de acceso
   requiresApproval Boolean @default(false) // Si requiere aprobacion del creador
 
+  // Sistema de bote comun
+  potEnabled       Boolean @default(false)  // Si el bote esta activado
+  potAmountPerPerson Float? // Cantidad que pone cada persona
+  potTotalCollected Float   @default(0)     // Total recaudado
+  potTotalSpent     Float   @default(0)     // Total gastado del bote
+
   // Relaciones
   stops        RouteStop[]
+  potContributions PotContribution[]
   participants Participant[]
   photos       Photo[]
   messages     Message[]
@@ -317,4 +324,20 @@ model PushSubscription {
   auth      String   // Auth secret
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Contribuciones al bote comun
+model PotContribution {
+  id        String   @id @default(cuid())
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId   String
+
+  // Quien contribuye (puede ser usuario registrado o nombre)
+  userId    String?
+  userName  String?  // Para participantes no registrados
+
+  amount    Float    // Cantidad aportada
+  paidAt    DateTime @default(now())
+
+  @@unique([routeId, userId])
 }

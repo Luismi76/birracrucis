@@ -15,6 +15,7 @@ import InvitationManager from "@/components/InvitationManager";
 import AutoCheckin from "@/components/AutoCheckin";
 import ExportRoutePDF from "@/components/ExportRoutePDF";
 import PricePicker from "@/components/PricePicker";
+import PotManager from "@/components/PotManager";
 
 type StopClient = {
   id: string;
@@ -432,7 +433,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         </div>
       </div>
 
-      {/* 2. Header de Estado */}
+      {/* 2. Bote Comun */}
+      <PotManager
+        routeId={routeId}
+        isCreator={isCreator}
+        currentUserId={currentUserId}
+        totalSpent={totalSpent}
+      />
+
+      {/* 3. Header de Estado */}
       <div className="flex justify-between items-center">
         <div className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
           {isRouteComplete ? "🎉 Ruta Completada" : `Parada ${currentStopIndex + 1} de ${stops.length}`}
