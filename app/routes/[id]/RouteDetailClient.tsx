@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import PhotoCapture from "@/components/PhotoCapture";
+import PhotoGallery from "@/components/PhotoGallery";
+import NudgeButton from "@/components/NudgeButton";
 
 type StopClient = {
   id: string;
@@ -26,6 +29,7 @@ type Participant = {
 type RouteDetailClientProps = {
   stops: StopClient[];
   routeId: string;
+  routeName: string;
   onPositionChange?: (position: { lat: number; lng: number } | null) => void;
   onParticipantsChange?: (participants: Participant[]) => void;
   isCreator?: boolean;
@@ -53,7 +57,7 @@ function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number
 const LOCATION_UPDATE_INTERVAL = 10000; // Enviar ubicación cada 10 segundos
 const PARTICIPANTS_FETCH_INTERVAL = 5000; // Obtener participantes cada 5 segundos
 
-export default function RouteDetailClient({ stops, routeId, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
@@ -65,6 +69,10 @@ export default function RouteDetailClient({ stops, routeId, onPositionChange, on
   const [simLat, setSimLat] = useState("");
   const [simLng, setSimLng] = useState("");
   const [simActive, setSimActive] = useState(false);
+
+  // Tabs para fotos
+  const [activeTab, setActiveTab] = useState<"route" | "photos">("route");
+  const [photoRefresh, setPhotoRefresh] = useState(0);
 
   // Estado local de rondas (optimista)
   const [rounds, setRounds] = useState<Record<string, number>>(() => {
@@ -307,11 +315,66 @@ export default function RouteDetailClient({ stops, routeId, onPositionChange, on
                 Debes estar a menos de {RADIUS_METERS}m del bar.
               </p>
             )}
+
+            {/* Botones de Foto y Nudge */}
+            {(canCheckIn || showDebug) && (
+              <div className="w-full space-y-3 pt-2 border-t border-slate-100">
+                <PhotoCapture
+                  routeId={routeId}
+                  routeName={routeName}
+                  stopId={activeStop.id}
+                  stopName={activeStop.name}
+                  onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
+                />
+                <NudgeButton
+                  routeId={routeId}
+                  isAtCurrentStop={canCheckIn || showDebug}
+                />
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      {/* 4. Timeline de la Ruta (Pasaporte) */}
+      {/* Nudge para los que no estan en el bar */}
+      {!canCheckIn && !showDebug && (
+        <NudgeButton routeId={routeId} isAtCurrentStop={false} />
+      )}
+
+      {/* Tabs: Ruta / Fotos */}
+      <div className="flex bg-slate-100 rounded-xl p-1">
+        <button
+          onClick={() => setActiveTab("route")}
+          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+            activeTab === "route"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          🗺️ Ruta
+        </button>
+        <button
+          onClick={() => setActiveTab("photos")}
+          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+            activeTab === "photos"
+              ? "bg-white text-slate-900 shadow-sm"
+              : "text-slate-500 hover:text-slate-700"
+          }`}
+        >
+          📸 Fotos
+        </button>
+      </div>
+
+      {activeTab === "photos" ? (
+        /* Galeria de Fotos */
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <span>📸</span> Galeria de la Ruta
+          </h3>
+          <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />
+        </div>
+      ) : (
+        /* 4. Timeline de la Ruta (Pasaporte) */
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
         <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
           <span>🗺️</span> Tu Pasaporte
@@ -370,6 +433,7 @@ export default function RouteDetailClient({ stops, routeId, onPositionChange, on
           })}
         </div>
       </div>
+      )}
 
       {/* 5. Controles de Debug (Ocultos por defecto) */}
       {showDebug && (

@@ -186,6 +186,7 @@ export default function RouteDetailWrapper({
           <RouteDetailClient
             stops={stops}
             routeId={routeId}
+            routeName={routeName}
             onPositionChange={setUserPosition}
             onParticipantsChange={handleParticipantsChange}
             isCreator={isCreator}

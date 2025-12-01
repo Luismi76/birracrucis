@@ -51,6 +51,7 @@ model User {
   rounds         Round[]
   photos         Photo[]
   messages       Message[]
+  sentNudges     Nudge[]       @relation("NudgeSender")
 }
 
 model VerificationToken {
@@ -90,6 +91,7 @@ model Route {
   participants Participant[]
   photos       Photo[]
   messages     Message[]
+  nudges       Nudge[]
 }
 
 model RouteStop {
@@ -118,6 +120,7 @@ model RouteStop {
 
   // Relaciones
   rounds        Round[]
+  photos        Photo[]
 }
 
 model Participant {
@@ -148,13 +151,26 @@ model Round {
 }
 
 model Photo {
+  id        String     @id @default(cuid())
+  route     Route      @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId   String
+  stop      RouteStop? @relation(fields: [stopId], references: [id], onDelete: SetNull)
+  stopId    String?
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  url       String     // URL de la imagen (base64 o cloudinary)
+  caption   String?
+  createdAt DateTime   @default(now())
+}
+
+// Modelo para "meter prisa" a los rezagados
+model Nudge {
   id        String   @id @default(cuid())
   route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
   routeId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
-  url       String
-  caption   String?
+  sender    User     @relation("NudgeSender", fields: [senderId], references: [id], onDelete: Cascade)
+  senderId  String
+  message   String   @default("¡Date prisa, te estamos esperando!")
   createdAt DateTime @default(now())
 }
 
