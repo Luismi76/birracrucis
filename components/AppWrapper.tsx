@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import SplashScreen from "./SplashScreen";
 import BackButtonHandler from "./BackButtonHandler";
 import BottomNavigation from "./BottomNavigation";
+import CookieConsent from "./CookieConsent";
 import { QueryProvider } from "@/lib/query-client";
 
 export default function AppWrapper({ children }: { children: React.ReactNode }) {
@@ -33,6 +34,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       <BackButtonHandler>
         {children}
         <BottomNavigation />
+        <CookieConsent />
       </BackButtonHandler>
     </QueryProvider>
   );

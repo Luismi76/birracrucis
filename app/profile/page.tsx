@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PushNotificationManager from "@/components/PushNotificationManager";
+import PrivacySettings from "@/components/PrivacySettings";
 
 type Badge = {
   id: string;
@@ -372,6 +373,9 @@ export default function ProfilePage() {
 
         {/* Notificaciones Push */}
         <PushNotificationManager />
+
+        {/* Privacidad y Datos */}
+        <PrivacySettings />
 
       </div>
     </div>

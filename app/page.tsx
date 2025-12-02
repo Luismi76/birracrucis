@@ -73,10 +73,21 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="py-6 text-center">
+      <footer className="py-6 text-center space-y-2">
         <p className="text-amber-600 text-sm">
-          ¡Bebe con responsabilidad!
+          Bebe con responsabilidad
         </p>
+        <div className="flex flex-wrap justify-center gap-x-3 gap-y-1 text-xs text-amber-500/70">
+          <Link href="/legal/privacidad" className="hover:text-amber-600">
+            Privacidad
+          </Link>
+          <Link href="/legal/terminos" className="hover:text-amber-600">
+            Terminos
+          </Link>
+          <Link href="/legal/aviso" className="hover:text-amber-600">
+            Aviso Legal
+          </Link>
+        </div>
       </footer>
     </div>
   );
