@@ -377,6 +377,48 @@ export default function ProfilePage() {
         {/* Privacidad y Datos */}
         <PrivacySettings />
 
+        {/* Ayuda */}
+        <div className="bg-white rounded-2xl p-4 shadow-sm">
+          <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+            <span className="text-xl">❓</span>
+            Ayuda
+          </h3>
+
+          <div className="space-y-2">
+            <Link
+              href="/guia"
+              className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">📖</span>
+                <div>
+                  <p className="font-medium text-slate-800">Guia de uso</p>
+                  <p className="text-xs text-slate-500">Aprende a usar Birracrucis</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+
+            <a
+              href="mailto:luismi669@gmail.com"
+              className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">✉️</span>
+                <div>
+                  <p className="font-medium text-slate-800">Contacto</p>
+                  <p className="text-xs text-slate-500">luismi669@gmail.com</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
+        </div>
+
       </div>
     </div>
   );
