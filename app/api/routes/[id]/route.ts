@@ -28,17 +28,13 @@ type UpdateRouteBody = {
 
 // Verifica si el usuario es creador o participante de la ruta
 async function canModifyRoute(routeId: string, userId: string): Promise<boolean> {
-    console.log(`[canModifyRoute] Checking permissions for user ${userId} on route ${routeId}`);
-
     const route = await prisma.route.findUnique({
         where: { id: routeId },
         select: { creatorId: true },
     });
-    console.log(`[canModifyRoute] Route creatorId: ${route?.creatorId}`);
 
     // Si es el creador, puede modificar
     if (route?.creatorId === userId) {
-        console.log(`[canModifyRoute] User is creator, allowing`);
         return true;
     }
 
@@ -46,11 +42,8 @@ async function canModifyRoute(routeId: string, userId: string): Promise<boolean>
     const participant = await prisma.participant.findUnique({
         where: { routeId_userId: { routeId, userId } },
     });
-    console.log(`[canModifyRoute] Participant found: ${!!participant}`);
-    if (participant) return true;
 
-    console.log(`[canModifyRoute] User is neither creator nor participant, denying`);
-    return false;
+    return !!participant;
 }
 
 export async function DELETE(
@@ -137,13 +130,11 @@ export async function PUT(
                 select: { id: true },
             });
             userId = user?.id || null;
-            console.log(`[PUT /routes/${id}] Session email: ${session.user.email}, DB userId: ${userId}`);
         }
 
         // Verificar permisos (solo si hay usuario en DB)
         if (userId) {
             const canModify = await canModifyRoute(id, userId);
-            console.log(`[PUT /routes/${id}] canModify result:`, canModify);
             if (!canModify) {
                 return NextResponse.json(
                     { ok: false, error: "No tienes permiso para editar esta ruta" },
@@ -151,7 +142,6 @@ export async function PUT(
                 );
             }
         } else {
-            console.log(`[PUT /routes/${id}] No user in DB, denying`);
             return NextResponse.json(
                 { ok: false, error: "Usuario no encontrado" },
                 { status: 401 }

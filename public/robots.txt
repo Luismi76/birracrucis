@@ -1,0 +1,14 @@
+# Birracrucis - Robots.txt
+# https://birracrucis.com
+
+User-agent: *
+Allow: /
+
+# Bloquear rutas privadas
+Disallow: /api/
+Disallow: /auth/
+Disallow: /profile
+Disallow: /routes/*/edit
+
+# Sitemap
+Sitemap: https://birracrucis.com/sitemap.xml

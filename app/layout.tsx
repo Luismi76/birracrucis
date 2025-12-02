@@ -16,11 +16,49 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Birracrucis - Planifica tu ruta de bares",
-  description: "Planifica la ruta de bares perfecta con tus amigos",
+  description: "Planifica la ruta de bares perfecta con tus amigos. Organiza quedadas, sigue el progreso en tiempo real y comparte fotos de la noche.",
+  keywords: ["ruta de bares", "quedadas", "amigos", "cerveza", "tapas", "planificador", "app"],
+  authors: [{ name: "Birracrucis" }],
+  creator: "Birracrucis",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
   },
+  // Open Graph - Para compartir en redes sociales
+  openGraph: {
+    type: "website",
+    locale: "es_ES",
+    url: "https://birracrucis.com",
+    siteName: "Birracrucis",
+    title: "Birracrucis - Planifica tu ruta de bares",
+    description: "Planifica la ruta de bares perfecta con tus amigos. Organiza quedadas, sigue el progreso en tiempo real y comparte fotos de la noche.",
+    images: [
+      {
+        url: "/android-chrome-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "Birracrucis Logo",
+      },
+    ],
+  },
+  // Twitter Card
+  twitter: {
+    card: "summary",
+    title: "Birracrucis - Planifica tu ruta de bares",
+    description: "Planifica la ruta de bares perfecta con tus amigos.",
+    images: ["/android-chrome-512x512.png"],
+  },
+  // Otros metadatos
+  applicationName: "Birracrucis",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Birracrucis",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -31,14 +69,9 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
-        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#f59e0b" />
-        {/* Viewport optimizado para móvil */}
+        {/* Viewport optimizado para movil */}
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
-        {/* iOS specific */}
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="format-detection" content="telephone=no" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen-safe`}
