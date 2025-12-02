@@ -53,6 +53,17 @@ type Participant = {
   lastSeenAt: string;
 };
 
+// Tipo para el progreso de la ruta (compartido con el wrapper)
+type RouteProgress = {
+  currentBarIndex: number;
+  currentBarName: string;
+  distanceToBar: number | null;
+  isAtBar: boolean;
+  completedBars: number;
+  totalBars: number;
+  isComplete: boolean;
+};
+
 type RouteDetailClientProps = {
   stops: StopClient[];
   routeId: string;
@@ -63,6 +74,7 @@ type RouteDetailClientProps = {
   currentUserId?: string;
   onPositionChange?: (position: { lat: number; lng: number } | null) => void;
   onParticipantsChange?: (participants: Participant[]) => void;
+  onProgressChange?: (progress: RouteProgress) => void;
   isCreator?: boolean;
 };
 
@@ -92,7 +104,7 @@ const PARTICIPANTS_FETCH_INTERVAL = 5000;
 const DEFAULT_BEER_PRICE = 1.50;
 const DEFAULT_TAPA_PRICE = 3.00;
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, isCreator = false }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
@@ -362,6 +374,21 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     : null;
 
   const canCheckIn = distToActive != null && distToActive <= RADIUS_METERS && isPositionReliable();
+
+  // Notificar cambios de progreso al componente padre (header adaptativo)
+  useEffect(() => {
+    if (!onProgressChange) return;
+
+    onProgressChange({
+      currentBarIndex,
+      currentBarName: activeStop?.name || "",
+      distanceToBar: distToActive,
+      isAtBar: canCheckIn,
+      completedBars: completedStops,
+      totalBars: stops.length,
+      isComplete: isRouteComplete,
+    });
+  }, [currentBarIndex, activeStop?.name, distToActive, canCheckIn, completedStops, stops.length, isRouteComplete, onProgressChange]);
 
   // Contar participantes en el bar actual (dentro del radio)
   const getParticipantsAtBar = (stopId: string) => {
