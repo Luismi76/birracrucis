@@ -102,7 +102,7 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
       {/* Floating Chat Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-20 right-4 z-40 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all active:scale-95"
+        className="fixed bottom-[110px] left-4 z-40 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 transition-all active:scale-95"
       >
         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -151,11 +151,10 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
                     className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
                   >
                     <div
-                      className={`max-w-[80%] ${
-                        isOwn
+                      className={`max-w-[80%] ${isOwn
                           ? "bg-blue-600 text-white rounded-l-xl rounded-tr-xl"
                           : "bg-white text-slate-800 rounded-r-xl rounded-tl-xl border"
-                      } p-3 shadow-sm`}
+                        } p-3 shadow-sm`}
                     >
                       {!isOwn && (
                         <p className="text-xs font-bold text-blue-600 mb-1">

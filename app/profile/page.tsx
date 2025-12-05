@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
+import BottomNavigation from "@/components/BottomNavigation";
+import AvatarSelector from "@/components/AvatarSelector";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import PrivacySettings from "@/components/PrivacySettings";
 
@@ -48,19 +51,9 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
 
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/auth/signin");
-      return;
-    }
-
-    if (status === "authenticated") {
-      fetchProfile();
-    }
-  }, [status, router]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       const res = await fetch("/api/user/profile");
       if (res.ok) {
@@ -73,6 +66,50 @@ export default function ProfilePage() {
       console.error("Error fetching profile:", err);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+      return;
+    }
+
+    if (status === "authenticated") {
+      fetchProfile();
+    }
+  }, [status, router, fetchProfile]);
+
+  const handleUpdateAvatar = async (avatarUrl: string) => {
+    if (!profileData) return;
+
+    // Optimistic update
+    setProfileData(prevData => {
+      if (!prevData) return null;
+      return {
+        ...prevData,
+        profile: {
+          ...prevData.profile,
+          image: avatarUrl,
+        },
+      };
+    });
+    setShowAvatarSelector(false); // Close modal immediately
+
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: avatarUrl }),
+      });
+
+      if (!res.ok) throw new Error("Error al actualizar avatar");
+      toast.success("Avatar actualizado");
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al guardar el avatar");
+      // Revert optimistic update (reload profile)
+      fetchProfile();
     }
   };
 
@@ -178,17 +215,40 @@ export default function ProfilePage() {
 
           {/* Profile Info */}
           <div className="flex items-center gap-4">
-            {profile.image ? (
-              <img
-                src={profile.image}
-                alt=""
-                className="w-20 h-20 rounded-full border-4 border-white/30"
-              />
-            ) : (
-              <div className="w-20 h-20 rounded-full bg-white/30 flex items-center justify-center text-3xl font-bold">
-                {profile.name?.charAt(0) || "?"}
+            {/* Avatar a la izquierda */}
+            <div className="relative group">
+              <div
+                className="w-20 h-20 rounded-full overflow-hidden border-2 border-white shadow-lg cursor-pointer transform transition-transform group-hover:scale-105"
+                onClick={() => setShowAvatarSelector(true)}
+              >
+                {profile.image ? (
+                  <img
+                    src={profile.image}
+                    alt={profile.name || "Usuario"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400 text-2xl font-bold">
+                    {profile.name?.charAt(0).toUpperCase() || "?"}
+                  </div>
+                )}
+                {/* Overlay de edición */}
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
               </div>
-            )}
+              <button
+                className="absolute -bottom-1 -right-1 bg-white rounded-full p-1.5 shadow-sm border border-slate-100 text-slate-600"
+                onClick={() => setShowAvatarSelector(true)}
+              >
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              </button>
+            </div>
             <div>
               <h2 className="text-2xl font-bold">{profile.name || "Sin nombre"}</h2>
               <p className="text-white/80 text-sm">{profile.email}</p>
@@ -330,16 +390,14 @@ export default function ProfilePage() {
               <button
                 onClick={() => updateSetting("autoCheckinEnabled", !profileData.settings.autoCheckinEnabled)}
                 disabled={savingSettings}
-                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                  profileData.settings.autoCheckinEnabled
+                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.autoCheckinEnabled
                     ? "bg-amber-500"
                     : "bg-slate-300"
-                } ${savingSettings ? "opacity-50" : ""}`}
+                  } ${savingSettings ? "opacity-50" : ""}`}
               >
                 <span
-                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${
-                    profileData.settings.autoCheckinEnabled ? "translate-x-5" : ""
-                  }`}
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${profileData.settings.autoCheckinEnabled ? "translate-x-5" : ""
+                    }`}
                 />
               </button>
             </div>
@@ -355,16 +413,14 @@ export default function ProfilePage() {
               <button
                 onClick={() => updateSetting("notificationsEnabled", !profileData.settings.notificationsEnabled)}
                 disabled={savingSettings}
-                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${
-                  profileData.settings.notificationsEnabled
+                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.notificationsEnabled
                     ? "bg-amber-500"
                     : "bg-slate-300"
-                } ${savingSettings ? "opacity-50" : ""}`}
+                  } ${savingSettings ? "opacity-50" : ""}`}
               >
                 <span
-                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${
-                    profileData.settings.notificationsEnabled ? "translate-x-5" : ""
-                  }`}
+                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${profileData.settings.notificationsEnabled ? "translate-x-5" : ""
+                    }`}
                 />
               </button>
             </div>
@@ -420,6 +476,32 @@ export default function ProfilePage() {
         </div>
 
       </div>
+
+      <BottomNavigation />
+
+      {/* Avatar Selector Modal */}
+      {showAvatarSelector && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl animate-slide-up sm:animate-scale-up">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold text-slate-800">Elige tu Avatar</h2>
+              <button
+                onClick={() => setShowAvatarSelector(false)}
+                className="p-2 bg-slate-100 rounded-full hover:bg-slate-200"
+              >
+                <svg className="w-5 h-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <AvatarSelector
+              currentAvatar={profile.image}
+              onSelect={handleUpdateAvatar}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

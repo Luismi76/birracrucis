@@ -102,15 +102,18 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { autoCheckinEnabled, notificationsEnabled } = body;
+    const { autoCheckinEnabled, notificationsEnabled, image } = body;
 
-    const updateData: { autoCheckinEnabled?: boolean; notificationsEnabled?: boolean } = {};
+    const updateData: { autoCheckinEnabled?: boolean; notificationsEnabled?: boolean; image?: string } = {};
 
     if (typeof autoCheckinEnabled === "boolean") {
       updateData.autoCheckinEnabled = autoCheckinEnabled;
     }
     if (typeof notificationsEnabled === "boolean") {
       updateData.notificationsEnabled = notificationsEnabled;
+    }
+    if (typeof image === "string") {
+      updateData.image = image;
     }
 
     if (Object.keys(updateData).length === 0) {

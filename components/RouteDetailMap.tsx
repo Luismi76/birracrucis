@@ -51,6 +51,29 @@ const mapOptions = {
     ],
 };
 
+
+// Distancia en metros para agrupar participantes
+const CLUSTER_RADIUS_METERS = 10;
+
+// Función auxiliar para distancia (Haversine)
+function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
+    var R = 6371; // Radius of the earth in km
+    var dLat = deg2rad(lat2 - lat1);  // deg2rad below
+    var dLon = deg2rad(lon2 - lon1);
+    var a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        ;
+    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    var d = R * c; // Distance in km
+    return d * 1000; // Distance in m
+}
+
+function deg2rad(deg: number) {
+    return deg * (Math.PI / 180)
+}
+
 // Colores para los avatares de participantes
 const PARTICIPANT_COLORS = [
     "#ef4444", // red
@@ -108,6 +131,17 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
         return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     };
 
+    // SVG para marcador de grupo (Cluster)
+    const createClusterMarker = (count: number) => {
+        const svg = `
+        <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="22" cy="22" r="21" fill="#f59e0b" stroke="#fff" stroke-width="3"/>
+            <text x="22" y="28" font-size="16" font-weight="bold" text-anchor="middle" fill="#fff">+${count}</text>
+        </svg>
+        `;
+        return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+    };
+
     // Crear SVG para avatar de participante
     const createParticipantMarker = (name: string | null, color: string, imageUrl: string | null) => {
         const initial = name ? name.charAt(0).toUpperCase() : "?";
@@ -120,16 +154,38 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
                     <clipPath id="avatarClip">
                         <circle cx="22" cy="22" r="18"/>
                     </clipPath>
+                    <filter id="shadow">
+                        <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.3"/>
+                    </filter>
                 </defs>
-                <circle cx="22" cy="22" r="21" fill="${color}" stroke="#fff" stroke-width="3"/>
-                <circle cx="22" cy="22" r="18" fill="#fff"/>
-                <text x="22" y="28" font-size="16" font-weight="bold" text-anchor="middle" fill="${color}">${initial}</text>
+                <circle cx="22" cy="22" r="21" fill="${color}" stroke="#fff" stroke-width="3" filter="url(#shadow)"/>
+                <image x="4" y="4" width="36" height="36" xlink:href="${imageUrl}" clip-path="url(#avatarClip)" preserveAspectRatio="xMidYMid slice" />
             </svg>
             `;
-            return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+            // Nota: Para que xlink:href funcione con URLs externas en data URIs, a veces es tricky.
+            // Para simplicidad en SVG data URI, mejor usar <pattern> o asegurar que la URL sea accesible.
+            // Pero React Google Maps maneja URLs de imagenes directamente en 'icon.url'.
+
+            // Si es URL externa, mejor NO meterla dentro del SVG data URI por temas de CORS/seguridad canvas.
+            // Google Maps soporta URLs directas.
+
+            // Retornamos null para indicar que usemos la URL directa o un CustomOverlay? 
+            // Marker solo soporta URL.
+
+            // Solución robusta: Usar un canvas offscreen para componer o simplemente devolver el SVG sin imagen si es complejo
+            // O mejor: usar la imagen directa escalada.
+
+            // Vamos a intentar una aproximación híbrida: Si tiene imagen, devolver la imagen tal cual escalada y redondeada NO SE PUEDE facilmente con solo URL.
+            // Lo más seguro: Crear un SVG que intente referenciar la imagen. Si falla, fallback.
+            // O mejor aún: Devolver SVG con iniciales si falla, pero si podemos, superponer imagen.
+
+            // Por seguridad y simplicidad: Devolvemos SIEMPRE el SVG de iniciales por ahora, 
+            // ya que incrustar imagen externa en SVG Data URI requiere convertirla a Base64 primero.
+
+            // TODO: Para soportar avatars reales en el mapa, necesitamos convertir la URL a Base64 antes.
+            // Como esto es sincrono, asumimos iniciales. (Mejora futura: pre-fetch images)
         }
 
-        // Sin imagen, solo inicial
         const svg = `
         <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
             <circle cx="22" cy="22" r="21" fill="${color}" stroke="#fff" stroke-width="3"/>
@@ -138,6 +194,34 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
         `;
         return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     };
+
+    // Helper asíncrono para cargar imagen y crear marcador (Mejora: hacerlo en un useEffect aparte si fuera necesario)
+    // Por ahora usamos la versión síncrona con iniciales o imagen si ya es datauri.
+
+    // Agrupamiento simple (Clustering)
+    const clusters = useMemo(() => {
+        const activeParticipants = participants.filter(p => p.lat !== 0 && p.lng !== 0 && p.lastSeenAt);
+        const grouped: { lat: number, lng: number, members: Participant[] }[] = [];
+
+        activeParticipants.forEach(p => {
+            let added = false;
+            for (const group of grouped) {
+                if (getDistanceFromLatLonInM(p.lat, p.lng, group.lat, group.lng) <= CLUSTER_RADIUS_METERS) {
+                    group.members.push(p);
+                    // Recalcular centro del grupo
+                    group.lat = group.members.reduce((sum, m) => sum + m.lat, 0) / group.members.length;
+                    group.lng = group.members.reduce((sum, m) => sum + m.lng, 0) / group.members.length;
+                    added = true;
+                    break;
+                }
+            }
+            if (!added) {
+                grouped.push({ lat: p.lat, lng: p.lng, members: [p] });
+            }
+        });
+
+        return grouped;
+    }, [participants]);
 
     // Abrir Google Maps para navegación
     const handleGetDirections = (stop: Stop) => {
@@ -263,26 +347,57 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
                     />
                 )}
 
-                {/* Marcadores de otros participantes (solo con ubicación válida) */}
-                {participants
-                    .filter((p) => p.lat !== 0 && p.lng !== 0 && p.lastSeenAt)
-                    .map((participant, index) => (
-                    <Marker
-                        key={participant.odIduserId}
-                        position={{ lat: participant.lat, lng: participant.lng }}
-                        icon={{
-                            url: createParticipantMarker(
-                                participant.name,
-                                PARTICIPANT_COLORS[index % PARTICIPANT_COLORS.length],
-                                participant.image
-                            ),
-                            scaledSize: new google.maps.Size(44, 44),
-                            anchor: new google.maps.Point(22, 22),
-                        }}
-                        title={participant.name || "Participante"}
-                        zIndex={100 + index}
-                    />
-                ))}
+                {/* Marcadores de participantes (Agrupados) */}
+                {clusters.map((cluster, i) => {
+                    const isGroup = cluster.members.length > 1;
+                    const firstMember = cluster.members[0];
+
+                    if (isGroup) {
+                        return (
+                            <Marker
+                                key={`cluster-${i}`}
+                                position={{ lat: cluster.lat, lng: cluster.lng }}
+                                icon={{
+                                    url: createClusterMarker(cluster.members.length),
+                                    scaledSize: new google.maps.Size(44, 44),
+                                    anchor: new google.maps.Point(22, 22),
+                                }}
+                                title={`${cluster.members.length} personas aquí`}
+                                zIndex={200}
+                                onClick={() => {
+                                    // Zoom in al grupo
+                                    map?.panTo({ lat: cluster.lat, lng: cluster.lng });
+                                    map?.setZoom((map.getZoom() || 14) + 2);
+                                }}
+                            />
+                        );
+                    } else {
+                        // Individual
+                        return (
+                            <Marker
+                                key={firstMember.odIduserId}
+                                position={{ lat: firstMember.lat, lng: firstMember.lng }}
+                                icon={{
+                                    // Si la imagen es una URL externa (https), Google Maps la carga directo.
+                                    // Si es dataURI (nuestro svg), también.
+                                    // Para soportar avatares reales user.image:
+                                    // Opción A: Usar url de la imagen directo +scaledSize (será cuadrada/rectangular)
+                                    // Opción B: Seguir usando el SVG de iniciales como fallback elegante y rápido.
+                                    // Imple: Usamos SVG de iniciales por consistencia y rendimiento.
+                                    url: createParticipantMarker(
+                                        firstMember.name,
+                                        PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length],
+                                        null // firstMember.image -> Pasamos null para forzar iniciales por ahora y evitar problemas CORS en SVG
+                                    ),
+                                    scaledSize: new google.maps.Size(44, 44),
+                                    anchor: new google.maps.Point(22, 22),
+                                }}
+                                title={firstMember.name || "Participante"}
+                                zIndex={100 + i}
+                            />
+                        );
+                    }
+                })}
 
                 {/* Info Window */}
                 {selectedStop && (
