@@ -728,20 +728,20 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               </div>
             </div>
 
-            {/* Acciones: Foto + Meter prisa */}
-            <div className="grid grid-cols-2 gap-2 items-start">
+            {/* Acciones: Meter prisa + Foto */}
+            <div className="flex flex-col gap-3">
+              <NudgeButton
+                routeId={routeId}
+                isAtCurrentStop={canCheckIn}
+                compact={false}
+              />
               <PhotoCapture
                 routeId={routeId}
                 routeName={routeName}
                 stopId={activeStop.id}
                 stopName={activeStop.name}
                 onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
-                compact
-              />
-              <NudgeButton
-                routeId={routeId}
-                isAtCurrentStop={canCheckIn}
-                compact
+                compact={false}
               />
             </div>
 
