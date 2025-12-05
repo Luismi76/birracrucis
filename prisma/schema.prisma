@@ -98,6 +98,13 @@ model Route {
   actualStartTime DateTime?  // Cuando realmente empezó
   actualEndTime   DateTime?  // Cuando realmente terminó
 
+  // Comunidad y Clonación
+  isPublic        Boolean       @default(false)     // Visible para la comunidad
+  description     String?       // Descripción opcional
+  originalRouteId String?       // ID de la ruta original si fue clonada
+  originalRoute   Route?        @relation("RouteClones", fields: [originalRouteId], references: [id])
+  clones          Route[]       @relation("RouteClones") // Rutas clonadas de esta
+
   // Creador de la ruta (opcional para rutas existentes)
   creatorId    String?
   creator      User?         @relation("RouteCreator", fields: [creatorId], references: [id])

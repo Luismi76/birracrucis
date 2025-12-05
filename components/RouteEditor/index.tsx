@@ -42,6 +42,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const [hasEndTime, setHasEndTime] = useState(false);
     const [endTime, setEndTime] = useState("");
     const [defaultStayDuration, setDefaultStayDuration] = useState(30);
+    const [isPublic, setIsPublic] = useState(initialData?.isPublic || false);
+    const [description, setDescription] = useState(initialData?.description || "");
 
     // Estado de búsqueda
     const [radius, setRadius] = useState("800");
@@ -386,6 +388,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     startTime: fullStartTime,
                     hasEndTime,
                     endTime: fullEndTime,
+                    isPublic,
+                    description,
                 }),
             });
 
@@ -520,6 +524,10 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             onEndTimeChange={setEndTime}
                             defaultStayDuration={defaultStayDuration}
                             onDefaultStayDurationChange={setDefaultStayDuration}
+                            isPublic={isPublic}
+                            onIsPublicChange={setIsPublic}
+                            description={description}
+                            onDescriptionChange={setDescription}
                         />
 
                         <BarSearchPanel

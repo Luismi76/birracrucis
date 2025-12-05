@@ -26,6 +26,7 @@ type CreateRouteBody = {
   startTime?: string | null; // ISO string
   hasEndTime?: boolean;
   endTime?: string | null; // ISO string
+  isPublic?: boolean;
 };
 
 // Genera un código de invitación único (8 caracteres, alfanumérico)
@@ -110,6 +111,8 @@ export async function POST(req: NextRequest) {
         date: new Date(date),
         inviteCode,
         creatorId: userId || null,
+        // Public visibility
+        isPublic: body.isPublic ?? false,
         // Campos de tiempo
         startMode: startMode ?? "manual",
         startTime: startTime ? new Date(startTime) : null,

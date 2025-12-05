@@ -69,6 +69,13 @@ export default async function RoutesPage() {
           >
             📜
           </Link>
+          <Link
+            href="/routes/community"
+            className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors"
+            title="Explorar Comunidad"
+          >
+            🌍
+          </Link>
           <UserMenu />
         </div>
       </div>
