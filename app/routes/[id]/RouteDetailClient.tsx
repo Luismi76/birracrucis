@@ -720,15 +720,35 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 </div>
               )}
 
-              {/* Boton Siguiente Bar */}
-              {isOverPlannedRounds && currentBarIndex < stops.length - 1 && (
-                <button
-                  onClick={handleNextBar}
-                  className="w-full py-3 rounded-xl font-bold bg-slate-800 text-white shadow-lg active:scale-95 transition-all mt-2"
-                >
-                  Ir al siguiente bar ➡️
-                </button>
+              {/* Boton Siguiente Bar / Terminar Ruta */}
+              {isOverPlannedRounds && (
+                currentBarIndex < stops.length - 1 ? (
+                  <button
+                    onClick={handleNextBar}
+                    className="w-full py-3 rounded-xl font-bold bg-slate-800 text-white shadow-lg active:scale-95 transition-all mt-2"
+                  >
+                    Ir al siguiente bar ➡️
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowSummary(true)}
+                    className="w-full py-3 rounded-xl font-bold bg-green-600 text-white shadow-lg active:scale-95 transition-all mt-2 animate-bounce"
+                  >
+                    🏁 Terminar Ruta y Ver Cuentas
+                  </button>
+                )
               )}
+
+              {/* Widget Bote (Visible en Tab Principal) */}
+              <div className="mt-4 pt-4 border-t border-slate-100">
+                <h3 className="text-sm font-bold text-slate-400 mb-2">Bote Común</h3>
+                <PotManager
+                  routeId={routeId}
+                  isCreator={isCreator}
+                  currentUserId={currentUserId}
+                  totalSpent={totalSpent}
+                />
+              </div>
             </div>
           )}
 
