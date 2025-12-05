@@ -143,6 +143,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     return initial;
   });
 
+  const vibrate = (pattern: number | number[] = 50) => {
+    if (typeof navigator !== "undefined" && navigator.vibrate) {
+      navigator.vibrate(pattern);
+    }
+  };
+
   const [tapas, setTapas] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
     stops.forEach((s) => { initial[s.id] = 0; });
@@ -404,6 +410,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   const handleAddRound = async (stopId: string) => {
+    vibrate();
     if (!navigator.onLine) {
       toast.error("No tienes conexión a internet");
       return;
@@ -453,6 +460,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   const handleAddBeer = (stopId: string) => {
+    vibrate(30);
     setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
     // Registrar en servidor
     fetch(`/api/routes/${routeId}/drinks`, {
@@ -463,11 +471,13 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   const handleRemoveBeer = (stopId: string) => {
+    vibrate(30);
     if ((beers[stopId] || 0) <= 0) return;
     setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) - 1 }));
   };
 
   const handleAddTapa = (stopId: string) => {
+    vibrate(30);
     setTapas(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
     fetch(`/api/routes/${routeId}/drinks`, {
       method: 'POST',
@@ -477,6 +487,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   const handleRemoveTapa = (stopId: string) => {
+    vibrate(30);
     if ((tapas[stopId] || 0) <= 0) return;
     setTapas(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) - 1 }));
   };
@@ -491,520 +502,231 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   // Gasto en el bar actual
+
   const currentBarSpent = activeStop
     ? (beers[activeStop.id] || 0) * (barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE) +
     (tapas[activeStop.id] || 0) * (barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE)
     : 0;
 
-  return (
-    <div className="space-y-4 pb-20">
 
-      {/* Notificacion de Auto-checkin */}
+
+  return (
+    <>
+      {/* 1. Notificaciones Flotantes (Top) */}
       {autoCheckinNotification && (
-        <div className="fixed top-4 left-4 right-4 z-50 animate-slide-down">
-          <div className="bg-green-500 text-white rounded-xl p-4 shadow-lg flex items-center gap-3">
+        <div className="fixed top-28 left-4 right-4 z-50 animate-slide-down pointer-events-none">
+          <div className="bg-green-500/90 backdrop-blur text-white rounded-2xl p-4 shadow-xl flex items-center gap-3">
             <span className="text-2xl">✅</span>
             <div>
-              <p className="font-bold">Check-in automatico</p>
+              <p className="font-bold">Check-in automático</p>
               <p className="text-sm text-green-100">{autoCheckinNotification}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* 1. Barra de Progreso Global */}
-      <div className="bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl p-4 text-white shadow-lg">
-        <div className="flex justify-between items-center mb-2">
-          <span className="text-sm font-medium opacity-90">Progreso</span>
-          <span className="text-lg font-bold">
-            {completedStops}/{stops.length} Bares
-          </span>
-        </div>
-        <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
-          <div
-            className="bg-white h-full rounded-full transition-all duration-500 ease-out"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
-        <div className="mt-3 flex justify-between text-xs opacity-90">
-          <span>🍺 {totalBeers} cervezas</span>
-          <span>🍢 {totalTapas} tapas</span>
-          <span>💰 {totalSpent.toFixed(2)}€</span>
-        </div>
-      </div>
-
-      {/* 2. Bote Comun */}
-      <PotManager
-        routeId={routeId}
-        isCreator={isCreator}
-        currentUserId={currentUserId}
-        totalSpent={totalSpent}
-      />
-
-      {/* 3. Header de Estado */}
-      <div className="flex justify-between items-center">
-        <div className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
-          {isRouteComplete ? "🎉 Ruta Completada" : `Parada ${currentStopIndex + 1} de ${stops.length}`}
-        </div>
-
-      </div>
-
-      {/* 3. Tarjeta Principal (Bar Actual) - TODO INTEGRADO */}
-      {!isRouteComplete && activeStop && (
-        <div className="bg-white rounded-2xl shadow-xl border border-amber-100 overflow-hidden">
-          {/* Header del bar */}
-          <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 text-white">
-            <div className="flex justify-between items-start">
-              <div className="flex-1 min-w-0">
-                <h2 className="text-xl font-bold truncate">{activeStop.name}</h2>
-                <p className="text-amber-100 text-sm truncate">{activeStop.address}</p>
-              </div>
-              {/* Distancia */}
-              <div className="ml-2 shrink-0">
-                {distToActive !== null ? (
-                  distToActive <= RADIUS_METERS ? (
-                    <span className="bg-white/20 px-2 py-1 rounded-full text-xs font-bold">
-                      📍 Aqui
-                    </span>
-                  ) : (
-                    <span className="bg-white/20 px-2 py-1 rounded-full text-xs">
-                      {distToActive}m
-                    </span>
-                  )
-                ) : null}
-              </div>
-            </div>
-          </div>
-
-          {/* Contenido principal */}
-          <div className="p-4 space-y-4">
-
-            {/* Rondas completadas */}
-            <div className="flex items-center justify-center gap-2 py-2">
-              <span className={`text-3xl font-black ${isOverPlannedRounds ? 'text-orange-500' : 'text-slate-800'}`}>
-                {rounds[activeStop.id] || 0}
-              </span>
-              <span className="text-lg text-slate-400">/ {activeStop.plannedRounds} rondas</span>
-            </div>
-
-            {/* Aviso de rondas completadas - Sugerir pasar al siguiente bar */}
-            {isOverPlannedRounds && currentBarIndex < stops.length - 1 && (
-              <div className="bg-gradient-to-r from-orange-100 to-amber-100 border border-orange-200 rounded-xl p-3 flex items-center gap-3">
-                <div className="text-2xl">🎯</div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-orange-800">Objetivo cumplido!</p>
-                  <p className="text-xs text-orange-600">Ya completaste las rondas planificadas. Puedes seguir o ir al siguiente bar.</p>
-                </div>
-              </div>
-            )}
-
-            {/* Boton principal: Pedir Ronda */}
-            {(() => {
-              const peopleAtBar = getParticipantsAtBar(activeStop.id);
-              return (
-                <button
-                  onClick={() => handleAddRound(activeStop.id)}
-                  disabled={!canCheckIn}
-                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex flex-col items-center justify-center gap-1 ${(canCheckIn)
-                    ? isOverPlannedRounds
-                      ? "bg-orange-500 text-white hover:bg-orange-600 active:scale-95 shadow-lg"
-                      : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                    }`}
-                >
-                  {(canCheckIn) ? (
-                    <>
-                      <span>{isOverPlannedRounds ? '🍺 Otra Ronda Mas!' : '🍺 Pedir Ronda'}</span>
-                      <span className="text-xs opacity-80">+{peopleAtBar} {peopleAtBar === 1 ? 'cerveza' : 'cervezas'} ({peopleAtBar} {peopleAtBar === 1 ? 'persona' : 'personas'})</span>
-                    </>
-                  ) : (
-                    <span>Acercate ({distToActive || '...'}m)</span>
-                  )}
-                </button>
-              );
-            })()}
-
-            {/* Boton Siguiente Bar - Solo aparece cuando hemos completado las rondas */}
-            {isOverPlannedRounds && currentBarIndex < stops.length - 1 && (
-              <button
-                onClick={handleNextBar}
-                className="w-full py-3 rounded-xl font-bold text-base bg-green-500 text-white hover:bg-green-600 active:scale-95 shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                <span>➡️ Siguiente Bar: {stops[currentBarIndex + 1]?.name}</span>
-              </button>
-            )}
-
-            {/* Boton Finalizar Ruta - Solo en el ultimo bar cuando completado */}
-            {isOverPlannedRounds && currentBarIndex === stops.length - 1 && (
-              <button
-                onClick={handleNextBar}
-                className="w-full py-3 rounded-xl font-bold text-base bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 active:scale-95 shadow-lg transition-all flex items-center justify-center gap-2"
-              >
-                <span>🎉 Finalizar Ruta</span>
-              </button>
-            )}
-
-            {/* Seccion de consumiciones */}
-            <div className="bg-slate-50 rounded-xl p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-bold text-slate-700">Mi cuenta en este bar</h4>
-                <span className="text-lg font-bold text-green-600">{currentBarSpent.toFixed(2)}€</span>
-              </div>
-
-              {/* Cervezas */}
-              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🍺</span>
-                  <div>
-                    <span className="font-medium text-slate-800">Cerveza</span>
-                    <button
-                      onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
-                      className="flex items-center gap-1 text-amber-600 text-sm font-medium hover:text-amber-700"
-                    >
-                      {(barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE).toFixed(2)}€
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleRemoveBeer(activeStop.id)}
-                    disabled={!canCheckIn}
-                    className="w-11 h-11 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors active-scale"
-                    aria-label="Quitar cerveza"
-                  >
-                    -
-                  </button>
-                  <span className="w-8 text-center font-bold text-xl">{beers[activeStop.id] || 0}</span>
-                  <button
-                    onClick={() => handleAddBeer(activeStop.id)}
-                    disabled={!canCheckIn}
-                    className="w-11 h-11 rounded-full bg-amber-500 text-white font-bold text-xl hover:bg-amber-600 disabled:opacity-50 transition-colors active-scale"
-                    aria-label="Añadir cerveza"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Tapas */}
-              <div className="flex items-center justify-between bg-white rounded-lg p-3 border">
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">🍢</span>
-                  <div>
-                    <span className="font-medium text-slate-800">Tapeo</span>
-                    <button
-                      onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
-                      className="flex items-center gap-1 text-orange-600 text-sm font-medium hover:text-orange-700"
-                    >
-                      {(barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE).toFixed(2)}€
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => handleRemoveTapa(activeStop.id)}
-                    disabled={!canCheckIn}
-                    className="w-11 h-11 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors active-scale"
-                    aria-label="Quitar tapa"
-                  >
-                    -
-                  </button>
-                  <span className="w-8 text-center font-bold text-xl">{tapas[activeStop.id] || 0}</span>
-                  <button
-                    onClick={() => handleAddTapa(activeStop.id)}
-                    disabled={!canCheckIn}
-                    className="w-11 h-11 rounded-full bg-orange-500 text-white font-bold text-xl hover:bg-orange-600 disabled:opacity-50 transition-colors active-scale"
-                    aria-label="Añadir tapa"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Acciones: Meter prisa + Foto */}
-            <div className="flex flex-col gap-3">
-              <NudgeButton
-                routeId={routeId}
-                isAtCurrentStop={canCheckIn}
-                compact={false}
-              />
-              <PhotoCapture
-                routeId={routeId}
-                routeName={routeName}
-                stopId={activeStop.id}
-                stopName={activeStop.name}
-                onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
-                compact={false}
-              />
-            </div>
-
-            {/* Votar saltar bar */}
-            <SkipVoteButton
+      {/* 2. Área de Acción Flotante (FAB) - Bottom Right */}
+      {!isRouteComplete && activeStop && activeTab === 'route' && (
+        <div className="fixed bottom-[110px] right-4 z-50 flex flex-col items-end gap-3 pointer-events-auto">
+          {/* Meter Prisa (Mini FAB) */}
+          <div className="scale-90 origin-bottom-right">
+            <NudgeButton
               routeId={routeId}
-              stopId={activeStop.id}
-              currentUserId={currentUserId}
+              isAtCurrentStop={canCheckIn}
+              compact={true}
             />
           </div>
-        </div>
-      )}
 
-      {/* Nudge para los que no estan en el bar */}
-      {!canCheckIn && !isRouteComplete && (
-        <NudgeButton routeId={routeId} isAtCurrentStop={false} />
-      )}
-
-      {/* Anadir al calendario */}
-      {!isRouteComplete && (
-        <AddToCalendar
-          routeName={routeName}
-          routeDate={routeDate}
-          startTime={startTime}
-          stops={stops.map(s => ({
-            id: s.id,
-            name: s.name,
-            address: s.address || "",
-            arrivalTime: s.arrivalTime,
-            departureTime: s.departureTime,
-          }))}
-        />
-      )}
-
-
-      {/* Tabs simplificadas: Ruta / Fotos / Valorar / Grupo */}
-      <div className="flex bg-slate-100 rounded-xl p-1">
-        <button
-          onClick={() => setActiveTab("route")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "route"
-            ? "bg-white text-slate-900 shadow-sm"
-            : "text-slate-500 hover:text-slate-700"
-            }`}
-        >
-          🗺️ Ruta
-        </button>
-        <button
-          onClick={() => setActiveTab("photos")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "photos"
-            ? "bg-white text-slate-900 shadow-sm"
-            : "text-slate-500 hover:text-slate-700"
-            }`}
-        >
-          📸 Fotos
-        </button>
-        <button
-          onClick={() => setActiveTab("ratings")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "ratings"
-            ? "bg-white text-slate-900 shadow-sm"
-            : "text-slate-500 hover:text-slate-700"
-            }`}
-        >
-          ⭐ Valorar
-        </button>
-        <button
-          onClick={() => setActiveTab("group")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "group"
-            ? "bg-white text-slate-900 shadow-sm"
-            : "text-slate-500 hover:text-slate-700"
-            }`}
-        >
-          👥 Grupo
-        </button>
-      </div>
-
-      {activeTab === "group" && (
-        <div className="space-y-4">
-          <ParticipantsList
-            routeId={routeId}
-            currentUserId={currentUserId}
-            currentStop={activeStop ? {
-              id: activeStop.id,
-              name: activeStop.name,
-              lat: activeStop.lat,
-              lng: activeStop.lng,
-            } : null}
-            userPosition={position}
-          />
-          <InvitationManager
-            routeId={routeId}
-            isCreator={isCreator}
-          />
-        </div>
-      )}
-
-      {activeTab === "photos" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <span>📸</span> Galeria de la Ruta
-          </h3>
-          <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />
-        </div>
-      )}
-
-      {activeTab === "ratings" && (
-        activeStop ? (
-          <BarRating
-            routeId={routeId}
-            stopId={activeStop.id}
-            stopName={activeStop.name}
-            currentUserId={currentUserId}
-          />
-        ) : (
-          <div className="bg-white rounded-xl border p-4 text-center text-slate-500">
-            Selecciona un bar para valorar
+          {/* Cámara (Mini FAB) */}
+          <div className="scale-90 origin-bottom-right">
+            <PhotoCapture
+              routeId={routeId}
+              routeName={routeName}
+              stopId={activeStop.id}
+              stopName={activeStop.name}
+              onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
+              compact={true}
+            />
           </div>
-        )
+
+          {/* Botón Principal: PEDIR RONDA (FAB Grande) */}
+          <button
+            onClick={() => handleAddRound(activeStop.id)}
+            disabled={!canCheckIn}
+            className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-3xl transition-all duration-300 active:scale-90 ${canCheckIn
+              ? isOverPlannedRounds
+                ? "bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/30"
+                : "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/30"
+              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+              }`}
+          >
+            🍺
+          </button>
+        </div>
       )}
 
-      {activeTab === "route" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-4">
-          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <span>🗺️</span> Tu Pasaporte
-          </h3>
-          <div className="space-y-0 relative">
-            <div className="absolute left-[1.15rem] top-2 bottom-2 w-0.5 bg-slate-100 -z-10"></div>
+      {/* 3. Bottom Sheet (Panel Inferior Fijo) */}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] pointer-events-auto flex flex-col transition-all duration-500 ease-out ${activeTab !== 'route' ? 'h-[85vh]' : 'h-auto max-h-[60vh]'
+          }`}
+      >
+        {/* Handle Visual */}
+        <div className="w-full flex justify-center py-3 shrink-0 cursor-grab active:cursor-grabbing" onClick={() => setActiveTab(activeTab === 'route' ? 'photos' : 'route')}>
+          <div className="w-12 h-1.5 bg-slate-200/80 rounded-full" />
+        </div>
 
-            {stops.map((stop, index) => {
-              const isCurrent = stop.id === activeStop?.id && !isRouteComplete;
-              const isDone = (rounds[stop.id] || 0) >= stop.plannedRounds;
-              const stopBeers = beers[stop.id] || 0;
-              const stopTapas = tapas[stop.id] || 0;
-              const stopPrices = barPrices[stop.id] || { beer: DEFAULT_BEER_PRICE, tapa: DEFAULT_TAPA_PRICE };
-              const stopSpent = stopBeers * stopPrices.beer + stopTapas * stopPrices.tapa;
+        {/* Contenido Scrollable */}
+        <div className="flex-1 overflow-y-auto px-4 pb-2 custom-scrollbar">
 
-              return (
-                <div key={stop.id} className={`flex items-start gap-3 py-3 ${isCurrent ? 'scale-105 origin-left transition-transform' : 'opacity-80'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 shrink-0 transition-colors ${isDone
-                    ? "bg-green-500 border-green-100 text-white"
-                    : isCurrent
-                      ? "bg-amber-500 border-amber-100 text-white animate-bounce-slow"
-                      : "bg-white border-slate-200 text-slate-400"
-                    }`}>
-                    {isDone ? "✓" : (index + 1)}
+          {/* TAB: RUTA (Vista Principal Simplificada) */}
+          {activeTab === 'route' && (
+            <div className="space-y-4">
+              {/* Header del Bar Actual */}
+              {activeStop && !isRouteComplete && (
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h2 className="text-xl font-bold text-slate-900 leading-tight">{activeStop.name}</h2>
+                      <p className="text-sm text-slate-500 truncate max-w-[200px]">{activeStop.address}</p>
+                    </div>
+                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${canCheckIn ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
+                      {canCheckIn ? "📍 Estás aquí" : `${distToActive}m`}
+                    </span>
                   </div>
 
-                  <div className="flex-1 min-w-0 bg-slate-50 rounded-xl p-3 border border-slate-100">
-                    <div className="flex justify-between items-start">
-                      <h4 className={`font-bold truncate ${isCurrent ? 'text-slate-900' : 'text-slate-600'}`}>
-                        {stop.name}
-                      </h4>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDone ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-500"
-                        }`}>
-                        {rounds[stop.id] || 0}/{stop.plannedRounds}
-                      </span>
+                  {/* Progreso de Rondas */}
+                  <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
+                    <div className="flex-1">
+                      <div className="flex justify-between text-xs mb-1">
+                        <span className="font-bold text-slate-700">Rondas</span>
+                        <span className="font-bold text-slate-700">{rounds[activeStop.id] || 0} / {activeStop.plannedRounds}</span>
+                      </div>
+                      <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${isOverPlannedRounds ? 'bg-orange-500' : 'bg-amber-500'}`}
+                          style={{ width: `${Math.min(100, ((rounds[activeStop.id] || 0) / activeStop.plannedRounds) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="block text-xs text-slate-400">Gasto</span>
+                      <span className="block font-bold text-green-600">{currentBarSpent.toFixed(2)} €</span>
+                    </div>
+                  </div>
+
+                  {/* Contadores Grandes (Cerveza / Tapa) */}
+                  <div className="grid grid-cols-2 gap-3 mt-4">
+                    {/* Cervezas */}
+                    <div className="bg-amber-50 rounded-2xl p-3 border border-amber-100 flex flex-col items-center">
+                      <span className="text-xs font-bold text-amber-800 uppercase mb-2 tracking-wide">Cervezas</span>
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => handleRemoveBeer(activeStop.id)}
+                          className="w-12 h-12 rounded-full bg-white text-slate-400 border border-slate-200 text-2xl font-bold flex items-center justify-center hover:bg-slate-50 active:scale-90 transition-all"
+                        >-</button>
+                        <span className="text-3xl font-black text-slate-800 w-8 text-center">{beers[activeStop.id] || 0}</span>
+                        <button
+                          onClick={() => handleAddBeer(activeStop.id)}
+                          className="w-12 h-12 rounded-full bg-amber-500 text-white shadow-lg shadow-amber-200 text-2xl font-bold flex items-center justify-center hover:bg-amber-600 active:scale-90 transition-all"
+                        >+</button>
+                      </div>
+                      <button onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })} className="mt-2 text-[10px] text-amber-600 font-medium bg-white/50 px-2 py-0.5 rounded-md">
+                        {(barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE).toFixed(2)}€ / ud
+                      </button>
                     </div>
 
-                    {/* Mini resumen del bar */}
-                    {(stopBeers > 0 || stopTapas > 0) && (
-                      <div className="mt-2 flex items-center gap-3 text-xs text-slate-500">
-                        {stopBeers > 0 && <span>🍺 {stopBeers}</span>}
-                        {stopTapas > 0 && <span>🍢 {stopTapas}</span>}
-                        <span className="text-green-600 font-medium">{stopSpent.toFixed(2)}€</span>
+                    {/* Tapas */}
+                    <div className="bg-orange-50 rounded-2xl p-3 border border-orange-100 flex flex-col items-center">
+                      <span className="text-xs font-bold text-orange-800 uppercase mb-2 tracking-wide">Tapas</span>
+                      <div className="flex items-center gap-4">
+                        <button
+                          onClick={() => handleRemoveTapa(activeStop.id)}
+                          className="w-12 h-12 rounded-full bg-white text-slate-400 border border-slate-200 text-2xl font-bold flex items-center justify-center hover:bg-slate-50 active:scale-90 transition-all"
+                        >-</button>
+                        <span className="text-3xl font-black text-slate-800 w-8 text-center">{tapas[activeStop.id] || 0}</span>
+                        <button
+                          onClick={() => handleAddTapa(activeStop.id)}
+                          className="w-12 h-12 rounded-full bg-orange-500 text-white shadow-lg shadow-orange-200 text-2xl font-bold flex items-center justify-center hover:bg-orange-600 active:scale-90 transition-all"
+                        >+</button>
                       </div>
-                    )}
-
-
+                      <button onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })} className="mt-2 text-[10px] text-orange-600 font-medium bg-white/50 px-2 py-0.5 rounded-md">
+                        {(barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE).toFixed(2)}€ / ud
+                      </button>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              )}
 
-          {/* Resumen total de gastos */}
-          <div className="mt-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-            <div className="flex justify-between items-center">
-              <span className="font-bold text-green-800">Total gastado</span>
-              <span className="text-2xl font-black text-green-600">{totalSpent.toFixed(2)}€</span>
+              {/* Boton Siguiente Bar */}
+              {isOverPlannedRounds && currentBarIndex < stops.length - 1 && (
+                <button
+                  onClick={handleNextBar}
+                  className="w-full py-3 rounded-xl font-bold bg-slate-800 text-white shadow-lg active:scale-95 transition-all mt-2"
+                >
+                  Ir al siguiente bar ➡️
+                </button>
+              )}
             </div>
-            <div className="mt-1 text-xs text-green-600">
-              🍺 {totalBeers} cervezas · 🍢 {totalTapas} tapas
+          )}
+
+          {/* OTRAS TABS */}
+          {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
+
+          {activeTab === 'ratings' && activeStop && (
+            <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
+          )}
+
+          {activeTab === 'group' && (
+            <div className="space-y-4">
+              <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
+              <InvitationManager routeId={routeId} isCreator={isCreator} />
+              <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
             </div>
+          )}
+        </div>
+
+        {/* BOTTOM NAVIGATION (Tabs) */}
+        <div className="shrink-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2">
+          <div className="flex justify-around items-center">
+            {[
+              { id: 'route', icon: '🍻', label: 'Bar' },
+              { id: 'photos', icon: '📸', label: 'Fotos' },
+              { id: 'ratings', icon: '⭐', label: 'Valorar' },
+              { id: 'group', icon: '👥', label: 'Grupo' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => { vibrate(30); setActiveTab(tab.id as any); }}
+                className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16 ${activeTab === tab.id ? 'bg-amber-50 text-amber-600' : 'text-slate-400 hover:bg-slate-50'
+                  }`}
+              >
+                <span className="text-xl">{tab.icon}</span>
+                <span className="text-[10px] font-bold">{tab.label}</span>
+              </button>
+            ))}
           </div>
         </div>
-      )}
 
-      {/* Boton Ver Resumen (cuando ruta completada) */}
-      {isRouteComplete && (
-        <div className="space-y-3">
-          <button
-            onClick={() => setShowSummary(true)}
-            className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-bold text-lg shadow-lg hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
-          >
-            🎉 Ver Resumen de la Ruta
-          </button>
-          <div className="flex justify-center">
-            <ExportRoutePDF
-              route={{
-                id: routeId,
-                name: routeName,
-                date: routeDate,
-                status: routeStatus,
-                stops: stops.map(s => ({
-                  id: s.id,
-                  name: s.name,
-                  address: s.address,
-                  plannedRounds: s.plannedRounds,
-                  actualRounds: rounds[s.id] || s.actualRounds,
-                  arrivedAt: s.arrivalTime || null,
-                  leftAt: s.departureTime || null,
-                })),
-                participants: participants.map(p => ({
-                  id: p.id,
-                  name: p.name,
-                  image: p.image,
-                })),
-                totalDrinks: totalBeers,
-              }}
-            />
-          </div>
-        </div>
-      )}
+      </div>
 
-      {/* Modal de Resumen */}
-      {showSummary && (
-        <RouteSummary
-          routeId={routeId}
-          onClose={() => setShowSummary(false)}
-        />
-      )}
-
-      {/* Chat Flotante */}
-      <RouteChat
-        routeId={routeId}
-        currentUserId={currentUserId}
-      />
-
-
-
-      {/* Price Picker Modal */}
+      {/* Global Modals */}
       {pricePickerOpen && (
         <PricePicker
           isOpen={true}
           onClose={() => setPricePickerOpen(null)}
           onSelect={(price) => {
-            setBarPrices(prev => ({
-              ...prev,
-              [pricePickerOpen.stopId]: {
-                ...prev[pricePickerOpen.stopId],
-                [pricePickerOpen.type]: price
-              }
-            }));
+            // ... existing logic ...
+            setBarPrices(prev => ({ ...prev, [pricePickerOpen.stopId]: { ...prev[pricePickerOpen.stopId], [pricePickerOpen.type]: price } }));
           }}
-          currentPrice={
-            pricePickerOpen.type === 'beer'
-              ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE)
-              : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)
-          }
+          currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
           title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
           icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
         />
       )}
 
-    </div>
+      {showSummary && <RouteSummary routeId={routeId} onClose={() => setShowSummary(false)} />}
+
+      <RouteChat routeId={routeId} currentUserId={currentUserId} />
+    </>
   );
 }
