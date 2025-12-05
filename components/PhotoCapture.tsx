@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { compressImage, getDataUrlSize, formatFileSize } from "@/lib/image-utils";
+import { compressImage, getDataUrlSize, formatFileSize, addWatermark } from "@/lib/image-utils";
 
 type PhotoCaptureProps = {
   routeId: string;
@@ -43,7 +43,7 @@ export default function PhotoCapture({
       setError(null);
 
       // Comprimir imagen para móvil (max 1200px, calidad 80%)
-      const compressed = await compressImage(file, {
+      let compressed = await compressImage(file, {
         maxWidth: 1200,
         maxHeight: 1200,
         quality: 0.8,
@@ -54,16 +54,17 @@ export default function PhotoCapture({
       const compressedSize = getDataUrlSize(compressed);
       if (compressedSize > 2 * 1024 * 1024) {
         // Intentar con menor calidad
-        const moreCompressed = await compressImage(file, {
+        compressed = await compressImage(file, {
           maxWidth: 1000,
           maxHeight: 1000,
           quality: 0.6,
           format: "jpeg",
         });
-        setPreview(moreCompressed);
-      } else {
-        setPreview(compressed);
       }
+
+      // Añadir marca de agua con el hashtag
+      const watermarked = await addWatermark(compressed, hashtag);
+      setPreview(watermarked);
 
       setIsCapturing(true);
     } catch (err) {
@@ -232,70 +233,40 @@ export default function PhotoCapture({
               <p className="text-red-500 text-sm bg-red-50 p-2 rounded-lg">{error}</p>
             )}
 
-            {/* Botón principal de compartir (Web Share API - incluye imagen) */}
-            <button
-              onClick={() => handleShare("native")}
-              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-600 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-lg"
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-              </svg>
-              Compartir Foto
-            </button>
+            {/* Botones de acción */}
+            <div className="grid grid-cols-2 gap-3">
+              {/* Botón de compartir (Web Share API - incluye imagen) */}
+              <button
+                onClick={() => handleShare("native")}
+                className="flex flex-col items-center justify-center gap-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white py-4 rounded-xl font-bold hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                <span className="text-sm">Compartir</span>
+              </button>
 
-            {/* Botones de compartir específicos (solo texto) */}
-            <p className="text-xs text-slate-500 text-center">O compartir solo texto en:</p>
-            <div className="flex gap-2">
+              {/* Botón subir a la galería */}
               <button
-                onClick={() => handleShare("twitter")}
-                className="flex-1 bg-[#1DA1F2] text-white py-2 rounded-lg font-medium text-sm hover:bg-[#1a8cd8] transition-colors"
-                title="Twitter/X"
+                onClick={handleUpload}
+                disabled={uploading}
+                className="flex flex-col items-center justify-center gap-2 bg-purple-600 text-white py-4 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 transition-all shadow-lg"
               >
-                X
-              </button>
-              <button
-                onClick={() => handleShare("instagram")}
-                className="flex-1 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] text-white py-2 rounded-lg font-medium text-sm hover:opacity-90 transition-opacity"
-                title="Instagram"
-              >
-                IG
-              </button>
-              <button
-                onClick={() => handleShare("whatsapp")}
-                className="flex-1 bg-[#25D366] text-white py-2 rounded-lg font-medium text-sm hover:bg-[#20bd5a] transition-colors"
-                title="WhatsApp"
-              >
-                WA
-              </button>
-              <button
-                onClick={() => handleShare("copy")}
-                className="flex-1 bg-slate-600 text-white py-2 rounded-lg font-medium text-sm hover:bg-slate-700 transition-colors"
-                title="Copiar"
-              >
-                #
+                {uploading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-6 w-6 border-2 border-white border-t-transparent" />
+                    <span className="text-sm">Subiendo...</span>
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <span className="text-sm">Subir a Galería</span>
+                  </>
+                )}
               </button>
             </div>
-
-            {/* Botón subir a la galería */}
-            <button
-              onClick={handleUpload}
-              disabled={uploading}
-              className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-            >
-              {uploading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                  Subiendo...
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                  </svg>
-                  Subir a Galeria
-                </>
-              )}
-            </button>
           </div>
         </div>
       )}

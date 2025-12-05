@@ -89,6 +89,74 @@ export async function compressImage(
 }
 
 /**
+ * Añade una marca de agua (texto) a una imagen
+ * @param dataUrl DataURL de la imagen
+ * @param text Texto de la marca de agua
+ * @returns Promise con el dataURL de la imagen con marca de agua
+ */
+export async function addWatermark(
+    dataUrl: string,
+    text: string
+): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width;
+            canvas.height = img.height;
+
+            const ctx = canvas.getContext("2d");
+            if (!ctx) {
+                reject(new Error("No se pudo crear contexto de canvas"));
+                return;
+            }
+
+            // Dibujar la imagen original
+            ctx.drawImage(img, 0, 0);
+
+            // Configurar el estilo de la marca de agua
+            const fontSize = Math.max(20, Math.floor(img.width / 25));
+            ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+
+            // Medir el texto para crear el fondo
+            const textMetrics = ctx.measureText(text);
+            const textWidth = textMetrics.width;
+            const textHeight = fontSize;
+
+            // Posición (esquina inferior derecha con margen)
+            const padding = 15;
+            const x = img.width - textWidth - padding * 2;
+            const y = img.height - padding * 2;
+
+            // Dibujar fondo semi-transparente
+            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
+            ctx.fillRect(
+                x - padding,
+                y - textHeight - padding,
+                textWidth + padding * 2,
+                textHeight + padding * 2
+            );
+
+            // Dibujar el texto
+            ctx.fillStyle = "#ffffff";
+            ctx.textBaseline = "top";
+            ctx.fillText(text, x, y - textHeight);
+
+            // Convertir a dataURL
+            const watermarkedDataUrl = canvas.toDataURL("image/jpeg", 0.9);
+            resolve(watermarkedDataUrl);
+        };
+
+        img.onerror = () => {
+            reject(new Error("Error al cargar imagen para marca de agua"));
+        };
+
+        img.src = dataUrl;
+    });
+}
+
+/**
  * Calcula el tamaño de un dataURL en bytes
  */
 export function getDataUrlSize(dataUrl: string): number {
