@@ -31,17 +31,23 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     // Estado del formulario básico
     const [name, setName] = useState(initialData?.name || "");
     const [date, setDate] = useState(
-        initialData?.date ? new Date(initialData.date).toISOString().slice(0, 16) : ""
+        initialData?.date ? new Date(initialData.date).toISOString().slice(0, 10) : ""
     );
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Estado de configuración de tiempo
-    const [startMode, setStartMode] = useState<"manual" | "scheduled" | "all_present">("scheduled");
-    const [startTime, setStartTime] = useState("");
-    const [hasEndTime, setHasEndTime] = useState(false);
-    const [endTime, setEndTime] = useState("");
-    const [defaultStayDuration, setDefaultStayDuration] = useState(30);
+    const [startMode, setStartMode] = useState<"manual" | "scheduled" | "all_present">(
+        initialData?.startMode || "scheduled"
+    );
+    const [startTime, setStartTime] = useState(
+        initialData?.startTime ? new Date(initialData.startTime).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : ""
+    );
+    const [hasEndTime, setHasEndTime] = useState(initialData?.hasEndTime || false);
+    const [endTime, setEndTime] = useState(
+        initialData?.endTime ? new Date(initialData.endTime).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : ""
+    );
+    const [defaultStayDuration, setDefaultStayDuration] = useState(initialData?.defaultStayDuration || 30);
     const [isPublic, setIsPublic] = useState(initialData?.isPublic || false);
     const [description, setDescription] = useState(initialData?.description || "");
 

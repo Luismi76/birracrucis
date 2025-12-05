@@ -22,11 +22,16 @@ export default async function EditRoutePage({ params }: EditRoutePageProps) {
     const serializedRoute = {
         ...route,
         date: route.date.toISOString(),
+        startTime: route.startTime ? route.startTime.toISOString() : null,
+        endTime: route.endTime ? route.endTime.toISOString() : null,
+        startMode: route.startMode as "manual" | "scheduled" | "all_present",
         stops: route.stops.map(stop => ({
             ...stop,
             maxRounds: stop.maxRounds ?? null,
             googlePlaceId: stop.googlePlaceId ?? null,
         })),
+        isPublic: route.isPublic,
+        description: route.description,
     };
 
     return <RouteEditor initialData={serializedRoute} />;

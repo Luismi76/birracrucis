@@ -61,7 +61,7 @@ export default function RouteForm({
                 <div className="relative">
                     <span className="absolute left-3 top-3 text-slate-400">📅</span>
                     <input
-                        type="datetime-local"
+                        type="date"
                         className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none transition-all bg-slate-50 focus:bg-white"
                         value={date}
                         onChange={(e) => onDateChange(e.target.value)}
@@ -75,11 +75,10 @@ export default function RouteForm({
                     <span>⏰</span> Configuración de Horarios
                 </h3>
 
-                {/* Modo de inicio */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                     <label className="text-xs font-bold text-blue-700 uppercase tracking-wide">¿Cuándo empezamos?</label>
-                    <div className="grid grid-cols-1 gap-2">
-                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startMode === "scheduled" ? "border-blue-500 bg-blue-100" : "border-slate-200 bg-white hover:border-blue-200"}`}>
+                    <div className="grid grid-cols-3 gap-2">
+                        <label className={`flex flex-row items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 ${startMode === "scheduled" ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500" : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"}`}>
                             <input
                                 type="radio"
                                 name="startMode"
@@ -89,13 +88,10 @@ export default function RouteForm({
                                 className="hidden"
                             />
                             <span className="text-xl">🕐</span>
-                            <div className="flex-1">
-                                <div className="font-medium text-slate-800">A una hora fija</div>
-                                <div className="text-xs text-slate-500">Empezamos puntualmente</div>
-                            </div>
+                            <span className="text-xs font-bold whitespace-nowrap">Hora fija</span>
                         </label>
 
-                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startMode === "all_present" ? "border-blue-500 bg-blue-100" : "border-slate-200 bg-white hover:border-blue-200"}`}>
+                        <label className={`flex flex-row items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 ${startMode === "all_present" ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500" : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"}`}>
                             <input
                                 type="radio"
                                 name="startMode"
@@ -105,13 +101,10 @@ export default function RouteForm({
                                 className="hidden"
                             />
                             <span className="text-xl">👥</span>
-                            <div className="flex-1">
-                                <div className="font-medium text-slate-800">Cuando estemos todos</div>
-                                <div className="text-xs text-slate-500">Esperamos a que lleguen al primer bar</div>
-                            </div>
+                            <span className="text-xs font-bold whitespace-nowrap">Todos listos</span>
                         </label>
 
-                        <label className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${startMode === "manual" ? "border-blue-500 bg-blue-100" : "border-slate-200 bg-white hover:border-blue-200"}`}>
+                        <label className={`flex flex-row items-center justify-center gap-2 p-2 rounded-lg border cursor-pointer transition-all hover:bg-slate-50 ${startMode === "manual" ? "border-blue-500 bg-blue-50 text-blue-700 ring-1 ring-blue-500" : "border-slate-200 bg-white text-slate-600 hover:border-blue-300"}`}>
                             <input
                                 type="radio"
                                 name="startMode"
@@ -121,10 +114,7 @@ export default function RouteForm({
                                 className="hidden"
                             />
                             <span className="text-xl">🎯</span>
-                            <div className="flex-1">
-                                <div className="font-medium text-slate-800">Inicio manual</div>
-                                <div className="text-xs text-slate-500">El creador decide cuándo empezar</div>
-                            </div>
+                            <span className="text-xs font-bold whitespace-nowrap">Manual</span>
                         </label>
                     </div>
                 </div>
@@ -139,7 +129,7 @@ export default function RouteForm({
                             <span className="absolute left-3 top-3 text-slate-400">🕐</span>
                             <input
                                 type="time"
-                                className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                                className="w-full pl-10 p-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
                                 value={startTime}
                                 onChange={(e) => onStartTimeChange(e.target.value)}
                             />
@@ -160,11 +150,11 @@ export default function RouteForm({
                     </label>
 
                     {hasEndTime && (
-                        <div className="relative mt-2">
-                            <span className="absolute left-3 top-3 text-slate-400">🍽️</span>
+                        <div className="relative mt-1">
+                            <span className="absolute left-3 top-2.5 text-slate-400 text-sm">🍽️</span>
                             <input
                                 type="time"
-                                className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
+                                className="w-full pl-9 p-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all bg-white"
                                 value={endTime}
                                 onChange={(e) => onEndTimeChange(e.target.value)}
                                 placeholder="Hora de la reserva"
@@ -203,16 +193,6 @@ export default function RouteForm({
                 </h3>
 
                 <div className="space-y-4">
-                    <div className="relative">
-                        <span className="absolute left-3 top-3 text-slate-400">📝</span>
-                        <textarea
-                            placeholder="Descripción (opcional) - Cuenta de qué va esta ruta"
-                            className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all bg-white min-h-[80px]"
-                            value={description}
-                            onChange={(e) => onDescriptionChange(e.target.value)}
-                        />
-                    </div>
-
                     <label className="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all border-slate-200 bg-white hover:border-purple-200">
                         <div className="pt-1">
                             <input
@@ -228,11 +208,22 @@ export default function RouteForm({
                                 <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full">Comunidad</span>
                             </div>
                             <div className="text-xs text-slate-500 mt-1">
-                                Otros usuarios podrán ver y utilizar esta ruta como plantilla para sus propias ediciones.
-                                Tu nombre aparecerá como creador.
+                                Otros usuarios podrán ver y clonar esta ruta.
                             </div>
                         </div>
                     </label>
+
+                    {isPublic && (
+                        <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+                            <span className="absolute left-3 top-3 text-slate-400">📝</span>
+                            <textarea
+                                placeholder="Descripción (opcional) - Cuenta de qué va esta ruta"
+                                className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all bg-white min-h-[80px]"
+                                value={description}
+                                onChange={(e) => onDescriptionChange(e.target.value)}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
 

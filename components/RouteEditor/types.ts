@@ -36,8 +36,15 @@ export type RouteData = {
     name: string;
     date: string; // ISO string
     stops: RouteStop[];
-    isPublic?: boolean;
-    description?: string | null;
+    // Campos de configuración de tiempo
+    startMode: "manual" | "scheduled" | "all_present";
+    startTime: string | null; // ISO string
+    hasEndTime: boolean;
+    endTime: string | null; // ISO string
+    defaultStayDuration?: number;
+    // Campos de visibilidad
+    isPublic: boolean;
+    description: string | null;
 };
 
 export interface RouteEditorProps {
