@@ -1,6 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
+import {
+  Copy,
+  Share2,
+  MessageCircle,
+  Twitter,
+  Facebook,
+  Link as LinkIcon,
+  X
+} from "lucide-react";
 
 type ShareInviteCodeProps = {
   inviteCode: string;
@@ -8,38 +18,36 @@ type ShareInviteCodeProps = {
 };
 
 export default function ShareInviteCode({ inviteCode, routeName }: ShareInviteCodeProps) {
-  const [copied, setCopied] = useState(false);
   const [showShare, setShowShare] = useState(false);
 
   const shareUrl = typeof window !== "undefined"
     ? `${window.location.origin}/join/${inviteCode}`
     : `/join/${inviteCode}`;
 
-  const handleCopyCode = async () => {
+  const copyToClipboard = async (text: string, message: string) => {
     try {
-      await navigator.clipboard.writeText(inviteCode);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        toast.success(message);
+      } else {
+        // Fallback for older browsers or non-secure contexts
+        const textarea = document.createElement("textarea");
+        textarea.value = text;
+        textarea.style.position = "fixed"; // Prevent scrolling
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        try {
+          document.execCommand('copy');
+          toast.success(message);
+        } catch (err) {
+          console.error(err);
+          toast.error("No se pudo copiar automáticamente");
+        }
+        document.body.removeChild(textarea);
+      }
     } catch {
-      // Fallback para navegadores que no soportan clipboard
-      const input = document.createElement("input");
-      input.value = inviteCode;
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      document.body.removeChild(input);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handleCopyLink = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      console.error("Error copiando link");
+      toast.error("Error al copiar");
     }
   };
 
@@ -48,11 +56,10 @@ export default function ShareInviteCode({ inviteCode, routeName }: ShareInviteCo
       try {
         await navigator.share({
           title: `Únete a ${routeName}`,
-          text: `¡Te invito a una ruta de cervezas! Usa el código: ${inviteCode}`,
+          text: `🍺 ¡Vente de ruta! Únete a "${routeName}" en Birracrucis.\n\nCódigo: ${inviteCode}`,
           url: shareUrl,
         });
       } catch (err) {
-        // Usuario canceló o error
         if ((err as Error).name !== "AbortError") {
           setShowShare(true);
         }
@@ -62,110 +69,131 @@ export default function ShareInviteCode({ inviteCode, routeName }: ShareInviteCo
     }
   };
 
-  const handleWhatsApp = () => {
-    const text = encodeURIComponent(
-      `🍺 ¡Te invito a "${routeName}"!\n\nÚnete con este link:\n${shareUrl}\n\nO usa el código: ${inviteCode}`
-    );
-    window.open(`https://wa.me/?text=${text}`, "_blank");
-  };
-
-  const handleTelegram = () => {
-    const text = encodeURIComponent(
-      `🍺 ¡Te invito a "${routeName}"!\n\nÚnete con este link:\n${shareUrl}\n\nO usa el código: ${inviteCode}`
-    );
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${text}`, "_blank");
-  };
+  const socialLinks = [
+    {
+      name: "WhatsApp",
+      icon: <MessageCircle className="w-5 h-5" />,
+      color: "bg-[#25D366] hover:bg-[#20bd5a] text-white",
+      action: () => {
+        const text = encodeURIComponent(
+          `🍺 ¡Vente de ruta! Únete a "${routeName}" en Birracrucis.\n\n🔗 Link: ${shareUrl}\n🔑 Código: ${inviteCode}`
+        );
+        window.open(`https://wa.me/?text=${text}`, "_blank");
+      }
+    },
+    {
+      name: "Telegram",
+      icon: <MessageCircle className="w-5 h-5" />, // Telegram doesn't have a distinct Lucide icon, using MessageCircle
+      color: "bg-[#0088cc] hover:bg-[#0077b5] text-white",
+      action: () => {
+        const text = encodeURIComponent(
+          `🍺 ¡Vente de ruta! Únete a "${routeName}" en Birracrucis.\n\n🔗 Link: ${shareUrl}\n🔑 Código: ${inviteCode}`
+        );
+        window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${text}`, "_blank");
+      }
+    },
+    {
+      name: "X (Twitter)",
+      icon: <Twitter className="w-5 h-5" />,
+      color: "bg-black hover:bg-zinc-800 text-white",
+      action: () => {
+        const text = encodeURIComponent(
+          `🍺 ¡Vente de ruta! Únete a "${routeName}" en Birracrucis. Código: ${inviteCode}`
+        );
+        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`, "_blank");
+      }
+    },
+    {
+      name: "Facebook",
+      icon: <Facebook className="w-5 h-5" />,
+      color: "bg-[#1877F2] hover:bg-[#166fe5] text-white",
+      action: () => {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank");
+      }
+    }
+  ];
 
   return (
-    <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-bold text-amber-800 flex items-center gap-2">
-          <span>🔗</span> Invitar Amigos
+    <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-5 border border-amber-200 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-bold text-amber-900 flex items-center gap-2 text-base">
+          <span className="text-xl">🎟️</span> Invitar Amigos
         </h3>
         <button
           onClick={handleShare}
-          className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-600 transition-colors flex items-center gap-2"
+          className="bg-amber-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-amber-600 transition-all shadow-md active:scale-95 flex items-center gap-1.5"
         >
-          <span>📤</span> Compartir
+          <Share2 className="w-3.5 h-3.5" />
+          Compartir
         </button>
       </div>
 
       {/* Código de Invitación */}
-      <div className="flex items-center gap-2 mb-3">
-        <div className="flex-1 bg-white rounded-lg px-4 py-3 font-mono text-lg font-bold text-center tracking-widest text-slate-800 border border-amber-200">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="flex-1 bg-white rounded-xl px-4 py-3 font-mono text-xl font-bold text-center tracking-widest text-slate-800 border-2 border-amber-100 shadow-inner select-all">
           {inviteCode}
         </div>
         <button
-          onClick={handleCopyCode}
-          className={`px-4 py-3 rounded-lg font-bold transition-all ${
-            copied
-              ? "bg-green-500 text-white"
-              : "bg-white text-amber-700 border border-amber-200 hover:bg-amber-100"
-          }`}
+          onClick={() => copyToClipboard(inviteCode, "Código copiado al portapapeles")}
+          className="px-4 py-3 rounded-xl font-bold transition-all bg-white text-amber-600 border-2 border-amber-100 hover:bg-amber-50 hover:border-amber-200 active:scale-95 shadow-sm"
+          title="Copiar código"
         >
-          {copied ? "✓" : "📋"}
+          <Copy className="w-5 h-5" />
         </button>
       </div>
 
       {/* Link completo */}
       <div className="flex items-center gap-2">
-        <div className="flex-1 bg-white/50 rounded-lg px-3 py-2 text-xs text-slate-600 truncate border border-amber-100">
+        <div className="flex-1 bg-white/60 rounded-lg px-3 py-2 text-xs text-slate-500 truncate border border-amber-100 font-mono select-all">
           {shareUrl}
         </div>
         <button
-          onClick={handleCopyLink}
-          className="text-xs text-amber-700 hover:text-amber-800 font-medium whitespace-nowrap"
+          onClick={() => copyToClipboard(shareUrl, "Enlace copiado al portapapeles")}
+          className="text-amber-700 hover:text-amber-900 rounded p-1 hover:bg-amber-100 transition-colors"
+          title="Copiar enlace"
         >
-          Copiar link
+          <Copy className="w-3.5 h-3.5" />
         </button>
       </div>
 
-      {/* Modal de compartir */}
+      {/* Modal de compartir (Custom Fallback/Desktop) */}
       {showShare && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="font-bold text-lg">Compartir Invitación</h3>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-t-2xl sm:rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="font-bold text-lg text-slate-800">Compartir Invitación</h3>
               <button
                 onClick={() => setShowShare(false)}
-                className="text-slate-400 hover:text-slate-600"
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
-              <button
-                onClick={handleWhatsApp}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-green-500 text-white hover:bg-green-600 transition-colors"
-              >
-                <span className="text-2xl">💬</span>
-                <span className="font-medium">WhatsApp</span>
-              </button>
-
-              <button
-                onClick={handleTelegram}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-blue-500 text-white hover:bg-blue-600 transition-colors"
-              >
-                <span className="text-2xl">✈️</span>
-                <span className="font-medium">Telegram</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  handleCopyLink();
-                  setShowShare(false);
-                }}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
-              >
-                <span className="text-2xl">🔗</span>
-                <span className="font-medium">Copiar Link</span>
-              </button>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {socialLinks.map((link) => (
+                <button
+                  key={link.name}
+                  onClick={link.action}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl transition-all shadow-sm hover:shadow-md active:scale-95 font-medium ${link.color}`}
+                >
+                  {link.icon}
+                  <span className="text-sm">{link.name}</span>
+                </button>
+              ))}
             </div>
 
-            <p className="text-xs text-slate-500 text-center mt-4">
-              Código: <span className="font-mono font-bold">{inviteCode}</span>
-            </p>
+            <button
+              onClick={() => {
+                copyToClipboard(shareUrl, "Enlace copiado al portapapeles");
+                setShowShare(false);
+              }}
+              className="w-full flex items-center justify-center gap-2 p-3 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition-all active:scale-95 font-bold"
+            >
+              <LinkIcon className="w-4 h-4" />
+              Copiar Enlace
+            </button>
+
           </div>
         </div>
       )}

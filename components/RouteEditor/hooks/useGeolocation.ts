@@ -26,7 +26,7 @@ export function useGeolocation() {
                 setIsLoading(false);
             },
             (err) => {
-                console.error("Error geolocation:", err);
+                // console.error("Error geolocation:", err);
                 setError("No se pudo obtener la ubicación.");
                 setIsLoading(false);
             },

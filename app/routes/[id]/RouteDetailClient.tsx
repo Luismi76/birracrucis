@@ -14,6 +14,7 @@ import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
 import InvitationManager from "@/components/InvitationManager";
 import PricePicker from "@/components/PricePicker";
+import { toast } from "sonner";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -113,11 +114,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [showSummary, setShowSummary] = useState(false);
 
-  // Debug mode
-  const [showDebug, setShowDebug] = useState(false);
-  const [simLat, setSimLat] = useState("");
-  const [simLng, setSimLng] = useState("");
-  const [simActive, setSimActive] = useState(false);
+
 
   // Tabs simplificadas
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
@@ -331,7 +328,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setPosition(newPos);
         setAccuracy(pos.coords.accuracy ?? null);
-        setSimActive(false);
+
         onPositionChange?.(newPos);
       },
       (err) => {
@@ -350,20 +347,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
-  const applySimulatedPosition = () => {
-    const lat = Number(simLat);
-    const lng = Number(simLng);
-    if (!isNaN(lat) && !isNaN(lng)) {
-      const newPos = { lat, lng };
-      setPosition(newPos);
-      setAccuracy(null);
-      setSimActive(true);
-      onPositionChange?.(newPos);
-    }
-  };
+
 
   const isPositionReliable = () => {
-    if (simActive) return true;
+
     if (accuracy == null) return false;
     return accuracy <= ACCURACY_THRESHOLD;
   };
@@ -417,6 +404,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   const handleAddRound = async (stopId: string) => {
+    if (!navigator.onLine) {
+      toast.error("No tienes conexión a internet");
+      return;
+    }
+
     // Contar participantes en el bar
     const peopleAtBar = getParticipantsAtBar(stopId);
 
@@ -444,6 +436,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           body: JSON.stringify({ stopId, type: 'beer' }),
         }).catch(console.error);
       }
+      toast.success("¡Ronda registrada!");
     } catch (err) {
       console.error(err);
       // Rollback
@@ -455,7 +448,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         ...prev,
         [stopId]: Math.max(0, (prev[stopId] || 0) - peopleAtBar)
       }));
-      alert("Error al registrar la ronda. Inténtalo de nuevo.");
+      toast.error("Error al registrar la ronda. Inténtalo de nuevo.");
     }
   };
 
@@ -500,7 +493,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Gasto en el bar actual
   const currentBarSpent = activeStop
     ? (beers[activeStop.id] || 0) * (barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE) +
-      (tapas[activeStop.id] || 0) * (barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE)
+    (tapas[activeStop.id] || 0) * (barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE)
     : 0;
 
   return (
@@ -553,12 +546,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         <div className="bg-amber-100 text-amber-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide">
           {isRouteComplete ? "🎉 Ruta Completada" : `Parada ${currentStopIndex + 1} de ${stops.length}`}
         </div>
-        <button
-          onClick={() => setShowDebug(!showDebug)}
-          className="text-xs text-slate-300 hover:text-slate-500"
-        >
-          🐞
-        </button>
+
       </div>
 
       {/* 3. Tarjeta Principal (Bar Actual) - TODO INTEGRADO */}
@@ -616,16 +604,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               return (
                 <button
                   onClick={() => handleAddRound(activeStop.id)}
-                  disabled={!canCheckIn && !showDebug}
-                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex flex-col items-center justify-center gap-1 ${
-                    (canCheckIn || showDebug)
-                      ? isOverPlannedRounds
-                        ? "bg-orange-500 text-white hover:bg-orange-600 active:scale-95 shadow-lg"
-                        : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
-                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                  }`}
+                  disabled={!canCheckIn}
+                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all flex flex-col items-center justify-center gap-1 ${(canCheckIn)
+                    ? isOverPlannedRounds
+                      ? "bg-orange-500 text-white hover:bg-orange-600 active:scale-95 shadow-lg"
+                      : "bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-lg"
+                    : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    }`}
                 >
-                  {(canCheckIn || showDebug) ? (
+                  {(canCheckIn) ? (
                     <>
                       <span>{isOverPlannedRounds ? '🍺 Otra Ronda Mas!' : '🍺 Pedir Ronda'}</span>
                       <span className="text-xs opacity-80">+{peopleAtBar} {peopleAtBar === 1 ? 'cerveza' : 'cervezas'} ({peopleAtBar} {peopleAtBar === 1 ? 'persona' : 'personas'})</span>
@@ -684,7 +671,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => handleRemoveBeer(activeStop.id)}
-                    disabled={!canCheckIn && !showDebug}
+                    disabled={!canCheckIn}
                     className="w-11 h-11 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors active-scale"
                     aria-label="Quitar cerveza"
                   >
@@ -693,7 +680,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <span className="w-8 text-center font-bold text-xl">{beers[activeStop.id] || 0}</span>
                   <button
                     onClick={() => handleAddBeer(activeStop.id)}
-                    disabled={!canCheckIn && !showDebug}
+                    disabled={!canCheckIn}
                     className="w-11 h-11 rounded-full bg-amber-500 text-white font-bold text-xl hover:bg-amber-600 disabled:opacity-50 transition-colors active-scale"
                     aria-label="Añadir cerveza"
                   >
@@ -722,7 +709,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => handleRemoveTapa(activeStop.id)}
-                    disabled={!canCheckIn && !showDebug}
+                    disabled={!canCheckIn}
                     className="w-11 h-11 rounded-full bg-slate-200 text-slate-600 font-bold text-xl hover:bg-slate-300 disabled:opacity-50 transition-colors active-scale"
                     aria-label="Quitar tapa"
                   >
@@ -731,7 +718,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <span className="w-8 text-center font-bold text-xl">{tapas[activeStop.id] || 0}</span>
                   <button
                     onClick={() => handleAddTapa(activeStop.id)}
-                    disabled={!canCheckIn && !showDebug}
+                    disabled={!canCheckIn}
                     className="w-11 h-11 rounded-full bg-orange-500 text-white font-bold text-xl hover:bg-orange-600 disabled:opacity-50 transition-colors active-scale"
                     aria-label="Añadir tapa"
                   >
@@ -742,7 +729,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             </div>
 
             {/* Acciones: Foto + Meter prisa */}
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-2 items-start">
               <PhotoCapture
                 routeId={routeId}
                 routeName={routeName}
@@ -753,7 +740,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               />
               <NudgeButton
                 routeId={routeId}
-                isAtCurrentStop={canCheckIn || showDebug}
+                isAtCurrentStop={canCheckIn}
                 compact
               />
             </div>
@@ -769,7 +756,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       )}
 
       {/* Nudge para los que no estan en el bar */}
-      {!canCheckIn && !showDebug && !isRouteComplete && (
+      {!canCheckIn && !isRouteComplete && (
         <NudgeButton routeId={routeId} isAtCurrentStop={false} />
       )}
 
@@ -794,41 +781,37 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       <div className="flex bg-slate-100 rounded-xl p-1">
         <button
           onClick={() => setActiveTab("route")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
-            activeTab === "route"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "route"
+            ? "bg-white text-slate-900 shadow-sm"
+            : "text-slate-500 hover:text-slate-700"
+            }`}
         >
           🗺️ Ruta
         </button>
         <button
           onClick={() => setActiveTab("photos")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
-            activeTab === "photos"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "photos"
+            ? "bg-white text-slate-900 shadow-sm"
+            : "text-slate-500 hover:text-slate-700"
+            }`}
         >
           📸 Fotos
         </button>
         <button
           onClick={() => setActiveTab("ratings")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
-            activeTab === "ratings"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "ratings"
+            ? "bg-white text-slate-900 shadow-sm"
+            : "text-slate-500 hover:text-slate-700"
+            }`}
         >
           ⭐ Valorar
         </button>
         <button
           onClick={() => setActiveTab("group")}
-          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${
-            activeTab === "group"
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-700"
-          }`}
+          className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-all ${activeTab === "group"
+            ? "bg-white text-slate-900 shadow-sm"
+            : "text-slate-500 hover:text-slate-700"
+            }`}
         >
           👥 Grupo
         </button>
@@ -896,13 +879,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
               return (
                 <div key={stop.id} className={`flex items-start gap-3 py-3 ${isCurrent ? 'scale-105 origin-left transition-transform' : 'opacity-80'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 shrink-0 transition-colors ${
-                    isDone
-                      ? "bg-green-500 border-green-100 text-white"
-                      : isCurrent
-                        ? "bg-amber-500 border-amber-100 text-white animate-bounce-slow"
-                        : "bg-white border-slate-200 text-slate-400"
-                  }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center border-4 shrink-0 transition-colors ${isDone
+                    ? "bg-green-500 border-green-100 text-white"
+                    : isCurrent
+                      ? "bg-amber-500 border-amber-100 text-white animate-bounce-slow"
+                      : "bg-white border-slate-200 text-slate-400"
+                    }`}>
                     {isDone ? "✓" : (index + 1)}
                   </div>
 
@@ -911,9 +893,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       <h4 className={`font-bold truncate ${isCurrent ? 'text-slate-900' : 'text-slate-600'}`}>
                         {stop.name}
                       </h4>
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        isDone ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-500"
-                      }`}>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${isDone ? "bg-green-100 text-green-700" : "bg-slate-200 text-slate-500"
+                        }`}>
                         {rounds[stop.id] || 0}/{stop.plannedRounds}
                       </span>
                     </div>
@@ -927,21 +908,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       </div>
                     )}
 
-                    {showDebug && (
-                      <button
-                        onClick={() => {
-                          setSimLat(stop.lat.toString());
-                          setSimLng(stop.lng.toString());
-                          setSimActive(true);
-                          const newPos = { lat: stop.lat, lng: stop.lng };
-                          setPosition(newPos);
-                          onPositionChange?.(newPos);
-                        }}
-                        className="mt-2 text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                      >
-                        📍 Teleport
-                      </button>
-                    )}
+
                   </div>
                 </div>
               );
@@ -1012,40 +979,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         currentUserId={currentUserId}
       />
 
-      {/* Debug Console */}
-      {showDebug && (
-        <div className="bg-slate-900 text-slate-300 p-4 rounded-xl text-xs space-y-3">
-          <h4 className="font-bold text-white uppercase tracking-wider">Debug Console</h4>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block mb-1">Lat</label>
-              <input
-                value={simLat}
-                onChange={e => setSimLat(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1"
-              />
-            </div>
-            <div>
-              <label className="block mb-1">Lng</label>
-              <input
-                value={simLng}
-                onChange={e => setSimLng(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1"
-              />
-            </div>
-          </div>
-          <button
-            onClick={applySimulatedPosition}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-500"
-          >
-            Aplicar Posicion
-          </button>
-          <div className="font-mono text-[10px] break-all">
-            Pos: {position?.lat.toFixed(5)}, {position?.lng.toFixed(5)} <br />
-            Acc: {accuracy}m | Dist: {distToActive}m
-          </div>
-        </div>
-      )}
+
 
       {/* Price Picker Modal */}
       {pricePickerOpen && (

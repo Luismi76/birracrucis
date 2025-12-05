@@ -16,7 +16,7 @@ export function useManualBarCreation({ defaultStayDuration, onBarAdded }: UseMan
 
     // Handler para clic en el mapa (modo manual)
     const handleMapClick = useCallback((lat: number, lng: number) => {
-        console.log("Map clicked at:", lat, lng);
+        // console.log("Map clicked at:", lat, lng);
         setPendingManualBar({ lat, lng });
         setManualBarName("");
         setManualBarAddress("");

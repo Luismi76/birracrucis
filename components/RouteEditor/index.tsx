@@ -2,6 +2,7 @@
 
 import { FormEvent, useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import BarSearchMap from "@/components/BarSearchMap";
 import { useLoadScript } from "@react-google-maps/api";
 import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
@@ -204,10 +205,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             });
 
             setOrderedIds((prev) => prev.filter((id) => id !== placeId));
+            toast.info("Bar eliminado de la ruta");
         } else {
             const place = barSearch.places.find((p) => p.placeId === placeId);
             if (!place) {
-                console.warn("Place no encontrado en places:", placeId);
+                // console.warn("Place no encontrado en places:", placeId);
                 return;
             }
 
@@ -226,6 +228,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             });
 
             setOrderedIds((prev) => [...prev, placeId]);
+            toast.success("Bar añadido a la ruta");
         }
     };
 
@@ -358,13 +361,15 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             let fullStartTime: string | null = null;
             if (startTime && date) {
                 const dateOnly = date.split("T")[0];
-                fullStartTime = new Date(`${dateOnly}T${startTime}`).toISOString();
+                // Guardar en hora local sin convertir a UTC
+                fullStartTime = `${dateOnly}T${startTime}:00`;
             }
 
             let fullEndTime: string | null = null;
             if (hasEndTime && endTime && date) {
                 const dateOnly = date.split("T")[0];
-                fullEndTime = new Date(`${dateOnly}T${endTime}`).toISOString();
+                // Guardar en hora local sin convertir a UTC
+                fullEndTime = `${dateOnly}T${endTime}:00`;
             }
 
             const url = isEditing ? `/api/routes/${initialData?.id}` : "/api/routes";
@@ -375,7 +380,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name,
-                    date: new Date(date).toISOString(),
+                    date: date.includes("T") ? date.split("T")[0] + "T00:00:00" : `${date}T00:00:00`,
                     stops: stopsPayload,
                     startMode,
                     startTime: fullStartTime,
@@ -387,10 +392,13 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Error al guardar la ruta");
 
+            toast.success(isEditing ? "Ruta actualizada correctamente" : "Ruta creada correctamente");
             router.push(`/routes/${data.route.id}`);
             router.refresh();
         } catch (err) {
-            setError((err as Error).message);
+            const message = (err as Error).message;
+            setError(message);
+            toast.error(message);
             setLoading(false);
         }
     };

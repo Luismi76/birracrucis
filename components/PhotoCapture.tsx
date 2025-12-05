@@ -104,11 +104,35 @@ export default function PhotoCapture({
     }
   };
 
-  const handleShare = async (platform: "twitter" | "instagram" | "whatsapp" | "copy") => {
+  const handleShare = async (platform: "twitter" | "instagram" | "whatsapp" | "copy" | "native") => {
     const text = caption
       ? `${caption} ${hashtag}`
       : `En ${stopName || routeName} ${hashtag}`;
 
+    // Si es compartir nativo y la Web Share API está disponible
+    if (platform === "native" && navigator.share && preview) {
+      try {
+        // Convertir data URL a Blob
+        const response = await fetch(preview);
+        const blob = await response.blob();
+        const file = new File([blob], `birracrucis-${Date.now()}.jpg`, { type: "image/jpeg" });
+
+        // Verificar si el navegador puede compartir archivos
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: routeName,
+            text: text,
+          });
+          return;
+        }
+      } catch (err) {
+        console.error("Error compartiendo con Web Share API:", err);
+        // Continuar con el fallback
+      }
+    }
+
+    // Fallback para plataformas específicas (solo texto)
     switch (platform) {
       case "twitter":
         window.open(
@@ -160,9 +184,8 @@ export default function PhotoCapture({
         // Botón para tomar foto
         <button
           onClick={() => fileInputRef.current?.click()}
-          className={`flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 ${
-            compact ? "py-2 px-3 text-sm" : "w-full py-3 px-4"
-          }`}
+          className={`flex items-center justify-center gap-2 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 ${compact ? "py-2 px-3 text-sm" : "w-full py-3 px-4"
+            }`}
         >
           <svg className={compact ? "w-4 h-4" : "w-5 h-5"} fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -209,7 +232,19 @@ export default function PhotoCapture({
               <p className="text-red-500 text-sm bg-red-50 p-2 rounded-lg">{error}</p>
             )}
 
-            {/* Botones de compartir */}
+            {/* Botón principal de compartir (Web Share API - incluye imagen) */}
+            <button
+              onClick={() => handleShare("native")}
+              className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3 rounded-xl font-bold hover:from-blue-600 hover:to-purple-700 transition-all flex items-center justify-center gap-2 shadow-lg"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Compartir Foto
+            </button>
+
+            {/* Botones de compartir específicos (solo texto) */}
+            <p className="text-xs text-slate-500 text-center">O compartir solo texto en:</p>
             <div className="flex gap-2">
               <button
                 onClick={() => handleShare("twitter")}

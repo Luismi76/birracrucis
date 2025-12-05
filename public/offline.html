@@ -162,21 +162,28 @@
   </div>
 
   <script>
-    // Verificar rutas en cache
+    // Verificar rutas en cache (agnostico al nombre del cache)
     if ('caches' in window) {
-      caches.open('birracrucis-v1').then(cache => {
-        cache.keys().then(keys => {
-          const routeKeys = keys.filter(req => req.url.includes('/api/routes/'));
-          const statusEl = document.getElementById('cacheStatus');
+      caches.keys().then(async (keys) => {
+        let routeCount = 0;
+        
+        for (const key of keys) {
+            const cache = await caches.open(key);
+            const requests = await cache.keys();
+            const routeRequests = requests.filter(req => req.url.includes('/api/routes/'));
+            routeCount += routeRequests.length;
+        }
 
-          if (routeKeys.length > 0) {
-            statusEl.textContent = `${routeKeys.length} ruta(s) disponible(s) offline`;
-            statusEl.style.color = '#059669';
-          } else {
-            statusEl.textContent = 'No hay rutas en cache';
-          }
-        });
-      }).catch(() => {
+        const statusEl = document.getElementById('cacheStatus');
+        if (routeCount > 0) {
+          statusEl.textContent = `${routeCount} ruta(s) disponible(s) offline`;
+          statusEl.style.color = '#059669';
+          statusEl.style.fontWeight = 'bold';
+        } else {
+          statusEl.textContent = 'No hay rutas guardadas recientemente';
+        }
+      }).catch((err) => {
+        console.error(err);
         document.getElementById('cacheStatus').textContent = 'Cache no disponible';
       });
     } else {

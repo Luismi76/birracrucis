@@ -62,6 +62,21 @@ function SignInContent() {
           Continuar con Google
         </button>
 
+        {/* Login Desarrollo */}
+        {process.env.NODE_ENV === "development" && (
+          <button
+            onClick={() => signIn("credentials", {
+              username: "dev",
+              password: "password",
+              callbackUrl
+            })}
+            className="flex items-center justify-center gap-3 bg-slate-800 hover:bg-slate-900 text-white font-medium py-3 px-6 rounded-xl shadow-md border border-slate-700 transition-all active:scale-95"
+          >
+            <span className="text-xl">🛠️</span>
+            Login Desarrollo (Test)
+          </button>
+        )}
+
       </div>
 
       <p className="mt-8 text-amber-600 text-xs text-center max-w-xs">

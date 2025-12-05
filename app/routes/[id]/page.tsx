@@ -1,4 +1,5 @@
 // app/routes/[id]/page.tsx
+import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
@@ -9,6 +10,38 @@ type RoutePageProps = {
   // En Next 16 params es una Promise
   params: Promise<{ id: string }>;
 };
+
+export async function generateMetadata({ params }: RoutePageProps): Promise<Metadata> {
+  const { id } = await params;
+
+  const route = await prisma.route.findUnique({
+    where: { id },
+    select: { name: true, date: true, inviteCode: true },
+  });
+
+  if (!route) {
+    return {
+      title: "Ruta no encontrada - Birracrucis",
+    };
+  }
+
+  const dateStr = route.date.toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  return {
+    title: `${route.name} - Birracrucis`,
+    description: `Únete a la ruta "${route.name}" el ${dateStr}. Planifica, bebe y disfruta con tus amigos.`,
+    openGraph: {
+      title: `${route.name} - Birracrucis`,
+      description: `Únete a la ruta "${route.name}" el ${dateStr}.`,
+      url: `https://birracrucis.com/join/${route.inviteCode}`, // Ajustar dominio en prod
+      images: ["/android-chrome-512x512.png"], // O generar imagen dinámica en el futuro
+    },
+  };
+}
 
 export default async function RouteDetailPage({ params }: RoutePageProps) {
   const { id } = await params;
@@ -75,8 +108,14 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
   }));
 
   // Formatear startTime como HH:MM
+  // Como guardamos en formato local, extraemos directamente la hora sin conversión
   const startTimeStr = route.startTime
-    ? route.startTime.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", hour12: false })
+    ? new Date(route.startTime).toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+      timeZone: "Europe/Madrid" // Forzar zona horaria española
+    })
     : "12:00";
 
   return (

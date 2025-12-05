@@ -1,5 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 
 export const authOptions: NextAuthOptions = {
   // Sin adapter - usa JWT puro, más rápido en serverless
@@ -7,6 +8,23 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    }),
+    CredentialsProvider({
+      name: "Modo Desarrollo",
+      credentials: {
+        username: { label: "Username", type: "text", placeholder: "dev" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        // En desarrollo, cualquier login es valido
+        const user = {
+          id: "dev-user-123",
+          name: "Usuario de Prueba",
+          email: "test@birracrucis.com",
+          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+        };
+        return user;
+      }
     }),
   ],
   session: {

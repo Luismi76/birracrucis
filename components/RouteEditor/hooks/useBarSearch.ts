@@ -109,7 +109,7 @@ export function useBarSearch({ centerLat, centerLng, radius, isLoaded, selectedB
             }
         } catch (err) {
             setPlacesError("Error al buscar el lugar. Inténtalo de nuevo.");
-            console.error(err);
+            // console.error(err);
             return null;
         } finally {
             setIsGeocoding(false);

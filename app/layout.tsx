@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppWrapper from "@/components/AppWrapper";
 import AuthProvider from "@/components/AuthProvider";
+import { Toaster } from "sonner";
+import OfflineBanner from "@/components/OfflineBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -78,6 +80,8 @@ export default function RootLayout({
       >
         <AuthProvider>
           <AppWrapper>{children}</AppWrapper>
+          <Toaster richColors position="top-center" />
+          <OfflineBanner />
         </AuthProvider>
       </body>
     </html>
