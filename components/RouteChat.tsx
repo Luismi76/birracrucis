@@ -116,7 +116,7 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
 
       {/* Chat Panel */}
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white md:inset-auto md:bottom-20 md:right-4 md:w-96 md:h-[500px] md:rounded-2xl md:shadow-2xl md:border">
+        <div className="fixed inset-0 z-50 pointer-events-auto flex flex-col bg-white md:inset-auto md:bottom-20 md:right-4 md:w-96 md:h-[500px] md:rounded-2xl md:shadow-2xl md:border">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b bg-blue-600 text-white md:rounded-t-2xl">
             <h3 className="font-bold flex items-center gap-2">
