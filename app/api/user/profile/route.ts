@@ -124,10 +124,28 @@ export async function PATCH(req: NextRequest) {
       where: { email: session.user.email },
       data: updateData,
       select: {
+        id: true,
         autoCheckinEnabled: true,
         notificationsEnabled: true,
       },
     });
+
+    // Si se actualizó la imagen, forzar actualización en la tabla Participant
+    // para que el mapa lo refleje sin esperar al siguiente check-in/sync
+    if (updateData.image) {
+      // No necesitamos hacer nada explícito si el endpoint GET /participants hace join con User.
+      // Verificamos GET /api/routes/[id]/participants/route.ts:
+      //   include: { user: { select: { image: true ... } } }
+      // ¡Correcto! El front ya lee del usuario.
+      // PERO: si el marker usa participant.image y este venía de user.image...
+      // Espera, el endpoint GET devuelve `image: p.user.image`.
+      // Entonces, con actualizar el User basta.
+      // EL PROBLEMA ERA QUE EL POST SOBREESCRIBÍA LA IMAGEN DEL USER CON LA DE LA SESIÓN.
+      // Ese fix ya está hecho en el otro archivo.
+
+      // Confirmación: Si la app usa 'session' para mostrar el avatar en el header, 
+      // necesitará refrescar la sesión o el cliente leer del perfil.
+    }
 
     return NextResponse.json({
       ok: true,

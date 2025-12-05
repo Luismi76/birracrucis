@@ -77,7 +77,7 @@ export async function POST(
     // Obtener o crear usuario
     const user = await prisma.user.upsert({
       where: { email: session.user.email },
-      update: { name: session.user.name, image: session.user.image },
+      update: { name: session.user.name }, // Don't overwrite image from session, let user keep their custom avatar
       create: { email: session.user.email, name: session.user.name, image: session.user.image },
     });
 

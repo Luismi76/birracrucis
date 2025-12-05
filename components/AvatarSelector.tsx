@@ -13,14 +13,24 @@ type AvatarSelectorProps = {
 // Colección de avatares divertidos (DiceBear - Lorelei & Adventurer)
 // Usamos URLs estáticas para evitar hidratación fallida si son aleatorias
 const PRESET_AVATARS = [
-    "https://api.dicebear.com/7.x/lorelei/svg?seed=Felix&backgroundColor=b6e3f4",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Buddy&backgroundColor=c0aede",
-    "https://api.dicebear.com/7.x/lorelei/svg?seed=Aneka&backgroundColor=ffdfbf",
+    // Adventurer (Aventureros)
+    "https://api.dicebear.com/7.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
     "https://api.dicebear.com/7.x/adventurer/svg?seed=Chloe&backgroundColor=d1d4f9",
-    "https://api.dicebear.com/7.x/lorelei/svg?seed=Milo&backgroundColor=ffd5dc",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Cuddles&backgroundColor=b6e3f4",
-    "https://api.dicebear.com/7.x/lorelei/svg?seed=Bella&backgroundColor=c0aede",
-    "https://api.dicebear.com/7.x/adventurer/svg?seed=Oliver&backgroundColor=ffdfbf",
+    // Bottts (Robots)
+    "https://api.dicebear.com/7.x/bottts/svg?seed=Cuddles&backgroundColor=ffdfbf",
+    "https://api.dicebear.com/7.x/bottts/svg?seed=Milo&backgroundColor=c0aede",
+    // Fun Emoji (Caras locas)
+    "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Sassy&backgroundColor=ffd5dc",
+    "https://api.dicebear.com/7.x/fun-emoji/svg?seed=Happy&backgroundColor=b6e3f4",
+    // Personas (Divertidos)
+    "https://api.dicebear.com/7.x/personas/svg?seed=Buddy&backgroundColor=ffdfbf",
+    "https://api.dicebear.com/7.x/personas/svg?seed=Annie&backgroundColor=c0aede",
+    // Micah (Artísticos)
+    "https://api.dicebear.com/7.x/micah/svg?seed=Bear&backgroundColor=ffd5dc",
+    "https://api.dicebear.com/7.x/micah/svg?seed=Leo&backgroundColor=d1d4f9",
+    // Open Peeps (Garabatos)
+    "https://api.dicebear.com/7.x/open-peeps/svg?seed=Jack&backgroundColor=b6e3f4",
+    "https://api.dicebear.com/7.x/open-peeps/svg?seed=Sam&backgroundColor=ffdfbf",
 ];
 
 export default function AvatarSelector({ currentAvatar, onSelect }: AvatarSelectorProps) {
@@ -98,8 +108,8 @@ export default function AvatarSelector({ currentAvatar, onSelect }: AvatarSelect
                             key={i}
                             onClick={() => handlePresetClick(url)}
                             className={`relative aspect-square rounded-xl overflow-hidden border-2 transition-all active:scale-95 ${selected === url
-                                    ? "border-amber-500 ring-2 ring-amber-500/30 scale-105"
-                                    : "border-slate-100 hover:border-slate-300"
+                                ? "border-amber-500 ring-2 ring-amber-500/30 scale-105"
+                                : "border-slate-100 hover:border-slate-300"
                                 }`}
                         >
                             <img src={url} alt={`Avatar ${i}`} className="w-full h-full object-cover" />
