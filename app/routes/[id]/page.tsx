@@ -105,6 +105,7 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     plannedRounds: s.plannedRounds,
     maxRounds: s.maxRounds,
     actualRounds: s.actualRounds,
+    googlePlaceId: s.googlePlaceId,
   }));
 
   // Formatear startTime como HH:MM

@@ -37,6 +37,7 @@ type Stop = {
   plannedRounds: number;
   maxRounds: number | null;
   actualRounds: number;
+  googlePlaceId?: string | null;
 };
 
 type Participant = {

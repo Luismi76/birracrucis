@@ -14,6 +14,7 @@ import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
 import InvitationManager from "@/components/InvitationManager";
 import PricePicker from "@/components/PricePicker";
+import BarPlaceInfo from "@/components/BarPlaceInfo";
 import { toast } from "sonner";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
@@ -41,6 +42,7 @@ type StopClient = {
   arrivalTime?: string;
   departureTime?: string;
   durationMinutes?: number;
+  googlePlaceId?: string | null;
 };
 
 type Participant = {
@@ -391,6 +393,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     if (!stop) return 1; // Al menos el usuario actual
 
     const atBar = participants.filter(p => {
+      // Evitar contar al usuario actual dos veces (si viene en la lista de participantes)
+      // Asumimos que p.id es el ID del usuario o participante
+      if (currentUserId && (p.id === currentUserId || (p as any).userId === currentUserId)) return false;
+
       if (p.lat === 0 && p.lng === 0) return false;
       const dist = distanceInMeters(p.lat, p.lng, stop.lat, stop.lng);
       return dist <= RADIUS_METERS;
@@ -648,6 +654,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       {canCheckIn ? "📍 Estás aquí" : `${distToActive}m`}
                     </span>
                   </div>
+
+                  {/* Info de Google Places */}
+                  <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
 
                   {/* Progreso de Rondas */}
                   <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
