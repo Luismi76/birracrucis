@@ -27,7 +27,7 @@ export default function PhotoCapture({
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const hashtag = `#${routeName.replace(/\s+/g, "")}Birracrucis`;
+  const hashtag = `#${routeName.replace(/\s+/g, "")} #Birracrucis #${stopName?.replace(/\s+/g, "")}`;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
