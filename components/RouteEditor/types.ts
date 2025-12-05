@@ -37,7 +37,7 @@ export type RouteData = {
     date: string; // ISO string
     stops: RouteStop[];
     isPublic?: boolean;
-    description?: string;
+    description?: string | null;
 };
 
 export interface RouteEditorProps {
