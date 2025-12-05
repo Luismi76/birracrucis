@@ -24,6 +24,8 @@ type UpdateRouteBody = {
     startTime?: string | null; // ISO string
     hasEndTime?: boolean;
     endTime?: string | null; // ISO string
+    isPublic?: boolean;
+    description?: string | null;
 };
 
 // Verifica si el usuario es creador o participante de la ruta
@@ -171,6 +173,8 @@ export async function PUT(
                     startTime: startTime ? new Date(startTime) : null,
                     hasEndTime: hasEndTime ?? false,
                     endTime: endTime ? new Date(endTime) : null,
+                    isPublic: body.isPublic ?? false,
+                    description: body.description ?? null,
                 },
             });
 
