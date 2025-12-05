@@ -227,7 +227,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 newMap.set(placeId, {
                     placeId,
                     bar: place,
-                    plannedRounds: 1,
+                    plannedRounds: 3,
                     maxRounds: undefined,
                     isStart: isFirst,
                     stayDuration: defaultStayDuration,

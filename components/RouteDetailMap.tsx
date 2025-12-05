@@ -1,6 +1,6 @@
 "use client";
 
-import { GoogleMap, Marker, DirectionsRenderer, DirectionsService, InfoWindow, useLoadScript } from "@react-google-maps/api";
+import { GoogleMap, Marker, DirectionsRenderer, DirectionsService, InfoWindow, useLoadScript, OverlayView } from "@react-google-maps/api";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
 
@@ -131,72 +131,6 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
         return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     };
 
-    // SVG para marcador de grupo (Cluster)
-    const createClusterMarker = (count: number) => {
-        const svg = `
-        <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="22" cy="22" r="21" fill="#f59e0b" stroke="#fff" stroke-width="3"/>
-            <text x="22" y="28" font-size="16" font-weight="bold" text-anchor="middle" fill="#fff">+${count}</text>
-        </svg>
-        `;
-        return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-    };
-
-    // Crear SVG para avatar de participante
-    const createParticipantMarker = (name: string | null, color: string, imageUrl: string | null) => {
-        const initial = name ? name.charAt(0).toUpperCase() : "?";
-
-        // Si tiene imagen, usamos un marcador con imagen
-        if (imageUrl) {
-            const svg = `
-            <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <clipPath id="avatarClip">
-                        <circle cx="22" cy="22" r="18"/>
-                    </clipPath>
-                    <filter id="shadow">
-                        <feDropShadow dx="0" dy="1" stdDeviation="2" flood-opacity="0.3"/>
-                    </filter>
-                </defs>
-                <circle cx="22" cy="22" r="21" fill="${color}" stroke="#fff" stroke-width="3" filter="url(#shadow)"/>
-                <image x="4" y="4" width="36" height="36" xlink:href="${imageUrl}" clip-path="url(#avatarClip)" preserveAspectRatio="xMidYMid slice" />
-            </svg>
-            `;
-            // Nota: Para que xlink:href funcione con URLs externas en data URIs, a veces es tricky.
-            // Para simplicidad en SVG data URI, mejor usar <pattern> o asegurar que la URL sea accesible.
-            // Pero React Google Maps maneja URLs de imagenes directamente en 'icon.url'.
-
-            // Si es URL externa, mejor NO meterla dentro del SVG data URI por temas de CORS/seguridad canvas.
-            // Google Maps soporta URLs directas.
-
-            // Retornamos null para indicar que usemos la URL directa o un CustomOverlay? 
-            // Marker solo soporta URL.
-
-            // Solución robusta: Usar un canvas offscreen para componer o simplemente devolver el SVG sin imagen si es complejo
-            // O mejor: usar la imagen directa escalada.
-
-            // Vamos a intentar una aproximación híbrida: Si tiene imagen, devolver la imagen tal cual escalada y redondeada NO SE PUEDE facilmente con solo URL.
-            // Lo más seguro: Crear un SVG que intente referenciar la imagen. Si falla, fallback.
-            // O mejor aún: Devolver SVG con iniciales si falla, pero si podemos, superponer imagen.
-
-            // Por seguridad y simplicidad: Devolvemos SIEMPRE el SVG de iniciales por ahora, 
-            // ya que incrustar imagen externa en SVG Data URI requiere convertirla a Base64 primero.
-
-            // TODO: Para soportar avatars reales en el mapa, necesitamos convertir la URL a Base64 antes.
-            // Como esto es sincrono, asumimos iniciales. (Mejora futura: pre-fetch images)
-        }
-
-        const svg = `
-        <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="22" cy="22" r="21" fill="${color}" stroke="#fff" stroke-width="3"/>
-            <text x="22" y="28" font-size="18" font-weight="bold" text-anchor="middle" fill="#fff">${initial}</text>
-        </svg>
-        `;
-        return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-    };
-
-    // Helper asíncrono para cargar imagen y crear marcador (Mejora: hacerlo en un useEffect aparte si fuera necesario)
-    // Por ahora usamos la versión síncrona con iniciales o imagen si ya es datauri.
 
     // Agrupamiento simple (Clustering)
     const clusters = useMemo(() => {
@@ -347,56 +281,66 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
                     />
                 )}
 
-                {/* Marcadores de participantes (Agrupados) */}
+                {/* Marcadores de participantes (OverlayView para soporte de avatares) */}
                 {clusters.map((cluster, i) => {
                     const isGroup = cluster.members.length > 1;
                     const firstMember = cluster.members[0];
 
-                    if (isGroup) {
-                        return (
-                            <Marker
-                                key={`cluster-${i}`}
-                                position={{ lat: cluster.lat, lng: cluster.lng }}
-                                icon={{
-                                    url: createClusterMarker(cluster.members.length),
-                                    scaledSize: new google.maps.Size(44, 44),
-                                    anchor: new google.maps.Point(22, 22),
+                    return (
+                        <OverlayView
+                            key={isGroup ? `cluster-${i}` : `participant-${firstMember.odIduserId}`}
+                            position={{ lat: cluster.lat, lng: cluster.lng }}
+                            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                            getPixelPositionOffset={(width, height) => ({
+                                x: -(width / 2),
+                                y: -(height / 2),
+                            })}
+                        >
+                            <div
+                                className={`relative flex items-center justify-center rounded-full shadow-lg cursor-pointer transition-transform hover:scale-110 active:scale-95 ${isGroup ? "w-11 h-11 bg-amber-500 text-white" : "w-11 h-11 bg-white"
+                                    }`}
+                                style={{
+                                    border: isGroup ? "3px solid white" : `3px solid ${PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length]}`,
+                                    zIndex: isGroup ? 200 : 100 + i // Ensure consistent z-index type
                                 }}
-                                title={`${cluster.members.length} personas aquí`}
-                                zIndex={200}
-                                onClick={() => {
-                                    // Zoom in al grupo
-                                    map?.panTo({ lat: cluster.lat, lng: cluster.lng });
-                                    map?.setZoom((map.getZoom() || 14) + 2);
+                                onClick={(e) => {
+                                    e.stopPropagation(); // Prevent map click
+                                    if (isGroup) {
+                                        map?.panTo({ lat: cluster.lat, lng: cluster.lng });
+                                        map?.setZoom((map.getZoom() || 14) + 2);
+                                    }
                                 }}
-                            />
-                        );
-                    } else {
-                        // Individual
-                        return (
-                            <Marker
-                                key={firstMember.odIduserId}
-                                position={{ lat: firstMember.lat, lng: firstMember.lng }}
-                                icon={{
-                                    // Si la imagen es una URL externa (https), Google Maps la carga directo.
-                                    // Si es dataURI (nuestro svg), también.
-                                    // Para soportar avatares reales user.image:
-                                    // Opción A: Usar url de la imagen directo +scaledSize (será cuadrada/rectangular)
-                                    // Opción B: Seguir usando el SVG de iniciales como fallback elegante y rápido.
-                                    // Imple: Usamos SVG de iniciales por consistencia y rendimiento.
-                                    url: createParticipantMarker(
-                                        firstMember.name,
-                                        PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length],
-                                        null // firstMember.image -> Pasamos null para forzar iniciales por ahora y evitar problemas CORS en SVG
-                                    ),
-                                    scaledSize: new google.maps.Size(44, 44),
-                                    anchor: new google.maps.Point(22, 22),
-                                }}
-                                title={firstMember.name || "Participante"}
-                                zIndex={100 + i}
-                            />
-                        );
-                    }
+                            >
+                                {isGroup ? (
+                                    <span className="font-bold text-sm">+{cluster.members.length}</span>
+                                ) : (
+                                    <>
+                                        {firstMember.image ? (
+                                            <img
+                                                src={firstMember.image}
+                                                alt={firstMember.name || "User"}
+                                                className="w-full h-full rounded-full object-cover p-[2px]"
+                                            />
+                                        ) : (
+                                            <span
+                                                className="font-bold text-lg"
+                                                style={{ color: PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length] }}
+                                            >
+                                                {firstMember.name ? firstMember.name.charAt(0).toUpperCase() : "?"}
+                                            </span>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* Etiqueta de nombre al hacer hover (opcional, simplificado) */}
+                                {!isGroup && (
+                                    <div className="absolute -bottom-6 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
+                                        {firstMember.name}
+                                    </div>
+                                )}
+                            </div>
+                        </OverlayView>
+                    );
                 })}
 
                 {/* Info Window */}

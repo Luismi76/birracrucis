@@ -114,6 +114,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [showSummary, setShowSummary] = useState(false);
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
 
 
@@ -460,6 +461,32 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
+  const handleRemoveRound = async (stopId: string) => {
+    vibrate();
+    const currentRounds = rounds[stopId] || 0;
+    if (currentRounds <= 0) return;
+
+    // Contar participantes en el bar (para restar cervezas proporcionalmente)
+    const peopleAtBar = getParticipantsAtBar(stopId);
+
+    // Optimistic update - restar ronda
+    setRounds(prev => ({
+      ...prev,
+      [stopId]: Math.max(0, (prev[stopId] || 0) - 1)
+    }));
+
+    // Restar cervezas (asumiendo que si deshacemos ronda, deshacemos las cervezas de esa ronda)
+    setBeers(prev => ({
+      ...prev,
+      [stopId]: Math.max(0, (prev[stopId] || 0) - peopleAtBar)
+    }));
+
+    // TODO: Notificar al servidor de la eliminación (necesita endpoint DELETE o lógica especial)
+    // Por simplicidad y seguridad, solo restamos localmente y "ajustamos" el contador de cervezas sumadas.
+    // Lo ideal sería tener un endpoint para deshacer, pero por ahora esto corrige el estado local y visual.
+    toast.success("Ronda deshecha (localmente)");
+  };
+
   const handleAddBeer = (stopId: string) => {
     vibrate(30);
     setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
@@ -526,42 +553,63 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         </div>
       )}
 
-      {/* 2. Área de Acción Flotante (FAB) - Bottom Right */}
+      {/* 2. Área de Acción Flotante (FAB) - Bottom Right (Expandable Speed Dial) */}
       {!isRouteComplete && activeStop && activeTab === 'route' && (
         <div className="fixed bottom-[110px] right-4 z-50 flex flex-col items-end gap-3 pointer-events-auto">
-          {/* Meter Prisa (Mini FAB) */}
-          <div className="scale-90 origin-bottom-right">
-            <NudgeButton
-              routeId={routeId}
-              isAtCurrentStop={canCheckIn}
-              compact={true}
-            />
+
+          {/* Menú Desplegable */}
+          <div className={`flex flex-col items-end gap-3 transition-all duration-300 ${fabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
+
+            {/* Meter Prisa */}
+            <div className="flex items-center gap-2">
+              <span className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm">Meter Prisa</span>
+              <div className="scale-90 origin-right">
+                <NudgeButton
+                  routeId={routeId}
+                  isAtCurrentStop={canCheckIn}
+                  compact={true}
+                />
+              </div>
+            </div>
+
+            {/* Cámara */}
+            <div className="flex items-center gap-2">
+              <span className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm">Foto</span>
+              <div className="scale-90 origin-right">
+                <PhotoCapture
+                  routeId={routeId}
+                  routeName={routeName}
+                  stopId={activeStop.id}
+                  stopName={activeStop.name}
+                  onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setFabOpen(false); }}
+                  compact={true}
+                />
+              </div>
+            </div>
+
+            {/* Pedir Ronda (Acción Directa en el menú) */}
+            <div className="flex items-center gap-2">
+              <span className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm font-bold">¡Otra Ronda!</span>
+              <button
+                onClick={() => { handleAddRound(activeStop.id); setFabOpen(false); }}
+                disabled={!canCheckIn}
+                className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl transition-all ${canCheckIn
+                  ? "bg-amber-500 text-white hover:bg-amber-600"
+                  : "bg-slate-200 text-slate-400"
+                  }`}
+              >
+                🍺
+              </button>
+            </div>
           </div>
 
-          {/* Cámara (Mini FAB) */}
-          <div className="scale-90 origin-bottom-right">
-            <PhotoCapture
-              routeId={routeId}
-              routeName={routeName}
-              stopId={activeStop.id}
-              stopName={activeStop.name}
-              onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
-              compact={true}
-            />
-          </div>
-
-          {/* Botón Principal: PEDIR RONDA (FAB Grande) */}
+          {/* Botón Principal (Toggle) */}
           <button
-            onClick={() => handleAddRound(activeStop.id)}
-            disabled={!canCheckIn}
-            className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-3xl transition-all duration-300 active:scale-90 ${canCheckIn
-              ? isOverPlannedRounds
-                ? "bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/30"
-                : "bg-amber-500 text-white hover:bg-amber-600 shadow-amber-500/30"
-              : "bg-slate-200 text-slate-400 cursor-not-allowed"
+            onClick={() => setFabOpen(!fabOpen)}
+            className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-3xl transition-all duration-300 active:scale-90 z-50 ${fabOpen ? "bg-slate-800 text-white rotate-45" : "bg-amber-500 text-white hover:bg-amber-600"
               }`}
           >
-            🍺
+            {fabOpen ? "+" : "🍺"}
           </button>
         </div>
       )}
@@ -569,10 +617,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       {/* 3. Bottom Sheet (Panel Inferior Fijo) */}
       <div
         className={`fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] pointer-events-auto flex flex-col transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) ${activeTab !== 'route'
+          ? 'h-[85vh]'
+          : isSheetExpanded
             ? 'h-[85vh]'
-            : isSheetExpanded
-              ? 'h-[85vh]'
-              : 'h-auto max-h-[35vh]'
+            : 'h-auto max-h-[35vh]'
           }`}
       >
         {/* Handle Visual */}
@@ -610,6 +658,14 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       <div className="flex justify-between text-xs mb-1">
                         <span className="font-bold text-slate-700">Rondas</span>
                         <span className="font-bold text-slate-700">{rounds[activeStop.id] || 0} / {activeStop.plannedRounds}</span>
+                        {(rounds[activeStop.id] || 0) > 0 && (
+                          <button
+                            onClick={() => handleRemoveRound(activeStop.id)}
+                            className="ml-2 text-[10px] text-red-500 bg-red-50 px-2 rounded hover:bg-red-100 border border-red-200"
+                          >
+                            Deshacer
+                          </button>
+                        )}
                       </div>
                       <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
                         <div
