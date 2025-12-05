@@ -71,6 +71,8 @@ export async function GET(req: NextRequest) {
           ...ub.badge,
           earnedAt: ub.earnedAt,
         })),
+        // @ts-ignore
+        onboardingCompleted: user.onboardingCompleted,
       },
       settings: {
         autoCheckinEnabled: user.autoCheckinEnabled,
@@ -102,9 +104,9 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { autoCheckinEnabled, notificationsEnabled, image } = body;
+    const { autoCheckinEnabled, notificationsEnabled, image, name, onboardingCompleted } = body;
 
-    const updateData: { autoCheckinEnabled?: boolean; notificationsEnabled?: boolean; image?: string } = {};
+    const updateData: { autoCheckinEnabled?: boolean; notificationsEnabled?: boolean; image?: string, name?: string, onboardingCompleted?: boolean } = {};
 
     if (typeof autoCheckinEnabled === "boolean") {
       updateData.autoCheckinEnabled = autoCheckinEnabled;
@@ -114,6 +116,15 @@ export async function PATCH(req: NextRequest) {
     }
     if (typeof image === "string") {
       updateData.image = image;
+    }
+    if (typeof name === "string") {
+      // @ts-ignore
+      updateData.name = name;
+    }
+    // @ts-ignore
+    if (body.onboardingCompleted === true) {
+      // @ts-ignore
+      updateData.onboardingCompleted = true;
     }
 
     if (Object.keys(updateData).length === 0) {

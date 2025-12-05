@@ -148,10 +148,22 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
                 return (
                   <div
                     key={msg.id}
-                    className={`flex ${isOwn ? "justify-end" : "justify-start"}`}
+                    className={`flex items-end gap-2 ${isOwn ? "justify-end" : "justify-start"}`}
                   >
+                    {!isOwn && (
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-200 border border-slate-100 flex-shrink-0 mb-1">
+                        {msg.user.image ? (
+                          <img src={msg.user.image} alt={msg.user.name || "User"} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-slate-400">
+                            {msg.user.name?.charAt(0) || "?"}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     <div
-                      className={`max-w-[80%] ${isOwn
+                      className={`max-w-[75%] ${isOwn
                         ? "bg-blue-600 text-white rounded-l-xl rounded-tr-xl"
                         : "bg-white text-slate-800 rounded-r-xl rounded-tl-xl border"
                         } p-3 shadow-sm`}

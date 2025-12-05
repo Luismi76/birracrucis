@@ -48,6 +48,7 @@ model User {
   // Configuracion del usuario
   autoCheckinEnabled    Boolean @default(true)
   notificationsEnabled  Boolean @default(true)
+  onboardingCompleted   Boolean @default(false)
 
   // Relaciones con la app
   createdRoutes  Route[]       @relation("RouteCreator")

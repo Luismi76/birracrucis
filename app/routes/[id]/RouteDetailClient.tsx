@@ -562,7 +562,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
             {/* Meter Prisa */}
             <div className="flex items-center gap-2">
-              <span className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm">Meter Prisa</span>
               <div className="scale-90 origin-right">
                 <NudgeButton
                   routeId={routeId}
@@ -574,7 +573,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
             {/* Cámara */}
             <div className="flex items-center gap-2">
-              <span className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm">Foto</span>
               <div className="scale-90 origin-right">
                 <PhotoCapture
                   routeId={routeId}
@@ -589,7 +587,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
             {/* Pedir Ronda (Acción Directa en el menú) */}
             <div className="flex items-center gap-2">
-              <span className="bg-black/70 text-white text-xs px-2 py-1 rounded-md backdrop-blur-sm font-bold">¡Otra Ronda!</span>
               <button
                 onClick={() => { handleAddRound(activeStop.id); setFabOpen(false); }}
                 disabled={!canCheckIn}
