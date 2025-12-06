@@ -18,15 +18,24 @@ import { useRouteCalculations } from "./hooks/useRouteCalculations";
 import { useManualBarCreation } from "./hooks/useManualBarCreation";
 
 // Import components
-import RouteForm from "./components/RouteForm";
 import ManualBarModal from "./components/ManualBarModal";
 import BarSearchPanel from "./components/BarSearchPanel";
 import BarList from "./components/BarList";
 import AvailableBarsList from "./components/AvailableBarsList";
 
+// Import Wizard Steps
+import InfoStep from "./steps/InfoStep";
+import DetailsStep from "./steps/DetailsStep";
+import ReviewStep from "./steps/ReviewStep";
+
+const STEPS = ["Info", "Mapa", "Detalles", "Revisión"];
+
 export default function RouteEditor({ initialData }: RouteEditorProps) {
     const router = useRouter();
     const isEditing = !!initialData;
+
+    // Wizard State
+    const [currentStep, setCurrentStep] = useState(0);
 
     // Estado del formulario básico
     const [name, setName] = useState(initialData?.name || "");
@@ -288,8 +297,9 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         const optimizedOrder = routeOptimization.handleOptimizeRoute();
         if (optimizedOrder) {
             setOrderedIds(optimizedOrder);
+            toast.success("Ruta optimizada para caminar menos");
         } else {
-            setError("Selecciona un bar de inicio primero para optimizar.");
+            toast.error("Selecciona un bar de inicio primero.");
         }
     };
 
@@ -336,8 +346,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         setOrderedIds(newOrder);
     };
 
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         setLoading(true);
         setError(null);
 
@@ -369,14 +378,12 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             let fullStartTime: string | null = null;
             if (startTime && date) {
                 const dateOnly = date.split("T")[0];
-                // Guardar en hora local sin convertir a UTC
                 fullStartTime = `${dateOnly}T${startTime}:00`;
             }
 
             let fullEndTime: string | null = null;
             if (hasEndTime && endTime && date) {
                 const dateOnly = date.split("T")[0];
-                // Guardar en hora local sin convertir a UTC
                 fullEndTime = `${dateOnly}T${endTime}:00`;
             }
 
@@ -422,51 +429,146 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         .filter((b): b is BarConfig => !!b)
         .map((b) => ({ lat: b.bar.lat, lng: b.bar.lng }));
 
-    // Detectar si es un clon y si ha habido cambios
+    // Detectar si mostrar opción pública
     const isClone = isEditing && !!initialData?.originalRouteId;
-
     const hasChanges = () => {
         if (!initialData) return true;
-
-        // Comprobar si ha cambiado el número de bares
         if (orderedIds.length !== initialData.stops.length) return true;
 
-        // Comprobar si ha cambiado el orden o los bares específicos
-        const initialMap = new Map(initialData.stops.map(s => [s.googlePlaceId || s.id, s]));
-
-        for (let i = 0; i < orderedIds.length; i++) {
-            const currentId = orderedIds[i];
-            const currentStop = selectedBars.get(currentId);
-            const initialStop = initialMap.get(currentId);
-
-            if (!currentStop || !initialStop) return true; // Bar diferente
-
-            // Si el orden en el array (i) no coincide con el orden original
-            if (i !== initialStop.order) return true;
-        }
-
-        return false;
+        // Simplificado para el wizard, si hay cualquier cambio asumimos que puede querer publicarla
+        return true;
     };
-
-    // Mostrar opción pública si:
-    // 1. No es un clon (es ruta nueva o propia)
-    // 2. Es un clon pero ya la hemos hecho pública anteriormente (isEditing y initialData.isPublic es true)
-    // 3. Es un clon y hemos hecho cambios significativos
     const showPublicOption = !isClone || (isEditing && initialData.isPublic) || hasChanges();
 
-    // Si se oculta, asegurarse de que isPublic se mantenga en false (o lo que tuviera)
-    useEffect(() => {
-        if (!showPublicOption && isPublic) {
-            setIsPublic(false);
+    // WIZARD NAVIGATION LOGIC
+    const handleNext = () => {
+        if (currentStep === 0) {
+            if (!name.trim()) return toast.error("El nombre es obligatorio");
+            if (!date) return toast.error("La fecha es obligatoria");
         }
-    }, [showPublicOption, isPublic]);
+        if (currentStep === 1) {
+            if (selectedBars.size < 2) return toast.error("Selecciona al menos 2 bares");
+        }
+
+        setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
+    };
+
+    const handleBack = () => {
+        setCurrentStep(prev => Math.max(prev - 1, 0));
+    };
 
     return (
         <div className="flex flex-col h-screen bg-slate-50 font-sans">
-            {/* Overlay fullscreen para modo manual */}
-            {manualBarCreation.manualAddMode && (
-                <div className="fixed inset-0 z-50 bg-white">
-                    <div className="w-full h-full">
+            {/* Header */}
+            <div className="bg-white border-b px-4 py-3 shadow-sm z-10 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => currentStep > 0 ? handleBack() : router.back()}
+                        className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
+                    >
+                        <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <div>
+                        <h1 className="font-bold text-slate-800 text-sm md:text-base">
+                            {isEditing ? "Editar Ruta" : "Nueva Ruta"}
+                        </h1>
+                        <div className="flex items-center gap-1 text-xs text-slate-500">
+                            Paso {currentStep + 1} de {STEPS.length}: {STEPS[currentStep]}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Progress Indicators */}
+                <div className="flex gap-1.5">
+                    {STEPS.map((_, i) => (
+                        <div
+                            key={i}
+                            className={`w-8 h-1.5 rounded-full transition-all ${i <= currentStep ? 'bg-amber-500' : 'bg-slate-200'}`}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-hidden relative">
+                {/* Step 0: Info */}
+                {currentStep === 0 && (
+                    <div className="max-w-2xl mx-auto p-6 md:p-12 h-full overflow-y-auto">
+                        <InfoStep
+                            name={name} onNameChange={setName}
+                            date={date} onDateChange={setDate}
+                            isPublic={isPublic} onIsPublicChange={setIsPublic}
+                            description={description} onDescriptionChange={setDescription}
+                            showPublicOption={showPublicOption}
+                        />
+                    </div>
+                )}
+
+                {/* Step 1: Map Builder (Full Width) */}
+                <div className={`${currentStep === 1 ? 'block' : 'hidden'} h-full flex flex-col md:flex-row relative`}>
+                    {/* Búsqueda y Lista (Sidebar en Desktop, Bottom Sheet en Mobile si quisiéramos) */}
+                    <div className="w-full md:w-1/3 flex flex-col border-r bg-white h-[40%] md:h-full z-10">
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            <BarSearchPanel
+                                placeSearchQuery={barSearch.placeSearchQuery}
+                                onPlaceSearchChange={barSearch.handlePlaceSearchChange}
+                                autocompleteSuggestions={barSearch.autocompleteSuggestions}
+                                showSuggestions={barSearch.showSuggestions}
+                                onSelectSuggestion={handleSelectSuggestionWithSearch}
+                                onSearchByPlaceName={handleSearchByPlaceNameWithCoords}
+                                isGeocoding={barSearch.isGeocoding}
+                                onUseMyLocation={geolocation.handleUseMyLocation}
+                                onSearchPlaces={() => barSearch.handleSearchPlaces()}
+                                placesLoading={barSearch.placesLoading}
+                                placesError={barSearch.placesError}
+                                radius={radius}
+                                onRadiusChange={setRadius}
+                                manualAddMode={manualBarCreation.manualAddMode}
+                                onToggleManualMode={() => manualBarCreation.setManualAddMode(!manualBarCreation.manualAddMode)}
+                            />
+
+                            <BarList
+                                orderedIds={orderedIds}
+                                selectedBars={selectedBars}
+                                onDragStart={handleDragStart}
+                                onDragOver={handleDragOver}
+                                onDragEnd={handleDragEnd}
+                                onMoveUp={handleMoveUp}
+                                onMoveDown={handleMoveDown}
+                                onToggleBar={handleToggleBar}
+                                onSetStartBar={handleSetStartBar}
+                                onUpdateRounds={handleUpdateRounds}
+                                onUpdateStayDuration={handleUpdateStayDuration}
+                                arrivalTimes={routeCalculations.arrivalTimes}
+                                draggedId={draggedId}
+                                onOptimizeRoute={handleOptimizeRoute}
+                                preOptimizeDistance={routeOptimization.preOptimizeDistance}
+                                routeDistance={routeDistance}
+                                formatDistance={routeCalculations.formatDistance}
+                                totalTimes={routeCalculations.totalTimes}
+                                startTime={startTime}
+                                hasEndTime={hasEndTime}
+                                endTime={endTime}
+                            />
+
+                            {/* Lista de bares disponibles */}
+                            {barSearch.places.length > 0 && (
+                                <AvailableBarsList
+                                    places={barSearch.places}
+                                    selectedBars={selectedBars}
+                                    centerLat={geolocation.centerLat}
+                                    centerLng={geolocation.centerLng}
+                                    onToggleBar={handleToggleBar}
+                                    formatDistance={routeCalculations.formatDistance}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Mapa */}
+                    <div className="flex-1 relative bg-slate-100 h-[60%] md:h-full">
                         <BarSearchMap
                             center={mapCenter}
                             radius={parseInt(radius)}
@@ -484,197 +586,98 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             loadError={loadError}
                             onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
                         />
-                    </div>
-
-                    <div className="absolute top-4 left-4 right-4 z-20">
-                        <div className="bg-purple-500 text-white rounded-xl px-4 py-2 shadow-lg flex items-center justify-between">
-                            <span className="font-bold text-sm">✏️ Navega y pulsa el botón</span>
-                            <button
-                                onClick={() => manualBarCreation.setManualAddMode(false)}
-                                className="bg-white/20 hover:bg-white/30 rounded-lg px-3 py-1 text-sm font-bold transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                        <div className="flex flex-col items-center">
-                            <div className="text-5xl animate-bounce">📍</div>
-                            <div className="w-3 h-3 bg-purple-500 rounded-full -mt-2"></div>
-                        </div>
-                    </div>
-
-                    <div className="absolute bottom-8 left-4 right-4 z-20">
-                        <button
-                            onClick={() => {
-                                if (mapFunctionsRef.current) {
-                                    const coords = mapFunctionsRef.current.getMapCenter();
-                                    if (coords) {
-                                        manualBarCreation.handleMapClick(coords.lat, coords.lng);
-                                        return;
-                                    }
-                                }
-                                manualBarCreation.handleMapClick(mapCenter.lat, mapCenter.lng);
-                            }}
-                            className="w-full py-4 bg-purple-500 text-white rounded-xl font-bold text-lg shadow-lg hover:bg-purple-600 active:scale-95 transition-all flex items-center justify-center gap-2"
-                        >
-                            <span>✓</span> Añadir bar aquí
-                        </button>
-                    </div>
-
-                    <ManualBarModal
-                        isOpen={!!manualBarCreation.pendingManualBar}
-                        barName={manualBarCreation.manualBarName}
-                        onBarNameChange={manualBarCreation.setManualBarName}
-                        barAddress={manualBarCreation.manualBarAddress}
-                        onBarAddressChange={manualBarCreation.setManualBarAddress}
-                        onConfirm={manualBarCreation.handleConfirmManualBar}
-                        onCancel={manualBarCreation.handleCancelManualBar}
-                    />
-                </div>
-            )}
-
-            <div className="bg-white border-b px-4 py-3 shadow-sm z-10 flex justify-between items-center">
-                <div className="flex items-center gap-3">
-                    <button
-                        onClick={() => router.back()}
-                        className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
-                    >
-                        <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
-                    </button>
-                    <h1 className="text-xl font-bold text-amber-600 flex items-center gap-2">
-                        <span>🍺</span> {isEditing ? "Editar Birracrucis" : "Nuevo Birracrucis"}
-                    </h1>
-                </div>
-            </div>
-
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                <div className="w-full md:w-1/3 flex flex-col border-r bg-white overflow-y-auto">
-                    <div className="p-4 space-y-8">
-                        <RouteForm
-                            name={name}
-                            onNameChange={setName}
-                            date={date}
-                            onDateChange={setDate}
-                            startMode={startMode}
-                            onStartModeChange={setStartMode}
-                            startTime={startTime}
-                            onStartTimeChange={setStartTime}
-                            hasEndTime={hasEndTime}
-                            onHasEndTimeChange={setHasEndTime}
-                            endTime={endTime}
-                            onEndTimeChange={setEndTime}
-                            defaultStayDuration={defaultStayDuration}
-                            onDefaultStayDurationChange={setDefaultStayDuration}
-                            isPublic={isPublic}
-                            onIsPublicChange={setIsPublic}
-                            description={description}
-                            onDescriptionChange={setDescription}
-                            showPublicOption={showPublicOption}
-                        />
-
-                        <BarSearchPanel
-                            placeSearchQuery={barSearch.placeSearchQuery}
-                            onPlaceSearchChange={barSearch.handlePlaceSearchChange}
-                            autocompleteSuggestions={barSearch.autocompleteSuggestions}
-                            showSuggestions={barSearch.showSuggestions}
-                            onSelectSuggestion={handleSelectSuggestionWithSearch}
-                            onSearchByPlaceName={handleSearchByPlaceNameWithCoords}
-                            isGeocoding={barSearch.isGeocoding}
-                            onUseMyLocation={geolocation.handleUseMyLocation}
-                            onSearchPlaces={() => barSearch.handleSearchPlaces()}
-                            placesLoading={barSearch.placesLoading}
-                            placesError={barSearch.placesError}
-                            radius={radius}
-                            onRadiusChange={setRadius}
-                            manualAddMode={manualBarCreation.manualAddMode}
-                            onToggleManualMode={() => manualBarCreation.setManualAddMode(!manualBarCreation.manualAddMode)}
-                        />
-
-                        <BarList
-                            orderedIds={orderedIds}
-                            selectedBars={selectedBars}
-                            onDragStart={handleDragStart}
-                            onDragOver={handleDragOver}
-                            onDragEnd={handleDragEnd}
-                            onMoveUp={handleMoveUp}
-                            onMoveDown={handleMoveDown}
-                            onToggleBar={handleToggleBar}
-                            onSetStartBar={handleSetStartBar}
-                            onUpdateRounds={handleUpdateRounds}
-                            onUpdateStayDuration={handleUpdateStayDuration}
-                            arrivalTimes={routeCalculations.arrivalTimes}
-                            draggedId={draggedId}
-                            onOptimizeRoute={handleOptimizeRoute}
-                            preOptimizeDistance={routeOptimization.preOptimizeDistance}
-                            routeDistance={routeDistance}
-                            formatDistance={routeCalculations.formatDistance}
-                            totalTimes={routeCalculations.totalTimes}
-                            startTime={startTime}
-                            hasEndTime={hasEndTime}
-                            endTime={endTime}
-                        />
-
-                        {/* Lista de bares disponibles */}
-                        {barSearch.places.length > 0 && (
-                            <AvailableBarsList
-                                places={barSearch.places}
-                                selectedBars={selectedBars}
-                                centerLat={geolocation.centerLat}
-                                centerLng={geolocation.centerLng}
-                                onToggleBar={handleToggleBar}
-                                formatDistance={routeCalculations.formatDistance}
-                            />
+                        {manualBarCreation.manualAddMode && (
+                            <div className="absolute inset-x-4 bottom-4 bg-white p-4 rounded-xl shadow-lg z-20 flex flex-col gap-3 animate-in slide-in-from-bottom">
+                                <p className="text-sm font-medium text-center">Toca en el mapa para añadir un punto</p>
+                                <button
+                                    onClick={() => {
+                                        if (mapFunctionsRef.current) {
+                                            const coords = mapFunctionsRef.current.getMapCenter();
+                                            if (coords) manualBarCreation.handleMapClick(coords.lat, coords.lng);
+                                        }
+                                    }}
+                                    className="w-full py-3 bg-purple-500 text-white rounded-lg font-bold"
+                                >
+                                    Añadir centro del mapa
+                                </button>
+                                <ManualBarModal
+                                    isOpen={!!manualBarCreation.pendingManualBar}
+                                    barName={manualBarCreation.manualBarName}
+                                    onBarNameChange={manualBarCreation.setManualBarName}
+                                    barAddress={manualBarCreation.manualBarAddress}
+                                    onBarAddressChange={manualBarCreation.setManualBarAddress}
+                                    onConfirm={manualBarCreation.handleConfirmManualBar}
+                                    onCancel={manualBarCreation.handleCancelManualBar}
+                                />
+                            </div>
                         )}
                     </div>
                 </div>
 
-                <div className="flex-1 relative bg-slate-100">
-                    <BarSearchMap
-                        center={mapCenter}
-                        radius={parseInt(radius)}
-                        bars={barSearch.places}
-                        selectedBars={orderedIds}
-                        routePreview={routePreview}
-                        onBarClick={handleToggleBar}
-                        onDistanceCalculated={(distance, duration) => {
-                            setRouteDistance(distance);
-                            setRouteDuration(duration);
-                        }}
-                        onMapClick={manualBarCreation.handleMapClick}
-                        manualAddMode={false}
-                        isLoaded={isLoaded}
-                        loadError={loadError}
-                        onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
-                    />
-                </div>
+                {/* Step 2: Details */}
+                {currentStep === 2 && (
+                    <div className="max-w-2xl mx-auto p-6 md:p-12 h-full overflow-y-auto">
+                        <DetailsStep
+                            startMode={startMode} onStartModeChange={setStartMode}
+                            startTime={startTime} onStartTimeChange={setStartTime}
+                            hasEndTime={hasEndTime} onHasEndTimeChange={setHasEndTime}
+                            endTime={endTime} onEndTimeChange={setEndTime}
+                            defaultStayDuration={defaultStayDuration} onDefaultStayDurationChange={setDefaultStayDuration}
+                        />
+                    </div>
+                )}
+
+                {/* Step 3: Review */}
+                {currentStep === 3 && (
+                    <div className="max-w-2xl mx-auto p-6 md:p-12 h-full overflow-y-auto pb-32">
+                        <ReviewStep
+                            name={name} date={date}
+                            startMode={startMode} startTime={startTime}
+                            hasEndTime={hasEndTime} endTime={endTime}
+                            defaultStayDuration={defaultStayDuration} isPublic={isPublic}
+                            orderedIds={orderedIds} selectedBars={selectedBars}
+                            routeDistance={routeDistance} routeDuration={routeDuration}
+                        />
+                    </div>
+                )}
             </div>
 
-            <div className="bg-white border-t px-4 py-3 shadow-lg">
-                {error && (
-                    <p className="text-red-500 text-sm bg-red-50 p-3 rounded-lg border border-red-100 mb-3 flex items-center gap-2">
-                        <span>⚠️</span> {error}
-                    </p>
-                )}
-                <button
-                    onClick={handleSubmit}
-                    disabled={loading || selectedBars.size < 2}
-                    className="w-full bg-amber-500 text-white py-4 rounded-xl font-bold text-lg hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2"
-                >
-                    {loading ? (
-                        <>
-                            <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                            Guardando...
-                        </>
-                    ) : (
-                        <>
-                            <span>✓</span> {isEditing ? "Actualizar Ruta" : "Crear Ruta"}
-                        </>
+            {/* Footer Navigation */}
+            <div className="bg-white border-t px-6 py-4 shadow-lg z-20">
+                <div className="max-w-4xl mx-auto flex gap-4">
+                    {currentStep > 0 && (
+                        <button
+                            onClick={handleBack}
+                            className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                        >
+                            Atrás
+                        </button>
                     )}
-                </button>
+
+                    {currentStep < STEPS.length - 1 ? (
+                        <button
+                            onClick={handleNext}
+                            className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-lg shadow-md hover:bg-amber-600 hover:shadow-lg transition-all active:scale-[0.98]"
+                        >
+                            Continuar &rarr;
+                        </button>
+                    ) : (
+                        <button
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {loading ? (
+                                <>
+                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                                    Guardando...
+                                </>
+                            ) : (
+                                <>🚀 ¡Crear Ruta!</>
+                            )}
+                        </button>
+                    )}
+                </div>
             </div>
         </div>
     );

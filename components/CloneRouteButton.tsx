@@ -8,9 +8,11 @@ interface CloneRouteButtonProps {
     routeId: string;
     routeName: string;
     variant?: "icon" | "full";
+    className?: string;
+    label?: string;
 }
 
-export default function CloneRouteButton({ routeId, routeName, variant = "full" }: CloneRouteButtonProps) {
+export default function CloneRouteButton({ routeId, routeName, variant = "full", className = "", label = "Utilizar plantilla" }: CloneRouteButtonProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
 
@@ -50,7 +52,7 @@ export default function CloneRouteButton({ routeId, routeName, variant = "full" 
             <button
                 onClick={handleClone}
                 disabled={loading}
-                className="p-2 bg-purple-100 text-purple-700 rounded-full hover:bg-purple-200 transition-colors disabled:opacity-50"
+                className={`p-2 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 ${className}`}
                 title="Clonar ruta"
             >
                 {loading ? (
@@ -66,13 +68,13 @@ export default function CloneRouteButton({ routeId, routeName, variant = "full" 
         <button
             onClick={handleClone}
             disabled={loading}
-            className="flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50"
+            className={`flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-700 text-sm font-medium rounded-lg hover:bg-purple-200 transition-colors disabled:opacity-50 ${className}`}
         >
             {loading ? (
                 <div className="w-4 h-4 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
             ) : (
                 <>
-                    <span>📋</span> Utilizar plantilla
+                    <span>📋</span> {label}
                 </>
             )}
         </button>

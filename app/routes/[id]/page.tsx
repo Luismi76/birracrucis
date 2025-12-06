@@ -75,14 +75,41 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     }),
   ]);
 
-  // Obtener el ID del usuario actual
+  // Obtener el ID del usuario actual (Sesión o Invitado)
   let currentUserId: string | undefined;
+
+  // 1. Intentar por sesión
   if (session?.user?.email) {
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: { id: true },
     });
     currentUserId = currentUser?.id;
+  }
+
+  // 2. Si no hay sesión, intentar por cookie de invitado
+  if (!currentUserId) {
+    const { cookies } = await import("next/headers");
+    const cookieStore = await cookies();
+    const guestId = cookieStore.get("guestId")?.value;
+
+    if (guestId) {
+      // Buscar si hay un participante con este guestId en ESTA ruta
+      // Esto nos da el ID del participante, que usaremos como "currentUserId" en el frontend
+      // OJO: En la logica actual, currentUserId suele ser el ID del User, no del Participant.
+      // Pero para la UI, necesitamos saber "quien soy".
+      // Si el participante es invitado, no tiene User.id.
+      // Debemos pasar el guestId? No, el frontend espera participant.user.id O participant.id?
+      // Revisando RouteDetailClient y ParticipantsList:
+      // ParticipantsList compara con `currentUserId`.
+      // Si soy invitado, mi participant tiene `guestId`.
+      // Necesitamos que el frontend sepa que "yo" soy ese invitado.
+
+      // Vamos a pasar el guestId como currentUserId si es invitado?
+      // O mejor, busquemos el participante invitado y pasemos SU ID (participant.id) o el guestId?
+      // El guestId es lo que identifica al "usuario" invitado.
+      currentUserId = guestId;
+    }
   }
 
   if (!route) {

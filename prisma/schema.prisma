@@ -175,8 +175,12 @@ model Participant {
   id        String   @id @default(cuid())
   route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
   routeId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  guestId   String?  // ID generado para invitados
+  name      String?  // Nombre para invitados (o override para users)
+  avatar    String?  // Avatar para invitados
+
   joinedAt  DateTime @default(now())
   isActive  Boolean  @default(true)
 
@@ -186,8 +190,9 @@ model Participant {
   lastSeenAt DateTime?
 
   @@unique([routeId, userId])
-  @@index([routeId, isActive]) // Para listar participantes activos de una ruta
-  @@index([routeId, lastSeenAt]) // Para ordenar por última actividad
+  @@unique([routeId, guestId]) // Un invitado solo puede estar una vez por ruta
+  @@index([routeId, isActive])
+  @@index([routeId, lastSeenAt])
 }
 
 model Round {

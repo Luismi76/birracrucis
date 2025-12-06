@@ -7,11 +7,12 @@ import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededRe
 
 type JoinRouteBody = {
   inviteCode: string;
+  guestName?: string;
+  guestId?: string;
 };
 
 // POST /api/routes/join - Unirse a una ruta con código de invitación
 export async function POST(req: NextRequest) {
-  // Rate limiting - endpoint estándar
   const clientId = getClientIdentifier(req);
   const rateLimitResult = rateLimit(`routes:join:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
@@ -19,110 +20,124 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Requiere autenticación
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json(
-        { ok: false, error: "Debes iniciar sesión para unirte a una ruta" },
-        { status: 401 }
-      );
-    }
-
-    // Crear usuario si no existe (JWT mode sin adapter)
-    const user = await prisma.user.upsert({
-      where: { email: session.user.email },
-      update: {
-        name: session.user.name,
-        image: session.user.image,
-      },
-      create: {
-        email: session.user.email,
-        name: session.user.name,
-        image: session.user.image,
-      },
-    });
-
-    const body = (await req.json()) as JoinRouteBody;
-    const { inviteCode } = body;
+    const body = (await req.json());
+    const { inviteCode, guestName, guestId: existingGuestId } = body;
 
     if (!inviteCode || typeof inviteCode !== "string") {
-      return NextResponse.json(
-        { ok: false, error: "Código de invitación requerido" },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, error: "Código de invitación requerido" }, { status: 400 });
     }
 
-    // Buscar ruta por código (case insensitive)
+    let userId: string | null = null;
+    let guestId: string | null = null;
+    let name: string | null = null;
+    let avatar: string | null = null;
+
+    // 1. Caso Usuario Autenticado
+    if (session?.user?.email) {
+      const user = await prisma.user.upsert({
+        where: { email: session.user.email },
+        update: { name: session.user.name, image: session.user.image },
+        create: { email: session.user.email, name: session.user.name, image: session.user.image },
+      });
+      userId = user.id;
+      name = user.name;
+      avatar = user.image;
+    }
+    // 2. Caso Invitado
+    else {
+      if (!guestName || typeof guestName !== "string") {
+        return NextResponse.json({ ok: false, error: "Debes iniciar sesión o elegir un nombre de invitado" }, { status: 401 });
+      }
+      name = guestName;
+      guestId = existingGuestId || crypto.randomUUID();
+      avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${guestId}`;
+    }
+
+    // Buscar ruta
     const route = await prisma.route.findFirst({
-      where: {
-        inviteCode: {
-          equals: inviteCode.toUpperCase(),
-          mode: "insensitive",
-        },
-      },
-      include: {
-        stops: {
-          orderBy: { order: "asc" },
-        },
-        _count: {
-          select: { participants: true },
-        },
-      },
+      where: { inviteCode: { equals: inviteCode.toUpperCase(), mode: "insensitive" } },
+      include: { stops: { orderBy: { order: "asc" } }, _count: { select: { participants: true } } },
     });
 
     if (!route) {
-      return NextResponse.json(
-        { ok: false, error: "Código de invitación no válido" },
-        { status: 404 }
-      );
+      return NextResponse.json({ ok: false, error: "Código no válido" }, { status: 404 });
     }
 
-    // Verificar si ya es participante
-    const existingParticipant = await prisma.participant.findUnique({
-      where: {
-        routeId_userId: {
-          routeId: route.id,
-          userId: user.id,
-        },
-      },
+    // Verificar si ya existe
+    const whereClause = userId
+      ? { routeId_userId: { routeId: route.id, userId } }
+      : { routeId_guestId: { routeId: route.id, guestId: guestId! } };
+
+    // @ts-ignore
+    const existingParticipant = await prisma.participant.findFirst({
+      where: { ...whereClause, routeId: route.id }
     });
 
     if (existingParticipant) {
-      // Ya es participante, simplemente devolver la ruta
-      return NextResponse.json({
+      const response = NextResponse.json({
         ok: true,
         route,
-        message: "Ya eres participante de esta ruta",
+        message: "Ya eres participante",
         alreadyJoined: true,
+        isGuest: !userId,
+        guestId: !userId ? guestId : null
       });
+      // Si es invitado y ya existía, refrescamos cookie por si acaso
+      if (!userId && guestId) {
+        response.cookies.set("guestId", guestId, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30 // 30 días
+        });
+      }
+      return response;
     }
 
     // Crear participante
+    // @ts-ignore
     await prisma.participant.create({
       data: {
         routeId: route.id,
-        userId: user.id,
-      },
+        userId: userId || undefined,
+        guestId: guestId || undefined,
+        name: name ?? undefined,
+        avatar: avatar ?? undefined,
+      }
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       route,
-      message: "Te has unido a la ruta correctamente",
+      message: "Te has unido correctamente",
       alreadyJoined: false,
+      isGuest: !userId,
+      guestId: !userId ? guestId : null
     });
+
+    // Si es invitado, establecer cookie
+    if (!userId && guestId) {
+      response.cookies.set("guestId", guestId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30 // 30 días
+      });
+    }
+
+    return response;
+
   } catch (error) {
     console.error("Error en POST /api/routes/join:", error);
-    return NextResponse.json(
-      { ok: false, error: "Error al unirse a la ruta" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: "Error al unirse a la ruta" }, { status: 500 });
   }
 }
 
-// GET /api/routes/join?code=ABC123 - Obtener info de ruta por código (sin unirse)
+// GET /api/routes/join?code=ABC123&guestId=XYZ
 export async function GET(req: NextRequest) {
-  // Rate limiting - endpoint estándar
   const clientId = getClientIdentifier(req);
   const rateLimitResult = rateLimit(`routes:join-info:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
@@ -132,64 +147,39 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const inviteCode = searchParams.get("code");
+    const guestId = searchParams.get("guestId");
 
     if (!inviteCode) {
-      return NextResponse.json(
-        { ok: false, error: "Código de invitación requerido" },
-        { status: 400 }
-      );
+      return NextResponse.json({ ok: false, error: "Código de invitación requerido" }, { status: 400 });
     }
 
     const route = await prisma.route.findFirst({
-      where: {
-        inviteCode: {
-          equals: inviteCode.toUpperCase(),
-          mode: "insensitive",
-        },
-      },
+      where: { inviteCode: { equals: inviteCode.toUpperCase(), mode: "insensitive" } },
       include: {
-        stops: {
-          orderBy: { order: "asc" },
-          select: {
-            id: true,
-            name: true,
-            address: true,
-            order: true,
-          },
-        },
-        creator: {
-          select: {
-            name: true,
-            image: true,
-          },
-        },
-        _count: {
-          select: { participants: true },
-        },
+        stops: { orderBy: { order: "asc" }, select: { id: true, name: true, address: true, order: true } },
+        creator: { select: { name: true, image: true } },
+        _count: { select: { participants: true } },
       },
     });
 
     if (!route) {
-      return NextResponse.json(
-        { ok: false, error: "Código de invitación no válido" },
-        { status: 404 }
-      );
+      return NextResponse.json({ ok: false, error: "Código no válido" }, { status: 404 });
     }
 
-    // Verificar si el usuario actual ya es participante
     const session = await getServerSession(authOptions);
     let isParticipant = false;
 
     if (session?.user?.id) {
-      const participant = await prisma.participant.findUnique({
-        where: {
-          routeId_userId: {
-            routeId: route.id,
-            userId: session.user.id,
-          },
-        },
+      const p = await prisma.participant.findUnique({
+        where: { routeId_userId: { routeId: route.id, userId: session.user.id } }
       });
-      isParticipant = !!participant;
+      isParticipant = !!p;
+    } else if (guestId) {
+      // @ts-ignore
+      const p = await prisma.participant.findUnique({
+        where: { routeId_guestId: { routeId: route.id, guestId } }
+      });
+      isParticipant = !!p;
     }
 
     return NextResponse.json({
@@ -208,9 +198,6 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error en GET /api/routes/join:", error);
-    return NextResponse.json(
-      { ok: false, error: "Error al obtener información de la ruta" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: "Error al obtener información" }, { status: 500 });
   }
 }

@@ -64,24 +64,51 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-    }
-
-    // Obtener el ID interno del usuario por email
-    const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true, name: true },
-    });
-
-    if (!currentUser) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
-
     const { id } = await params;
     const body = await request.json();
     const { action, amountPerPerson, userName } = body;
+
+    const session = await getServerSession(authOptions);
+    let currentUser: { id: string | null; name: string | null; email: string | null } | null = null;
+    let isGuest = false;
+
+    // 1. Intentar autenticar usuario
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+        select: { id: true, name: true, email: true },
+      });
+      if (user) currentUser = user;
+    }
+
+    // 2. Intentar autenticar invitado
+    if (!currentUser) {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const guestId = cookieStore.get("guestId")?.value;
+
+      if (guestId) {
+        // Buscar participante invitado en esta ruta
+        // Necesitamos saber si este guestId está en la ruta
+        const participant = await prisma.participant.findUnique({
+          // @ts-ignore
+          where: { routeId_guestId: { routeId: id, guestId } }
+        });
+
+        if (participant) {
+          currentUser = {
+            id: null, // No tiene ID de User
+            name: participant.name,
+            email: null
+          };
+          isGuest = true;
+        }
+      }
+    }
+
+    if (!currentUser) {
+      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    }
 
     const route = await prisma.route.findUnique({
       where: { id },
@@ -100,8 +127,8 @@ export async function POST(
     }
 
     // Verificar si es el creador
-    const isCreator = route.creatorId === currentUser.id ||
-                      route.creator?.email === session.user.email;
+    const isCreator = (currentUser.id && route.creatorId === currentUser.id) ||
+      (currentUser.email && route.creator?.email === currentUser.email);
 
     // Accion: Configurar bote (solo creador)
     if (action === "configure") {
@@ -147,27 +174,39 @@ export async function POST(
         return NextResponse.json({ ok: false, error: "El bote no esta activado" }, { status: 400 });
       }
 
-      // Verificar si ya contribuyo (usando ID interno)
-      const existing = await prisma.potContribution.findUnique({
-        where: {
-          routeId_userId: {
-            routeId: id,
-            userId: currentUser.id,
+      // Verificar si ya contribuyo
+      let existing = null;
+      if (currentUser.id) {
+        existing = await prisma.potContribution.findUnique({
+          where: {
+            routeId_userId: {
+              routeId: id,
+              userId: currentUser.id,
+            },
           },
-        },
-      });
+        });
+      } else if (currentUser.name) {
+        // Para invitados, buscamos por nombre (menos seguro pero funcional para este MVP)
+        existing = await prisma.potContribution.findFirst({
+          where: {
+            routeId: id,
+            userId: null,
+            userName: currentUser.name
+          }
+        });
+      }
 
       if (existing) {
         return NextResponse.json({ ok: false, error: "Ya has contribuido al bote" }, { status: 400 });
       }
 
-      // Registrar contribucion con ID interno y nombre
+      // Registrar contribucion
       await prisma.$transaction([
         prisma.potContribution.create({
           data: {
             routeId: id,
-            userId: currentUser.id,
-            userName: currentUser.name || session.user.email || "Usuario",
+            userId: currentUser.id || undefined, // undefined si es null para que no falle si Prisma espera valor? No, es opcional.
+            userName: currentUser.name || "Invitado",
             amount: route.potAmountPerPerson,
           },
         }),
@@ -186,6 +225,7 @@ export async function POST(
 
     // Accion: Registrar contribucion de participante externo (sin cuenta)
     if (action === "contribute_external") {
+      // ... (Logica existente, se mantiene igual porque es manual)
       if (!route.potEnabled || !route.potAmountPerPerson) {
         return NextResponse.json({ ok: false, error: "El bote no esta activado" }, { status: 400 });
       }

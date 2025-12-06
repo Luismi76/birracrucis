@@ -51,8 +51,7 @@ export default function BarSearchPanel({
     return (
         <section className="space-y-4">
             <h2 className="font-bold text-slate-800 text-lg flex items-center gap-2">
-                <span className="bg-amber-500 text-white w-7 h-7 rounded-full flex items-center justify-center text-sm shadow-sm">2</span>
-                ¿Dónde empezamos?
+                <span>🍻 Añadir Paradas</span>
             </h2>
 
             {/* Búsqueda por Nombre */}
@@ -134,8 +133,8 @@ export default function BarSearchPanel({
             <button
                 onClick={onToggleManualMode}
                 className={`w-full px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 border ${manualAddMode
-                        ? "bg-purple-500 text-white border-purple-600 hover:bg-purple-600"
-                        : "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100"
+                    ? "bg-purple-500 text-white border-purple-600 hover:bg-purple-600"
+                    : "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100"
                     }`}
             >
                 <span>✏️</span>

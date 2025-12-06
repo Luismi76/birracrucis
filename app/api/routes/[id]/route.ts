@@ -48,6 +48,68 @@ async function canModifyRoute(routeId: string, userId: string): Promise<boolean>
     return !!participant;
 }
 
+export async function GET(
+    req: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const session = await getServerSession(authOptions);
+        // Note: Public routes should be accessible even without session for preview?
+        // Current requirement implies user is logged in for Community page, but good to keep in mind.
+
+        const { id } = await params;
+
+        const route = await prisma.route.findUnique({
+            where: { id },
+            include: {
+                stops: {
+                    orderBy: { order: "asc" },
+                    include: {
+                        // Include ratings if needed for preview? Maybe overkill.
+                        _count: { select: { photos: true } }
+                    }
+                },
+                creator: {
+                    select: { name: true, image: true }
+                },
+                _count: {
+                    select: { participants: true }
+                }
+            },
+        });
+
+        if (!route) {
+            return NextResponse.json({ ok: false, error: "Ruta no encontrada" }, { status: 404 });
+        }
+
+        // Check visibility: Must be public OR user must be creator/participant
+        // For preview purposes, we mostly care if it's public.
+        let hasAccess = route.isPublic;
+
+        if (!hasAccess && session?.user?.email) {
+            const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
+            if (user) {
+                if (route.creatorId === user.id) hasAccess = true;
+                else {
+                    const participant = await prisma.participant.findUnique({
+                        where: { routeId_userId: { routeId: id, userId: user.id } }
+                    });
+                    if (participant) hasAccess = true;
+                }
+            }
+        }
+
+        if (!hasAccess) {
+            return NextResponse.json({ ok: false, error: "No tienes permiso para ver esta ruta" }, { status: 403 });
+        }
+
+        return NextResponse.json({ ok: true, route });
+    } catch (error) {
+        console.error("Error GET route:", error);
+        return NextResponse.json({ ok: false, error: "Error al cargar la ruta" }, { status: 500 });
+    }
+}
+
 export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }

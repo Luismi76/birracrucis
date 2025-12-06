@@ -36,6 +36,7 @@ export default function JoinRoutePage() {
   const [error, setError] = useState<string | null>(null);
   const [routeInfo, setRouteInfo] = useState<RouteInfo | null>(null);
   const [isParticipant, setIsParticipant] = useState(false);
+  const [guestName, setGuestName] = useState("");
 
   // Cargar información de la ruta
   useEffect(() => {
@@ -64,7 +65,12 @@ export default function JoinRoutePage() {
   }, [code]);
 
   const handleJoin = async () => {
-    if (!session) {
+    if (!session && !guestName.trim()) {
+      // Si no hay sesión ni nombre de invitado, pedir login (o foco en nombre?)
+      // En la UI actual, si hacen click en "Iniciar sesión" se llama a signIn.
+      // Si hacen click en "Unirse como invitado", tenemos guestName.
+      // Esta función se reutiliza, asi que diferenciamos.
+
       // Guardar el código en sessionStorage para después del login
       sessionStorage.setItem("pendingJoinCode", code);
       signIn(undefined, { callbackUrl: `/join/${code}` });
@@ -75,17 +81,29 @@ export default function JoinRoutePage() {
     setError(null);
 
     try {
+      // Recuperar guestId previo si existe (para re-join)
+      const storedGuestId = localStorage.getItem("guestId");
+
       const res = await fetch("/api/routes/join", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inviteCode: code }),
+        body: JSON.stringify({
+          inviteCode: code,
+          guestName: session ? undefined : guestName,
+          guestId: storedGuestId || undefined
+        }),
       });
 
-      const data: ApiResponse = await res.json();
+      const data: ApiResponse & { guestId?: string } = await res.json();
 
       if (!data.ok) {
         setError(data.error || "Error al unirse");
         return;
+      }
+
+      // Si nos devuelve un guestId nuevo, guardarlo
+      if (data.guestId) {
+        localStorage.setItem("guestId", data.guestId);
       }
 
       // Redirigir a la ruta
@@ -195,13 +213,6 @@ export default function JoinRoutePage() {
           </div>
         </div>
 
-        {/* Error */}
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-red-700 text-sm">
-            {error}
-          </div>
-        )}
-
         {/* Botones */}
         {isParticipant ? (
           <div className="space-y-3">
@@ -216,27 +227,63 @@ export default function JoinRoutePage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
+
+            {/* Opción Invitado */}
+            {!session && (
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <label className="block text-sm font-bold text-slate-700 mb-2">¿Cómo te llamas?</label>
+                <input
+                  type="text"
+                  placeholder="Tu nombre (ej: Pepito Grillo)"
+                  className="w-full px-4 py-3 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 mb-3"
+                  value={guestName}
+                  onChange={(e) => setGuestName(e.target.value)}
+                />
+                <button
+                  onClick={handleJoin}
+                  disabled={joining || !guestName.trim()}
+                  className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl font-bold text-lg shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                >
+                  {joining ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                      Uniéndote...
+                    </>
+                  ) : (
+                    <>👋 Unirme como Invitado</>
+                  )}
+                </button>
+                <div className="relative my-4">
+                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div>
+                  <div className="relative flex justify-center text-xs uppercase"><span className="bg-slate-50 px-2 text-slate-500">O si prefieres</span></div>
+                </div>
+              </div>
+            )}
+
+            {/* Opción Login / Usuario Registrado */}
             <button
-              onClick={handleJoin}
+              onClick={() => session ? handleJoin() : signIn(undefined, { callbackUrl: `/join/${code}` })}
               disabled={joining}
-              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className={`w-full py-3 rounded-xl font-bold text-lg shadow-sm border-2 border-slate-200 text-slate-600 hover:bg-slate-50 transition-all flex items-center justify-center gap-2 ${session ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border-none' : ''}`}
             >
-              {joining ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                  Uniéndote...
-                </>
-              ) : session ? (
-                <>🎉 ¡Unirme a la Fiesta!</>
+              {session ? (
+                joining ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                    Uniéndote como {session.user?.name}...
+                  </>
+                ) : (
+                  <>🎉 Unirme como {session.user?.name}</>
+                )
               ) : (
                 <>🔐 Iniciar Sesión y Unirme</>
               )}
             </button>
 
             {!session && (
-              <p className="text-xs text-slate-500 text-center">
-                Necesitas una cuenta para unirte
+              <p className="text-xs text-slate-400 text-center">
+                Al iniciar sesión podrás guardar tus logros y estadísticas.
               </p>
             )}
           </div>

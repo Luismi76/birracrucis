@@ -34,18 +34,18 @@ export async function GET(
       orderBy: { joinedAt: "asc" },
     });
 
-    // Devolver todos los participantes con su info
+    // Devolver todos los participantes con su info (User OR Guest)
     const allParticipants = participants.map(p => ({
-      id: p.user.id,
-      odId: p.id,
-      odIduserId: p.userId,
-      name: p.user.name,
-      image: p.user.image,
+      id: p.userId || p.guestId || p.id,
+      odId: p.id, // Original DB ID
+      name: p.user?.name || p.name || "Anónimo",
+      image: p.user?.image || p.avatar || null,
       lat: p.lastLat || 0,
       lng: p.lastLng || 0,
       lastSeenAt: p.lastSeenAt?.toISOString() || null,
       isActive: p.isActive,
       joinedAt: p.joinedAt.toISOString(),
+      isGuest: !p.userId,
     }));
 
     return NextResponse.json({ ok: true, participants: allParticipants });
@@ -61,11 +61,6 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-    }
-
     const { id: routeId } = await params;
     const body = await req.json();
     const { lat, lng } = body;
@@ -74,45 +69,56 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "lat y lng son requeridos" }, { status: 400 });
     }
 
-    // Obtener o crear usuario
-    const user = await prisma.user.upsert({
-      where: { email: session.user.email },
-      update: { name: session.user.name }, // Don't overwrite image from session, let user keep their custom avatar
-      create: { email: session.user.email, name: session.user.name, image: session.user.image },
-    });
+    const session = await getServerSession(authOptions);
+    let participantId: string | null = null;
 
-    // Verificar que el usuario es participante de esta ruta
-    const participant = await prisma.participant.findUnique({
-      where: {
-        routeId_userId: {
-          routeId,
-          userId: user.id,
-        },
-      },
-    });
+    // 1. Caso Usuario Autenticado
+    if (session?.user?.email) {
+      const user = await prisma.user.upsert({
+        where: { email: session.user.email },
+        update: { name: session.user.name },
+        create: { email: session.user.email, name: session.user.name, image: session.user.image },
+      });
 
-    if (!participant) {
-      // Auto-unirse si no es participante
-      await prisma.participant.create({
-        data: {
-          routeId,
-          userId: user.id,
-          lastLat: lat,
-          lastLng: lng,
-          lastSeenAt: new Date(),
-        },
+      const participant = await prisma.participant.findUnique({
+        where: { routeId_userId: { routeId, userId: user.id } }
       });
-    } else {
-      // Actualizar ubicación
-      await prisma.participant.update({
-        where: { id: participant.id },
-        data: {
-          lastLat: lat,
-          lastLng: lng,
-          lastSeenAt: new Date(),
-        },
-      });
+
+      if (participant) {
+        participantId = participant.id;
+      } else {
+        // Auto-join ONLY for logged in users (legacy behavior, maybe remove?)
+        // Keeping it for now as it's useful fallback
+        const newParticipant = await prisma.participant.create({
+          data: { routeId, userId: user.id, lastLat: lat, lastLng: lng, lastSeenAt: new Date() },
+        });
+        participantId = newParticipant.id;
+      }
     }
+    // 2. Caso Invitado (Cookie)
+    else {
+      const { cookies } = await import("next/headers");
+      const cookieStore = await cookies();
+      const guestId = cookieStore.get("guestId")?.value;
+
+      if (guestId) {
+        const participant = await prisma.participant.findUnique({
+          // @ts-ignore
+          where: { routeId_guestId: { routeId, guestId } }
+        });
+        if (participant) participantId = participant.id;
+      }
+    }
+
+    if (!participantId) {
+      return NextResponse.json({ ok: false, error: "No autorizado o no participante" }, { status: 401 });
+    }
+
+    // Actualizar ubicación
+    await prisma.participant.update({
+      where: { id: participantId },
+      data: { lastLat: lat, lastLng: lng, lastSeenAt: new Date() },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (error) {

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useInView } from "react-intersection-observer";
 import CloneRouteButton from "@/components/CloneRouteButton";
+import RoutePreviewModal from "@/components/RoutePreviewModal";
 import UserMenu from "@/components/UserMenu";
 
 type PublicRoute = {
@@ -27,8 +28,13 @@ export default function CommunityPage() {
     const [search, setSearch] = useState("");
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
+
     const [loading, setLoading] = useState(false);
     const { ref, inView } = useInView();
+
+    // Preview State
+    const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
+    const [selectedRouteData, setSelectedRouteData] = useState<any>(undefined);
 
     // Debounce search
     const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -123,7 +129,17 @@ export default function CommunityPage() {
                             </div>
 
                             <div className="shrink-0 flex flex-col gap-2">
-                                <CloneRouteButton routeId={route.id} routeName={route.name} />
+                                <button
+                                    onClick={() => {
+                                        setSelectedRouteId(route.id);
+                                        setSelectedRouteData(route);
+                                    }}
+                                    className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+                                    title="Ver detalles"
+                                >
+                                    👁️
+                                </button>
+                                <CloneRouteButton routeId={route.id} routeName={route.name} variant="icon" />
                             </div>
                         </div>
                     </div>
@@ -144,6 +160,19 @@ export default function CommunityPage() {
 
                 <div ref={ref} className="h-4" />
             </div>
+
+            {/* Preview Modal */}
+            {selectedRouteId && (
+                <RoutePreviewModal
+                    isOpen={!!selectedRouteId}
+                    onClose={() => {
+                        setSelectedRouteId(null);
+                        setSelectedRouteData(undefined);
+                    }}
+                    routeId={selectedRouteId}
+                    initialData={selectedRouteData}
+                />
+            )}
 
             {/* FAB para volver a mis rutas */}
             <div className="fixed bottom-6 right-6 z-20">
