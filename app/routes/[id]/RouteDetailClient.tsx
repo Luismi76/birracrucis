@@ -12,10 +12,11 @@ import BarRating from "@/components/BarRating";
 import RouteSummary from "@/components/RouteSummary";
 import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
-import InvitationManager from "@/components/InvitationManager";
+// InvitationManager removed
 import PricePicker from "@/components/PricePicker";
 import BarPlaceInfo from "@/components/BarPlaceInfo";
 import { toast } from "sonner";
+import { UserPlus } from "lucide-react";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -79,6 +80,7 @@ type RouteDetailClientProps = {
   onParticipantsChange?: (participants: Participant[]) => void;
   onProgressChange?: (progress: RouteProgress) => void;
   isCreator?: boolean;
+  onOpenShare?: () => void;
 };
 
 const RADIUS_METERS = 30;
@@ -107,7 +109,7 @@ const PARTICIPANTS_FETCH_INTERVAL = 5000;
 const DEFAULT_BEER_PRICE = 1.50;
 const DEFAULT_TAPA_PRICE = 3.00;
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare }: RouteDetailClientProps) {
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
@@ -771,8 +773,25 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           {activeTab === 'group' && (
             <div className="space-y-4">
               <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
-              <InvitationManager routeId={routeId} isCreator={isCreator} />
-              <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
+
+              {/* Botón Simple para Invitar (Reemplaza al InvitationManager) */}
+              <div className="bg-white rounded-xl border p-4 flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
+                  <p className="text-sm text-slate-500">Comparte el código o enlace</p>
+                </div>
+                <button
+                  onClick={onOpenShare}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 active:scale-95 transition-all"
+                >
+                  <UserPlus className="w-5 h-5" />
+                  Invitar
+                </button>
+              </div>
+
+              <div className="border-t border-slate-100 pt-4">
+                <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
+              </div>
             </div>
           )}
         </div>
