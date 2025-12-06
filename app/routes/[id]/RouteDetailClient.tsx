@@ -621,19 +621,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 3. Bottom Sheet (Panel Inferior Fijo) */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] pointer-events-auto flex flex-col transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) ${activeTab !== 'route'
-          ? 'h-[85vh]'
-          : isSheetExpanded
-            ? 'h-[85vh]'
-            : 'h-auto max-h-[35vh]'
+        className={`fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] pointer-events-auto flex flex-col transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) ${isSheetExpanded || activeTab !== 'route'
+          ? 'h-[85vh]' // Si está expandido O no es la tab principal (opcional, si queremos que otras tabs siempre abran, dejarlo; si queremos que otras tabs TAMBIÉN se puedan minimizar, quitar activeTab !== 'route')
+          : 'h-auto max-h-[35vh]'
           }`}
       >
         {/* Handle Visual */}
         <div
           className="w-full flex justify-center py-3 shrink-0 cursor-grab active:cursor-grabbing touch-none"
-          onClick={() => {
-            if (activeTab === 'route') setIsSheetExpanded(!isSheetExpanded);
-          }}
+          onClick={() => setIsSheetExpanded(!isSheetExpanded)}
         >
           <div className={`w-12 h-1.5 bg-slate-200/80 rounded-full transition-colors ${isSheetExpanded ? 'bg-amber-200' : ''}`} />
         </div>

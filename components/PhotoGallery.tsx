@@ -16,63 +16,40 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
   const photos = data?.photos ?? [];
   const hashtag = data?.hashtag ?? "";
 
-  const handleShare = async (photo: Photo, platform: "native" | "twitter" | "whatsapp" | "copy") => {
+  const handleShare = async (photo: Photo) => {
     const text = photo.caption
       ? `${photo.caption} ${hashtag}`
       : `${hashtag}`;
 
-    // Compartir nativo con imagen
-    if (platform === "native") {
-      try {
-        if (navigator.share) {
-          // Intentar compartir con archivo si es posible
-          const response = await fetch(photo.url);
-          const blob = await response.blob();
-          const file = new File([blob], `birracrucis-${Date.now()}.jpg`, { type: "image/jpeg" });
+    try {
+      if (navigator.share) {
+        // Intentar compartir con archivo si es posible
+        const response = await fetch(photo.url);
+        const blob = await response.blob();
+        const file = new File([blob], `birracrucis-${Date.now()}.jpg`, { type: "image/jpeg" });
 
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: "Birracrucis",
-              text: text,
-            });
-            return;
-          }
-
-          // Fallback a compartir solo texto/url si no deja archivos
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
+            files: [file],
             title: "Birracrucis",
             text: text,
-            url: photo.url
           });
-        } else {
-          // Fallback para desktop
-          await navigator.clipboard.writeText(photo.url);
-          alert("Enlace copiado al portapapeles (Tu navegador no soporta compartir nativo)");
+          return;
         }
-      } catch (err) {
-        console.error("Error compartiendo:", err);
-      }
-      return;
-    }
 
-    switch (platform) {
-      case "twitter":
-        window.open(
-          `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(photo.url)}`,
-          "_blank"
-        );
-        break;
-      case "whatsapp":
-        window.open(
-          `https://wa.me/?text=${encodeURIComponent(text + " " + photo.url)}`,
-          "_blank"
-        );
-        break;
-      case "copy":
+        // Fallback a compartir solo texto/url si no deja archivos
+        await navigator.share({
+          title: "Birracrucis",
+          text: text,
+          url: photo.url
+        });
+      } else {
+        // Fallback para desktop
         await navigator.clipboard.writeText(photo.url);
-        alert("Enlace copiado al portapapeles");
-        break;
+        alert("Enlace copiado al portapapeles (Tu navegador no soporta compartir nativo)");
+      }
+    } catch (err) {
+      console.error("Error compartiendo:", err);
     }
   };
 
@@ -118,7 +95,7 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
       {/* Modal de foto ampliada */}
       {selectedPhoto && (
         <div
-          className="fixed inset-0 bg-black/90 z-50 flex flex-col"
+          className="fixed inset-0 bg-black/90 z-[100] flex flex-col"
           onClick={() => setSelectedPhoto(null)}
         >
           {/* Header */}
@@ -171,7 +148,7 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
             <p className="text-purple-300 text-sm mb-4 font-mono">{hashtag}</p>
 
             <button
-              onClick={() => handleShare(selectedPhoto, "native")}
+              onClick={() => handleShare(selectedPhoto)}
               className="w-full bg-white text-black py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 active:scale-95 transition-all mb-3"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -179,27 +156,6 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
               </svg>
               Compartir Foto
             </button>
-
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => handleShare(selectedPhoto, "whatsapp")}
-                className="bg-[#25D366]/20 text-[#25D366] py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1 hover:bg-[#25D366]/30"
-              >
-                WhatsApp
-              </button>
-              <button
-                onClick={() => handleShare(selectedPhoto, "twitter")}
-                className="bg-[#1DA1F2]/20 text-[#1DA1F2] py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1 hover:bg-[#1DA1F2]/30"
-              >
-                X / Twitter
-              </button>
-              <button
-                onClick={() => handleShare(selectedPhoto, "copy")}
-                className="bg-white/10 text-white py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1 hover:bg-white/20"
-              >
-                Copiar Link
-              </button>
-            </div>
           </div>
         </div>
       )}
