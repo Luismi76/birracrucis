@@ -22,6 +22,7 @@ import ManualBarModal from "./components/ManualBarModal";
 import BarSearchPanel from "./components/BarSearchPanel";
 import BarList from "./components/BarList";
 import AvailableBarsList from "./components/AvailableBarsList";
+import CompactRouteSummary from "./components/CompactRouteSummary";
 
 // Import Wizard Steps
 import InfoStep from "./steps/InfoStep";
@@ -510,6 +511,18 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 {/* Step 1: Map Builder (Full Width) */}
                 <div className={`${currentStep === 1 ? 'block' : 'hidden'} h-full md:flex md:flex-row relative`}>
 
+                    {/* Resumen Compacto Flotante (Solo visible en paso 1) */}
+                    <div className="absolute top-4 left-0 right-0 z-30 flex justify-center pointer-events-none">
+                        <div className="pointer-events-auto">
+                            <CompactRouteSummary
+                                selectedBarsCount={orderedIds.length}
+                                routeDistance={routeDistance}
+                                totalTimes={routeCalculations.totalTimes}
+                                formatDistance={routeCalculations.formatDistance}
+                            />
+                        </div>
+                    </div>
+
                     {/* Búsqueda y Lista (Sidebar en Desktop, Bottom Sheet en Mobile) */}
                     <div
                         className={`
@@ -563,10 +576,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                 preOptimizeDistance={routeOptimization.preOptimizeDistance}
                                 routeDistance={routeDistance}
                                 formatDistance={routeCalculations.formatDistance}
-                                totalTimes={routeCalculations.totalTimes}
-                                startTime={startTime}
-                                hasEndTime={hasEndTime}
-                                endTime={endTime}
+
                             />
 
                             {/* Lista de bares disponibles */}

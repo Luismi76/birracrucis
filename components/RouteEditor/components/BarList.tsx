@@ -3,7 +3,6 @@
 import type { BarConfig } from "../types";
 import BarListItem from "./BarListItem";
 import RouteOptimizer from "./RouteOptimizer";
-import RouteSummary from "./RouteSummary";
 
 interface BarListProps {
     orderedIds: string[];
@@ -26,11 +25,7 @@ interface BarListProps {
     routeDistance: number | null;
     formatDistance: (meters: number) => string;
 
-    // Para RouteSummary
-    totalTimes: { totalStayTime: number; walkTime: number; total: number };
-    startTime: string;
-    hasEndTime: boolean;
-    endTime: string;
+
 }
 
 export default function BarList({
@@ -51,10 +46,6 @@ export default function BarList({
     preOptimizeDistance,
     routeDistance,
     formatDistance,
-    totalTimes,
-    startTime,
-    hasEndTime,
-    endTime,
 }: BarListProps) {
     if (orderedIds.length === 0) {
         return (
@@ -92,20 +83,8 @@ export default function BarList({
                     />
                 )}
 
-                {/* Resumen de tiempos */}
-                <RouteSummary
-                    selectedBarsCount={orderedIds.length}
-                    routeDistance={routeDistance}
-                    totalTimes={totalTimes}
-                    formatDistance={formatDistance}
-                    startTime={startTime}
-                    arrivalTimes={arrivalTimes}
-                    hasEndTime={hasEndTime}
-                    endTime={endTime}
-                />
-
                 {/* Lista de bares */}
-                <div className="space-y-3">
+                <div className="space-y-3 pb-32">
                     {orderedIds.map((id, index) => {
                         const config = selectedBars.get(id);
                         if (!config) return null;
