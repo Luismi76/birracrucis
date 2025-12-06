@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
+import RoundRoulette from "@/components/RoundRoulette";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -131,6 +132,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
+  const [spinRouletteOpen, setSpinRouletteOpen] = useState(false);
 
   // Tabs simplificadas
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
@@ -274,7 +276,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
     if (distToBar <= AUTOCHECKIN_RADIUS) {
       autoCheckinStopsRef.current.add(activeStop.id);
-      handleAddRound(activeStop.id);
+      // handleAddRound(activeStop.id); // DISABLED: Manual control requested
       setAutoCheckinNotification(`Llegaste a ${activeStop.name}`);
       setTimeout(() => setAutoCheckinNotification(null), 3000);
       if ("vibrate" in navigator) {
@@ -421,33 +423,37 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   return (
     <div className="flex flex-col h-full pointer-events-auto">
       {/* 1. STATUS DE RUTA (Barra Superior) - SOLO EN TAB RUTA */}
+      {/* 1. STATUS DE RUTA (Barra Superior) - SOLO EN TAB RUTA */}
       {activeTab === 'route' && (
-        <InRouteActions
-          isAtBar={canCheckIn}
-          isRouteComplete={isRouteComplete}
-          distToBar={distToActive}
-          onCheckIn={() => activeStop && handleAddRound(activeStop.id)}
-          onAddRound={() => activeStop && handleAddRound(activeStop.id)}
-          onPhotoClick={() => setShowCamera(true)}
-          onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
-          onSkipClick={() => toast("Próximamente: Votar salto")}
-          onNextBarClick={() => {
-            if (isOverPlannedRounds) handleNextBar();
-            else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
-          }}
-          onInviteClick={onOpenShare || (() => { })}
-          onNavigate={() => {
-            if (activeStop) {
-              const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-              window.open(url, '_blank');
-            } else {
-              toast.error("No hay destino definido");
-            }
-          }}
-          barName={activeStop?.name || ""}
-          roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
-          plannedRounds={activeStop?.plannedRounds || 0}
-        />
+        <div className="shrink-0 z-40 relative">
+          <InRouteActions
+            isAtBar={canCheckIn}
+            isRouteComplete={isRouteComplete}
+            distToBar={distToActive}
+            onCheckIn={() => activeStop && handleAddRound(activeStop.id)}
+            onAddRound={() => activeStop && handleAddRound(activeStop.id)}
+            onPhotoClick={() => setShowCamera(true)}
+            onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
+            onSpinClick={() => setSpinRouletteOpen(true)}
+            onSkipClick={() => toast("Próximamente: Votar salto")}
+            onNextBarClick={() => {
+              if (isOverPlannedRounds) handleNextBar();
+              else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
+            }}
+            onInviteClick={onOpenShare || (() => { })}
+            onNavigate={() => {
+              if (activeStop) {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                window.open(url, '_blank');
+              } else {
+                toast.error("No hay destino definido");
+              }
+            }}
+            barName={activeStop?.name || ""}
+            roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
+            plannedRounds={activeStop?.plannedRounds || 0}
+          />
+        </div>
       )}
 
       {/* 2. MAPA (Content) */}
@@ -563,6 +569,14 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
           title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
           icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
+        />
+      )}
+
+      {/* ROULETTE MODAL */}
+      {spinRouletteOpen && (
+        <RoundRoulette
+          participants={participants.filter(p => p.lat !== 0)}
+          onClose={() => setSpinRouletteOpen(false)}
         />
       )}
 

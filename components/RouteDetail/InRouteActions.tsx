@@ -1,6 +1,6 @@
 "use client";
 
-import { Crown, Beer, Camera, Bell, SkipForward, ArrowRight, UserPlus, MapPin } from "lucide-react";
+import { Crown, Beer, Bell, SkipForward, ArrowRight, UserPlus, MapPin, Dices, Camera } from "lucide-react";
 
 type InRouteActionsProps = {
     // Estado actual
@@ -13,6 +13,7 @@ type InRouteActionsProps = {
     onAddRound: () => void;
     onPhotoClick: () => void;
     onNudgeClick: () => void;
+    onSpinClick: () => void; // NUEVO: Ruleta
     onSkipClick: () => void; // TODO: Implementar lógica de skip real
     onNextBarClick: () => void;
     onInviteClick: () => void; // Por si queremos mostrar botón de invitar
@@ -32,6 +33,7 @@ export default function InRouteActions({
     onAddRound,
     onPhotoClick,
     onNudgeClick,
+    onSpinClick,
     onSkipClick,
     onNextBarClick,
     onInviteClick,
@@ -125,6 +127,12 @@ export default function InRouteActions({
                         className="p-3 bg-slate-50 border border-slate-100 rounded-xl active:bg-slate-100 active:scale-95 transition-all"
                     >
                         <Camera className="w-5 h-5 text-slate-700" />
+                    </button>
+                    <button
+                        onClick={onSpinClick}
+                        className="p-3 bg-purple-50 border border-purple-100 rounded-xl active:bg-purple-100 active:scale-95 transition-all"
+                    >
+                        <Dices className="w-5 h-5 text-purple-600" />
                     </button>
                     <button
                         onClick={onNudgeClick}
