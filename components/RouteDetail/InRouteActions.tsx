@@ -58,7 +58,7 @@ export default function InRouteActions({
     // CASO 1: En camino al bar (Lejos)
     if (!isAtBar) {
         return (
-            <div className="p-3 bg-white/95 backdrop-blur rounded-3xl m-4 shadow-2xl border border-white/50 animate-slide-up">
+            <div className="p-3 bg-white/95 backdrop-blur rounded-3xl mx-4 mt-20 shadow-2xl border border-white/50 animate-slide-down">
                 {/* Info de distancia (Compacta) */}
                 <div className="flex items-center justify-between mb-3 px-2">
                     <div className="flex items-center gap-2 overflow-hidden">
@@ -87,7 +87,15 @@ export default function InRouteActions({
                         <span>Ir</span>
                     </button>
 
-                    {/* 2. HE LLEGADO (Check-in Manual) */}
+                    {/* 2. FOTO (Nuevo) */}
+                    <button
+                        onClick={onPhotoClick}
+                        className="flex-none w-14 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center"
+                    >
+                        <Camera className="w-6 h-6" />
+                    </button>
+
+                    {/* 3. HE LLEGADO (Check-in Manual) */}
                     <button
                         onClick={onCheckIn}
                         className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-base font-bold shadow-xl shadow-slate-300 active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -104,7 +112,7 @@ export default function InRouteActions({
     const isOverRounds = roundsCount >= plannedRounds;
 
     return (
-        <div className="p-3 bg-white/95 backdrop-blur rounded-3xl m-4 shadow-2xl border border-white/50 animate-slide-up space-y-2">
+        <div className="p-3 bg-white/95 backdrop-blur rounded-3xl mx-4 mt-20 shadow-2xl border border-white/50 animate-slide-down space-y-2">
 
             {/* Botón Gigante: PEDIR RONDA (Ligeramente más compacto) */}
             <button

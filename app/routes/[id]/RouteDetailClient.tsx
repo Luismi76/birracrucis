@@ -18,6 +18,7 @@ import BarPlaceInfo from "@/components/BarPlaceInfo";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
 import InRouteActions from "@/components/RouteDetail/InRouteActions";
+import DevLocationControl from "@/components/DevLocationControl";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -563,7 +564,60 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         </div>
       )}
 
-      {/* 2. Área de Acción Flotante (FAB) - Bottom Right (Expandable Speed Dial) */}
+      {/* 2. Área de Acción Flotante (Top) - STATUS DE RUTA */}
+      {/* Movemos InRouteActions fuera del bottom bar para que flote arriba */}
+      {activeTab === 'route' && (
+        <>
+          <InRouteActions
+            isAtBar={canCheckIn}
+            isRouteComplete={isRouteComplete}
+            distToBar={distToActive}
+            onCheckIn={() => {
+              if (activeStop) handleAddRound(activeStop.id);
+            }}
+            onAddRound={() => {
+              if (activeStop) handleAddRound(activeStop.id);
+            }}
+            onPhotoClick={() => setShowCamera(true)}
+            onNudgeClick={() => {
+              toast("¡Prisa enviada! 🔔");
+            }}
+            onSkipClick={() => toast("Próximamente: Votar salto")}
+            onNextBarClick={() => {
+              if (isOverPlannedRounds) {
+                handleNextBar();
+              } else {
+                toast("¿Ya te vas? Aún quedan rondas...");
+                // Opcional: permitir forzar
+                handleNextBar();
+              }
+            }}
+            onInviteClick={onOpenShare || (() => { })}
+            onNavigate={() => {
+              if (activeStop) {
+                const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                window.open(url, '_blank');
+              } else {
+                toast.error("No hay destino definido");
+              }
+            }}
+            barName={activeStop?.name || ""}
+            roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
+            plannedRounds={activeStop?.plannedRounds || 0}
+          />
+          {/* DEV TOOLS */}
+          <DevLocationControl
+            activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng } : undefined}
+            onSetPosition={(pos) => {
+              setPosition(pos);
+              setAccuracy(5); // High accuracy for sim
+              toast.success(`Teletransportado a ${activeStop?.name} 📍`);
+            }}
+          />
+        </>
+      )}
+
+      {/* FAB Camera removed from here as it's now integrated in InRouteActions */}
       {/* MODAL CÁMARA */}
       {showCamera && activeStop && (
         <div className="fixed inset-0 z-[60] bg-black animate-in fade-in zoom-in-95 duration-200">
@@ -584,46 +638,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       {/* 3. Panel Inferior (Acciones o Tabs completas) */}
       <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto transition-transform duration-300">
 
-        {/* CASO TAB RUTA: Panel de Acciones "Big Buttons" */}
+        {/* CASO TAB RUTA: Panel de Acciones "Big Buttons" -> MOVIDO AREA SUPERIOR */}
+        {/* Dejamos el panel inferior vacío o transparente para que se vea el mapa */}
         {activeTab === 'route' && (
-          <div className="pb-[80px]"> {/* Padding para no tapar con la navbar */}
-            <InRouteActions
-              isAtBar={canCheckIn}
-              isRouteComplete={isRouteComplete}
-              distToBar={distToActive}
-              onCheckIn={() => {
-                if (activeStop) handleAddRound(activeStop.id);
-              }}
-              onAddRound={() => {
-                if (activeStop) handleAddRound(activeStop.id);
-              }}
-              onPhotoClick={() => setShowCamera(true)}
-              onNudgeClick={() => {
-                toast("¡Prisa enviada! 🔔");
-              }}
-              onSkipClick={() => toast("Próximamente: Votar salto")}
-              onNextBarClick={() => {
-                if (isOverPlannedRounds) {
-                  handleNextBar();
-                } else {
-                  toast("¿Ya te vas? Aún quedan rondas...");
-                  // Opcional: permitir forzar
-                  handleNextBar();
-                }
-              }}
-              onInviteClick={onOpenShare || (() => { })}
-              onNavigate={() => {
-                if (activeStop) {
-                  const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-                  window.open(url, '_blank');
-                } else {
-                  toast.error("No hay destino definido");
-                }
-              }}
-              barName={activeStop?.name || ""}
-              roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
-              plannedRounds={activeStop?.plannedRounds || 0}
-            />
+          <div className="pb-[80px] pointer-events-none">
+            {/* Espacio reservado si fuera necesario, o simplemente vacío */}
           </div>
         )}
 
