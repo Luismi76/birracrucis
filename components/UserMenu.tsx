@@ -67,12 +67,10 @@ export default function UserMenu() {
         className="flex items-center gap-2 focus:outline-none"
       >
         {avatar ? (
-          <Image
+          <img
             src={avatar}
             alt={session.user?.name || "Usuario"}
-            width={32}
-            height={32}
-            className="rounded-full border-2 border-amber-400"
+            className="w-8 h-8 rounded-full border-2 border-amber-400 object-cover"
           />
         ) : (
           <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white font-bold text-sm">
