@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
         where: { routeId, isActive: true },
         select: { userId: true },
       });
-      const participantIds = participants.map((p) => p.userId);
+      const participantIds = participants
+        .map((p) => p.userId)
+        .filter((id): id is string => id !== null);
 
       subscriptions = await prisma.pushSubscription.findMany({
         where: { userId: { in: participantIds } },
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
         if (!success) {
           await prisma.pushSubscription.delete({
             where: { id: sub.id },
-          }).catch(() => {});
+          }).catch(() => { });
         }
 
         return success;

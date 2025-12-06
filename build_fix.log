@@ -1,0 +1,47 @@
+
+> birracrucis@0.1.0 build
+> prisma generate && next build
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+Ô£ö Generated Prisma Client (v6.19.0) to .\node_modules\@prisma\client in 168ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
+
+ ÔÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of D:\Proyectos\package-lock.json as the root directory.
+ To silence this warning, set `outputFileTracingRoot` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/output#caveats for more information.
+ Detected additional lockfiles: 
+   * D:\Proyectos\birracrucis\package-lock.json
+
+   Ôû▓ Next.js 15.5.7
+   - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+> [PWA] Compile server
+> [PWA] Compile server
+> [PWA] Compile client (static)
+> [PWA] Auto register service worker with: D:\Proyectos\birracrucis\node_modules\next-pwa\register.js
+> [PWA] Service worker: D:\Proyectos\birracrucis\public\sw.js
+> [PWA]   url: /sw.js
+> [PWA]   scope: /
+ Ô£ô Compiled successfully in 5.6s
+   Linting and checking validity of types ...
+ Ô¿» ESLint: nextVitals is not iterable
+Failed to compile.
+
+./app/api/routes/[id]/stream/route.ts:60:29
+Type error: 'p.user' is possibly 'null'.
+
+  58 |
+  59 |                     const participantsData = participants.map((p) => ({
+> 60 |                         id: p.user.id,
+     |                             ^
+  61 |                         odId: p.id,
+  62 |                         name: p.user.name,
+  63 |                         image: p.user.image,
+Next.js build worker exited with code: 1 and signal: null

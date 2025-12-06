@@ -57,10 +57,11 @@ export async function GET(
                     });
 
                     const participantsData = participants.map((p) => ({
-                        id: p.user.id,
+                        id: p.user?.id || p.guestId || "unknown", // Priorizar ID de usuario, sino guestId
                         odId: p.id,
-                        name: p.user.name,
-                        image: p.user.image,
+                        name: p.user?.name || p.name || "Invitado", // Nombre de usuario o del participante (guest)
+                        image: p.user?.image || p.avatar, // Avatar de usuario o del participante
+                        isGuest: !p.userId, // Flag útil para el frontend
                         lat: p.lastLat || 0,
                         lng: p.lastLng || 0,
                         lastSeenAt: p.lastSeenAt?.toISOString() || null,
