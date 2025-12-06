@@ -110,7 +110,8 @@ async function main() {
             }
         });
 
-        console.log(`✅ Creada ruta: ${route.name} (${route.city})`);
+        // FIX: routeData.city instead of route.city
+        console.log(`✅ Creada ruta: ${route.name} (${routeData.city})`);
     }
 
     console.log('🏁 Seed completado.');
