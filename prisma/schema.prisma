@@ -61,6 +61,7 @@ model User {
   drinks         Drink[]
   paidDrinks     Drink[]       @relation("DrinkPayer")
   barRatings     BarRating[]
+  routeRatings   RouteRating[]
   badges         UserBadge[]
 
   // Invitaciones
@@ -131,6 +132,7 @@ model Route {
   barRatings   BarRating[]
   earnedBadges UserBadge[]
   invitations  Invitation[]
+  ratings      RouteRating[]
 
   @@index([creatorId]) // Para listar rutas por creador
   @@index([status, date(sort: Desc)]) // Para listar rutas por estado
@@ -291,6 +293,21 @@ model BarRating {
   createdAt     DateTime  @default(now())
 
   @@unique([routeId, stopId, userId])
+}
+
+// Valoración de Rutas Públicas
+model RouteRating {
+  id        String   @id @default(cuid())
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  routeId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  rating    Int      // 1-5 estrellas
+  comment   String?  // Comentario opcional
+  createdAt DateTime @default(now())
+
+  @@unique([routeId, userId]) // Una valoración por usuario y ruta
+  @@index([routeId]) // Para calcular promedios rápido
 }
 
 // Logros/Badges del usuario

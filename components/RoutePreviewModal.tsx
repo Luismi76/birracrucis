@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import CloneRouteButton from "./CloneRouteButton";
 import { X, MapPin, Clock, Users, Beer } from "lucide-react";
+import { toast } from "sonner";
+import StarRating from "@/components/StarRating";
 import dynamic from "next/dynamic";
 
 // Map dinámico (solo carga si se abre el modal)
@@ -37,6 +39,11 @@ type FullRouteData = {
     }[];
     creator: { name: string | null; image: string | null } | null;
     _count: { stops: number; participants: number };
+    rating?: {
+        average: number;
+        count: number;
+        userRating?: { rating: number; id: string } | null;
+    };
 };
 
 export default function RoutePreviewModal({ isOpen, onClose, routeId, initialData }: RoutePreviewModalProps) {
@@ -46,11 +53,18 @@ export default function RoutePreviewModal({ isOpen, onClose, routeId, initialDat
     useEffect(() => {
         if (isOpen && routeId) {
             setLoading(true);
-            fetch(`/api/routes/${routeId}`)
-                .then((res) => res.json())
-                .then((data) => {
-                    if (data.ok) {
-                        setFullRoute(data.route);
+            // Fetch de detalles + valoración (ahora hacemos 2 fetches o modificamos endpoint, 
+            // para simplificar haremos fetch paralelo del rating)
+            const fetchDetails = fetch(`/api/routes/${routeId}`).then(res => res.json());
+            const fetchRating = fetch(`/api/routes/${routeId}/rate`).then(res => res.json());
+
+            Promise.all([fetchDetails, fetchRating])
+                .then(([detailsData, ratingData]) => {
+                    if (detailsData.ok) {
+                        setFullRoute({
+                            ...detailsData.route,
+                            rating: ratingData.ok ? ratingData : undefined
+                        });
                     }
                 })
                 .catch((err) => console.error("Error loading route details:", err))
@@ -159,20 +173,76 @@ export default function RoutePreviewModal({ isOpen, onClose, routeId, initialDat
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-4 border-t bg-slate-50 flex gap-3 shrink-0">
-                    <button
-                        onClick={onClose}
-                        className="flex-1 py-3 px-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors"
-                    >
-                        Cerrar
-                    </button>
-                    <div className="flex-1">
-                        <CloneRouteButton
-                            routeId={routeId}
-                            routeName={displayData.name}
-                            className="w-full justify-center py-3 text-base"
-                            label="Usar Plantilla"
-                        />
+                <div className="flex flex-col border-t bg-slate-50 shrink-0">
+                    {/* Sección de Valoración */}
+                    {fullRoute && (
+                        <div className="px-6 py-4 border-b border-slate-100 bg-white">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">
+                                Valoración de la Comunidad
+                            </h4>
+                            <div className="flex items-center gap-4">
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-slate-800">
+                                        {(fullRoute.rating?.average || 0).toFixed(1)}
+                                    </div>
+                                    <div className="text-xs text-slate-400">
+                                        {fullRoute.rating?.count || 0} votos
+                                    </div>
+                                </div>
+                                <div className="h-10 w-px bg-slate-200"></div>
+                                <div className="flex-1">
+                                    <p className="text-sm text-slate-600 mb-1">
+                                        {fullRoute.rating?.userRating ? "Tu valoración:" : "¡Valora esta ruta!"}
+                                    </p>
+                                    <StarRating
+                                        rating={fullRoute.rating?.userRating?.rating || 0}
+                                        onRatingChange={async (newRating) => {
+                                            try {
+                                                const res = await fetch(`/api/routes/${routeId}/rate`, {
+                                                    method: "POST",
+                                                    headers: { "Content-Type": "application/json" },
+                                                    body: JSON.stringify({ rating: newRating }),
+                                                });
+                                                const data = await res.json();
+                                                if (data.ok) {
+                                                    toast.success("¡Gracias por tu valoración!");
+                                                    setFullRoute(prev => prev ? ({
+                                                        ...prev,
+                                                        rating: {
+                                                            ...prev.rating,
+                                                            userRating: data.rating,
+                                                            average: data.newAverage,
+                                                            count: data.newCount
+                                                        }
+                                                    }) : null);
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                                toast.error("Error al guardar valoración");
+                                            }
+                                        }}
+                                        size="lg"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="p-4 flex gap-3">
+                        <button
+                            onClick={onClose}
+                            className="flex-1 py-3 px-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                        >
+                            Cerrar
+                        </button>
+                        <div className="flex-1">
+                            <CloneRouteButton
+                                routeId={routeId}
+                                routeName={displayData.name}
+                                className="w-full justify-center py-3 text-base"
+                                label="Usar Plantilla"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
