@@ -45,6 +45,7 @@ export type RouteData = {
     // Campos de visibilidad
     isPublic: boolean;
     description: string | null;
+    originalRouteId?: string | null;
 };
 
 export interface RouteEditorProps {

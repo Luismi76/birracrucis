@@ -32,6 +32,7 @@ export default async function EditRoutePage({ params }: EditRoutePageProps) {
         })),
         isPublic: route.isPublic,
         description: route.description,
+        originalRouteId: route.originalRouteId,
     };
 
     return <RouteEditor initialData={serializedRoute} />;

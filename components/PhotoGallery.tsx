@@ -16,27 +16,62 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
   const photos = data?.photos ?? [];
   const hashtag = data?.hashtag ?? "";
 
-  const handleShare = async (photo: Photo, platform: "twitter" | "whatsapp" | "copy") => {
+  const handleShare = async (photo: Photo, platform: "native" | "twitter" | "whatsapp" | "copy") => {
     const text = photo.caption
       ? `${photo.caption} ${hashtag}`
       : `${hashtag}`;
 
+    // Compartir nativo con imagen
+    if (platform === "native") {
+      try {
+        if (navigator.share) {
+          // Intentar compartir con archivo si es posible
+          const response = await fetch(photo.url);
+          const blob = await response.blob();
+          const file = new File([blob], `birracrucis-${Date.now()}.jpg`, { type: "image/jpeg" });
+
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "Birracrucis",
+              text: text,
+            });
+            return;
+          }
+
+          // Fallback a compartir solo texto/url si no deja archivos
+          await navigator.share({
+            title: "Birracrucis",
+            text: text,
+            url: photo.url
+          });
+        } else {
+          // Fallback para desktop
+          await navigator.clipboard.writeText(photo.url);
+          alert("Enlace copiado al portapapeles (Tu navegador no soporta compartir nativo)");
+        }
+      } catch (err) {
+        console.error("Error compartiendo:", err);
+      }
+      return;
+    }
+
     switch (platform) {
       case "twitter":
         window.open(
-          `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+          `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(photo.url)}`,
           "_blank"
         );
         break;
       case "whatsapp":
         window.open(
-          `https://wa.me/?text=${encodeURIComponent(text)}`,
+          `https://wa.me/?text=${encodeURIComponent(text + " " + photo.url)}`,
           "_blank"
         );
         break;
       case "copy":
-        await navigator.clipboard.writeText(text);
-        alert("Copiado al portapapeles");
+        await navigator.clipboard.writeText(photo.url);
+        alert("Enlace copiado al portapapeles");
         break;
     }
   };
@@ -75,7 +110,6 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
               src={photo.url}
               alt={photo.caption || "Foto"}
               className="w-full h-full"
-              priority={index < 6} // Priorizar las primeras 6 fotos (2 filas)
             />
           </button>
         ))}
@@ -94,17 +128,19 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
                 <img
                   src={selectedPhoto.user.image}
                   alt={selectedPhoto.user.name || "Usuario"}
-                  className="w-10 h-10 rounded-full"
+                  className="w-10 h-10 rounded-full border-2 border-purple-500"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold border-2 border-white">
                   {selectedPhoto.user.name?.charAt(0) || "?"}
                 </div>
               )}
               <div>
-                <p className="font-bold">{selectedPhoto.user.name || "Anonimo"}</p>
+                <p className="font-bold text-sm">{selectedPhoto.user.name || "Anonimo"}</p>
                 {selectedPhoto.stop && (
-                  <p className="text-xs text-white/70">{selectedPhoto.stop.name}</p>
+                  <p className="text-xs text-white/70 flex items-center gap-1">
+                    <span>📍</span> {selectedPhoto.stop.name}
+                  </p>
                 )}
               </div>
             </div>
@@ -112,46 +148,56 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
               onClick={() => setSelectedPhoto(null)}
               className="p-2 hover:bg-white/10 rounded-full transition-colors"
             >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-8 h-8 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
 
           {/* Imagen */}
-          <div className="flex-1 flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+          <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <img
               src={selectedPhoto.url}
               alt={selectedPhoto.caption || "Foto"}
-              className="max-w-full max-h-full object-contain"
+              className="max-w-full max-h-full object-contain shadow-2xl"
             />
           </div>
 
           {/* Footer con caption y compartir */}
-          <div className="p-4 text-white" onClick={(e) => e.stopPropagation()}>
+          <div className="p-4 bg-gradient-to-t from-black/80 to-transparent" onClick={(e) => e.stopPropagation()}>
             {selectedPhoto.caption && (
-              <p className="mb-3">{selectedPhoto.caption}</p>
+              <p className="text-white text-lg font-medium mb-2">{selectedPhoto.caption}</p>
             )}
-            <p className="text-purple-400 text-sm mb-3">{hashtag}</p>
+            <p className="text-purple-300 text-sm mb-4 font-mono">{hashtag}</p>
 
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleShare(selectedPhoto, "twitter")}
-                className="flex-1 bg-[#1DA1F2] py-2 rounded-lg font-medium text-sm"
-              >
-                Compartir en X
-              </button>
+            <button
+              onClick={() => handleShare(selectedPhoto, "native")}
+              className="w-full bg-white text-black py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 active:scale-95 transition-all mb-3"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              Compartir Foto
+            </button>
+
+            <div className="grid grid-cols-3 gap-2">
               <button
                 onClick={() => handleShare(selectedPhoto, "whatsapp")}
-                className="flex-1 bg-[#25D366] py-2 rounded-lg font-medium text-sm"
+                className="bg-[#25D366]/20 text-[#25D366] py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1 hover:bg-[#25D366]/30"
               >
                 WhatsApp
               </button>
               <button
-                onClick={() => handleShare(selectedPhoto, "copy")}
-                className="px-4 bg-white/20 py-2 rounded-lg font-medium text-sm"
+                onClick={() => handleShare(selectedPhoto, "twitter")}
+                className="bg-[#1DA1F2]/20 text-[#1DA1F2] py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1 hover:bg-[#1DA1F2]/30"
               >
-                #
+                X / Twitter
+              </button>
+              <button
+                onClick={() => handleShare(selectedPhoto, "copy")}
+                className="bg-white/10 text-white py-2 rounded-lg font-medium text-xs flex items-center justify-center gap-1 hover:bg-white/20"
+              >
+                Copiar Link
               </button>
             </div>
           </div>

@@ -422,6 +422,45 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         .filter((b): b is BarConfig => !!b)
         .map((b) => ({ lat: b.bar.lat, lng: b.bar.lng }));
 
+    // Detectar si es un clon y si ha habido cambios
+    const isClone = isEditing && !!initialData?.originalRouteId;
+
+    const hasChanges = () => {
+        if (!initialData) return true;
+
+        // Comprobar si ha cambiado el número de bares
+        if (orderedIds.length !== initialData.stops.length) return true;
+
+        // Comprobar si ha cambiado el orden o los bares específicos
+        const initialMap = new Map(initialData.stops.map(s => [s.googlePlaceId || s.id, s]));
+
+        for (let i = 0; i < orderedIds.length; i++) {
+            const currentId = orderedIds[i];
+            const currentStop = selectedBars.get(currentId);
+            const initialStop = initialMap.get(currentId);
+
+            if (!currentStop || !initialStop) return true; // Bar diferente
+
+            // Si el orden en el array (i) no coincide con el orden original
+            if (i !== initialStop.order) return true;
+        }
+
+        return false;
+    };
+
+    // Mostrar opción pública si:
+    // 1. No es un clon (es ruta nueva o propia)
+    // 2. Es un clon pero ya la hemos hecho pública anteriormente (isEditing y initialData.isPublic es true)
+    // 3. Es un clon y hemos hecho cambios significativos
+    const showPublicOption = !isClone || (isEditing && initialData.isPublic) || hasChanges();
+
+    // Si se oculta, asegurarse de que isPublic se mantenga en false (o lo que tuviera)
+    useEffect(() => {
+        if (!showPublicOption && isPublic) {
+            setIsPublic(false);
+        }
+    }, [showPublicOption, isPublic]);
+
     return (
         <div className="flex flex-col h-screen bg-slate-50 font-sans">
             {/* Overlay fullscreen para modo manual */}
@@ -534,6 +573,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             onIsPublicChange={setIsPublic}
                             description={description}
                             onDescriptionChange={setDescription}
+                            showPublicOption={showPublicOption}
                         />
 
                         <BarSearchPanel

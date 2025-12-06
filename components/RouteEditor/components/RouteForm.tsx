@@ -19,6 +19,7 @@ interface RouteFormProps {
     onIsPublicChange: (isPublic: boolean) => void;
     description: string;
     onDescriptionChange: (desc: string) => void;
+    showPublicOption?: boolean;
 }
 
 export default function RouteForm({
@@ -40,6 +41,7 @@ export default function RouteForm({
     onIsPublicChange,
     description,
     onDescriptionChange,
+    showPublicOption = true,
 }: RouteFormProps) {
     return (
         <section className="space-y-4">
@@ -187,45 +189,48 @@ export default function RouteForm({
             </div>
 
             {/* Configuración de Visibilidad - Nueva sección */}
-            <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-4">
-                <h3 className="font-bold text-purple-800 text-sm flex items-center gap-2">
-                    <span>🌍</span> Comunidad y Visibilidad
-                </h3>
+            {showPublicOption && (
+                <div className="bg-purple-50 border border-purple-100 rounded-xl p-4 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+                    <h3 className="font-bold text-purple-800 text-sm flex items-center gap-2">
+                        <span>🌍</span> Comunidad y Visibilidad
+                    </h3>
 
-                <div className="space-y-4">
-                    <label className="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all border-slate-200 bg-white hover:border-purple-200">
-                        <div className="pt-1">
-                            <input
-                                type="checkbox"
-                                checked={isPublic}
-                                onChange={(e) => onIsPublicChange(e.target.checked)}
-                                className="w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
-                            />
-                        </div>
-                        <div className="flex-1">
-                            <div className="font-medium text-slate-800 flex items-center gap-2">
-                                Hacer pública esta ruta
-                                <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full">Comunidad</span>
+                    <div className="space-y-4">
+                        <label className="flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all border-slate-200 bg-white hover:border-purple-200">
+                            <div className="pt-1">
+                                <input
+                                    type="checkbox"
+                                    checked={isPublic}
+                                    onChange={(e) => onIsPublicChange(e.target.checked)}
+                                    className="w-5 h-5 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                />
                             </div>
-                            <div className="text-xs text-slate-500 mt-1">
-                                Otros usuarios podrán ver y clonar esta ruta.
+                            <div className="flex-1">
+                                <div className="font-medium text-slate-800 flex items-center gap-2">
+                                    Hacer pública esta ruta
+                                    <span className="bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full">Comunidad</span>
+                                </div>
+                                <div className="text-xs text-slate-500 mt-1">
+                                    Otros usuarios podrán ver y clonar esta ruta.
+                                </div>
                             </div>
-                        </div>
-                    </label>
+                        </label>
 
-                    {isPublic && (
-                        <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
-                            <span className="absolute left-3 top-3 text-slate-400">📝</span>
-                            <textarea
-                                placeholder="Descripción (opcional) - Cuenta de qué va esta ruta"
-                                className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all bg-white min-h-[80px]"
-                                value={description}
-                                onChange={(e) => onDescriptionChange(e.target.value)}
-                            />
-                        </div>
-                    )}
+                        {isPublic && (
+                            <div className="relative animate-in fade-in slide-in-from-top-2 duration-300">
+                                <span className="absolute left-3 top-3 text-slate-400">📝</span>
+                                <textarea
+                                    placeholder="Descripción (opcional) - Cuenta de qué va esta ruta"
+                                    className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none transition-all bg-white min-h-[80px]"
+                                    value={description}
+                                    onChange={(e) => onDescriptionChange(e.target.value)}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
+
 
         </section>
     );
