@@ -17,6 +17,7 @@ import PricePicker from "@/components/PricePicker";
 import BarPlaceInfo from "@/components/BarPlaceInfo";
 import { toast } from "sonner";
 import { UserPlus } from "lucide-react";
+import InRouteActions from "@/components/RouteDetail/InRouteActions";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -119,6 +120,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [showSummary, setShowSummary] = useState(false);
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
 
 
 
@@ -562,235 +564,101 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       )}
 
       {/* 2. Área de Acción Flotante (FAB) - Bottom Right (Expandable Speed Dial) */}
-      {!isRouteComplete && activeStop && activeTab === 'route' && (
-        <div className="fixed bottom-[110px] right-4 z-50 flex flex-col items-end gap-3 pointer-events-auto">
-
-          {/* Menú Desplegable */}
-          <div className={`flex flex-col items-end gap-3 transition-all duration-300 ${fabOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10 pointer-events-none'}`}>
-
-            {/* Meter Prisa */}
-            <div className="flex items-center gap-2">
-              <div className="scale-90 origin-right">
-                <NudgeButton
-                  routeId={routeId}
-                  isAtCurrentStop={canCheckIn}
-                  compact={true}
-                />
-              </div>
-            </div>
-
-            {/* Cámara */}
-            <div className="flex items-center gap-2">
-              <div className="scale-90 origin-right">
-                <PhotoCapture
-                  routeId={routeId}
-                  routeName={routeName}
-                  stopId={activeStop.id}
-                  stopName={activeStop.name}
-                  onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setFabOpen(false); }}
-                  compact={true}
-                />
-              </div>
-            </div>
-
-            {/* Pedir Ronda (Acción Directa en el menú) */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => { handleAddRound(activeStop.id); setFabOpen(false); }}
-                disabled={!canCheckIn}
-                className={`w-12 h-12 rounded-full shadow-lg flex items-center justify-center text-xl transition-all ${canCheckIn
-                  ? "bg-amber-500 text-white hover:bg-amber-600"
-                  : "bg-slate-200 text-slate-400"
-                  }`}
-              >
-                🍺
-              </button>
-            </div>
+      {/* MODAL CÁMARA */}
+      {showCamera && activeStop && (
+        <div className="fixed inset-0 z-[60] bg-black animate-in fade-in zoom-in-95 duration-200">
+          <div className="absolute top-4 right-4 z-50">
+            <button onClick={() => setShowCamera(false)} className="text-white text-lg font-bold p-4 bg-black/20 rounded-full backdrop-blur">✕</button>
           </div>
-
-          {/* Botón Principal (Toggle) */}
-          <button
-            onClick={() => setFabOpen(!fabOpen)}
-            className={`w-16 h-16 rounded-full shadow-2xl flex items-center justify-center text-3xl transition-all duration-300 active:scale-90 z-50 ${fabOpen ? "bg-slate-800 text-white rotate-45" : "bg-amber-500 text-white hover:bg-amber-600"
-              }`}
-          >
-            {fabOpen ? "+" : "🍺"}
-          </button>
+          <PhotoCapture
+            routeId={routeId}
+            routeName={routeName}
+            stopId={activeStop.id}
+            stopName={activeStop.name}
+            onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setShowCamera(false); }}
+            compact={false}
+          />
         </div>
       )}
 
-      {/* 3. Bottom Sheet (Panel Inferior Fijo) */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-40 bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] pointer-events-auto flex flex-col transition-all duration-500 cubic-bezier(0.32, 0.72, 0, 1) ${isSheetExpanded || activeTab !== 'route'
-          ? 'h-[85vh]' // Si está expandido O no es la tab principal (opcional, si queremos que otras tabs siempre abran, dejarlo; si queremos que otras tabs TAMBIÉN se puedan minimizar, quitar activeTab !== 'route')
-          : 'h-auto max-h-[35vh]'
-          }`}
-      >
-        {/* Handle Visual */}
-        <div
-          className="w-full flex justify-center py-3 shrink-0 cursor-grab active:cursor-grabbing touch-none"
-          onClick={() => setIsSheetExpanded(!isSheetExpanded)}
-        >
-          <div className={`w-12 h-1.5 bg-slate-200/80 rounded-full transition-colors ${isSheetExpanded ? 'bg-amber-200' : ''}`} />
-        </div>
+      {/* 3. Panel Inferior (Acciones o Tabs completas) */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 flex flex-col pointer-events-auto transition-transform duration-300">
 
-        {/* Contenido Scrollable */}
-        <div className="flex-1 overflow-y-auto px-4 pb-2 custom-scrollbar">
+        {/* CASO TAB RUTA: Panel de Acciones "Big Buttons" */}
+        {activeTab === 'route' && (
+          <div className="pb-[80px]"> {/* Padding para no tapar con la navbar */}
+            <InRouteActions
+              isAtBar={canCheckIn}
+              isRouteComplete={isRouteComplete}
+              distToBar={distToActive}
+              onCheckIn={() => {
+                if (activeStop) handleAddRound(activeStop.id);
+              }}
+              onAddRound={() => {
+                if (activeStop) handleAddRound(activeStop.id);
+              }}
+              onPhotoClick={() => setShowCamera(true)}
+              onNudgeClick={() => {
+                toast("¡Prisa enviada! 🔔");
+              }}
+              onSkipClick={() => toast("Próximamente: Votar salto")}
+              onNextBarClick={() => {
+                if (isOverPlannedRounds) {
+                  handleNextBar();
+                } else {
+                  toast("¿Ya te vas? Aún quedan rondas...");
+                  // Opcional: permitir forzar
+                  handleNextBar();
+                }
+              }}
+              onInviteClick={onOpenShare || (() => { })}
+              barName={activeStop?.name || ""}
+              roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
+              plannedRounds={activeStop?.plannedRounds || 0}
+            />
+          </div>
+        )}
 
-          {/* TAB: RUTA (Vista Principal Simplificada) */}
-          {activeTab === 'route' && (
-            <div className="space-y-4">
-              {/* Header del Bar Actual */}
-              {activeStop && !isRouteComplete && (
-                <div>
-                  <div className="flex justify-between items-start mb-2">
+        {/* CASO OTRAS TABS: Panel Completo (Estilo anterior) */}
+        {activeTab !== 'route' && (
+          <div className="bg-white rounded-t-3xl shadow-[0_-8px_30px_rgba(0,0,0,0.12)] h-[75vh] flex flex-col pb-[80px] animate-slide-up">
+            {/* Handle para cerrar/bajar (Visual) */}
+            <div
+              className="w-full flex justify-center py-3 shrink-0 cursor-pointer"
+              onClick={() => setActiveTab('route')} // Clic en handle vuelve a ruta
+            >
+              <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
+              {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
+
+              {activeTab === 'ratings' && activeStop && (
+                <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
+              )}
+
+              {activeTab === 'group' && (
+                <div className="space-y-4 pt-2">
+                  <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
+
+                  <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
                     <div>
-                      <h2 className="text-xl font-bold text-slate-900 leading-tight">{activeStop.name}</h2>
-                      <p className="text-sm text-slate-500 truncate max-w-[200px]">{activeStop.address}</p>
+                      <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
+                      <p className="text-sm text-slate-500">Comparte el código o enlace</p>
                     </div>
-                    <span className={`text-xs font-bold px-2 py-1 rounded-full ${canCheckIn ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-500"}`}>
-                      {canCheckIn ? "📍 Estás aquí" : `${distToActive}m`}
-                    </span>
+                    <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
+                      <UserPlus className="w-5 h-5" /> Invitar
+                    </button>
                   </div>
 
-                  {/* Info de Google Places */}
-                  <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
-
-                  {/* Progreso de Rondas */}
-                  <div className="flex items-center gap-3 bg-slate-50 p-2 rounded-xl border border-slate-100">
-                    <div className="flex-1">
-                      <div className="flex justify-between text-xs mb-1">
-                        <span className="font-bold text-slate-700">Rondas</span>
-                        <span className="font-bold text-slate-700">{rounds[activeStop.id] || 0} / {activeStop.plannedRounds}</span>
-                        {(rounds[activeStop.id] || 0) > 0 && (
-                          <button
-                            onClick={() => handleRemoveRound(activeStop.id)}
-                            className="ml-2 text-[10px] text-red-500 bg-red-50 px-2 rounded hover:bg-red-100 border border-red-200"
-                          >
-                            Deshacer
-                          </button>
-                        )}
-                      </div>
-                      <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all ${isOverPlannedRounds ? 'bg-orange-500' : 'bg-amber-500'}`}
-                          style={{ width: `${Math.min(100, ((rounds[activeStop.id] || 0) / activeStop.plannedRounds) * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <span className="block text-xs text-slate-400">Gasto</span>
-                      <span className="block font-bold text-green-600">{currentBarSpent.toFixed(2)} €</span>
-                    </div>
-                  </div>
-
-                  {/* Contadores Grandes (Cerveza / Tapa) */}
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    {/* Cervezas */}
-                    <div className="bg-amber-50 rounded-2xl p-3 border border-amber-100 flex flex-col items-center">
-                      <span className="text-xs font-bold text-amber-800 uppercase mb-2 tracking-wide">Cervezas</span>
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={() => handleRemoveBeer(activeStop.id)}
-                          className="w-12 h-12 rounded-full bg-white text-slate-400 border border-slate-200 text-2xl font-bold flex items-center justify-center hover:bg-slate-50 active:scale-90 transition-all"
-                        >-</button>
-                        <span className="text-3xl font-black text-slate-800 w-8 text-center">{beers[activeStop.id] || 0}</span>
-                        <button
-                          onClick={() => handleAddBeer(activeStop.id)}
-                          className="w-12 h-12 rounded-full bg-amber-500 text-white shadow-lg shadow-amber-200 text-2xl font-bold flex items-center justify-center hover:bg-amber-600 active:scale-90 transition-all"
-                        >+</button>
-                      </div>
-                      <button onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })} className="mt-2 text-[10px] text-amber-600 font-medium bg-white/50 px-2 py-0.5 rounded-md">
-                        {(barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE).toFixed(2)}€ / ud
-                      </button>
-                    </div>
-
-                    {/* Tapas */}
-                    <div className="bg-orange-50 rounded-2xl p-3 border border-orange-100 flex flex-col items-center">
-                      <span className="text-xs font-bold text-orange-800 uppercase mb-2 tracking-wide">Tapas</span>
-                      <div className="flex items-center gap-4">
-                        <button
-                          onClick={() => handleRemoveTapa(activeStop.id)}
-                          className="w-12 h-12 rounded-full bg-white text-slate-400 border border-slate-200 text-2xl font-bold flex items-center justify-center hover:bg-slate-50 active:scale-90 transition-all"
-                        >-</button>
-                        <span className="text-3xl font-black text-slate-800 w-8 text-center">{tapas[activeStop.id] || 0}</span>
-                        <button
-                          onClick={() => handleAddTapa(activeStop.id)}
-                          className="w-12 h-12 rounded-full bg-orange-500 text-white shadow-lg shadow-orange-200 text-2xl font-bold flex items-center justify-center hover:bg-orange-600 active:scale-90 transition-all"
-                        >+</button>
-                      </div>
-                      <button onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })} className="mt-2 text-[10px] text-orange-600 font-medium bg-white/50 px-2 py-0.5 rounded-md">
-                        {(barPrices[activeStop.id]?.tapa || DEFAULT_TAPA_PRICE).toFixed(2)}€ / ud
-                      </button>
-                    </div>
+                  <div className="border-t border-slate-100 pt-4">
+                    <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
                   </div>
                 </div>
               )}
-
-              {/* Boton Siguiente Bar / Terminar Ruta */}
-              {isOverPlannedRounds && (
-                currentBarIndex < stops.length - 1 ? (
-                  <button
-                    onClick={handleNextBar}
-                    className="w-full py-3 rounded-xl font-bold bg-slate-800 text-white shadow-lg active:scale-95 transition-all mt-2"
-                  >
-                    Ir al siguiente bar ➡️
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setShowSummary(true)}
-                    className="w-full py-3 rounded-xl font-bold bg-green-600 text-white shadow-lg active:scale-95 transition-all mt-2 animate-bounce"
-                  >
-                    🏁 Terminar Ruta y Ver Cuentas
-                  </button>
-                )
-              )}
-
-              {/* Widget Bote (Visible en Tab Principal) */}
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                <h3 className="text-sm font-bold text-slate-400 mb-2">Bote Común</h3>
-                <PotManager
-                  routeId={routeId}
-                  isCreator={isCreator}
-                  currentUserId={currentUserId}
-                  totalSpent={totalSpent}
-                />
-              </div>
             </div>
-          )}
-
-          {/* OTRAS TABS */}
-          {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
-
-          {activeTab === 'ratings' && activeStop && (
-            <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
-          )}
-
-          {activeTab === 'group' && (
-            <div className="space-y-4">
-              <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
-
-              {/* Botón Simple para Invitar (Reemplaza al InvitationManager) */}
-              <div className="bg-white rounded-xl border p-4 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
-                  <p className="text-sm text-slate-500">Comparte el código o enlace</p>
-                </div>
-                <button
-                  onClick={onOpenShare}
-                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold hover:bg-amber-600 active:scale-95 transition-all"
-                >
-                  <UserPlus className="w-5 h-5" />
-                  Invitar
-                </button>
-              </div>
-
-              <div className="border-t border-slate-100 pt-4">
-                <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
-              </div>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* BOTTOM NAVIGATION (Tabs) */}
         <div className="shrink-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2">
