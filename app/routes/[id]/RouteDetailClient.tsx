@@ -16,11 +16,10 @@ import ParticipantsList from "@/components/ParticipantsList";
 import PricePicker from "@/components/PricePicker";
 import BarPlaceInfo from "@/components/BarPlaceInfo";
 import { toast } from "sonner";
-import { UserPlus } from "lucide-react";
 import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
 import RoundRoulette from "@/components/RoundRoulette";
-import { Beer, Utensils } from "lucide-react"; // Import icons for price controls
+import { Beer, Utensils, MapPin, Crown, Camera, Dices, Bell, UserPlus } from "lucide-react"; // Import icons for actions
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -490,9 +489,81 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 3. BOTTOM INFO SHEET (Restored) */}
       {activeTab === 'route' && activeStop && (
-        <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative">
+        <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up">
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
           <div className="p-4 pt-1 space-y-4">
+            {/* ACCIONES PRINCIPALES (Nuevo Bloque Unificado) */}
+            <div className="flex flex-col gap-3 mb-2">
+              {!canCheckIn ? (
+                /* ESTADO: EN CAMINO */
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      if (activeStop) {
+                        const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                        window.open(url, '_blank');
+                      }
+                    }}
+                    className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
+                  >
+                    <MapPin className="w-6 h-6" />
+                    <span className="text-xs font-bold">Cómo llegar</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (activeStop) {
+                        setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                        handleAddRound(activeStop.id);
+                      }
+                    }}
+                    className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
+                  >
+                    <Crown className="w-6 h-6 text-amber-500" />
+                    <span className="text-lg font-bold">Ya llegué</span>
+                  </button>
+                </div>
+              ) : (
+                /* ESTADO: EN EL BAR */
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    {/* Botón Gigante: PEDIR RONDA */}
+                    <button
+                      onClick={() => activeStop && handleAddRound(activeStop.id)}
+                      className="flex-1 py-4 bg-amber-500 text-white rounded-2xl text-xl font-black shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
+                    >
+                      <Beer className="w-6 h-6 fill-white/20" />
+                      <span>¡OTRA RONDA!</span>
+                    </button>
+                  </div>
+
+                  {/* Botones Secundarios */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowCamera(true)}
+                      className="p-3 bg-slate-100 text-slate-600 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
+                    >
+                      <Camera className="w-5 h-5" />
+                      <span>Foto</span>
+                    </button>
+                    <button
+                      onClick={() => setSpinRouletteOpen(true)}
+                      className="p-3 bg-purple-100 text-purple-700 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
+                    >
+                      <Dices className="w-5 h-5" />
+                      <span>Ruleta</span>
+                    </button>
+                    <button
+                      onClick={() => toast("¡Prisa enviada! 🔔")}
+                      className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+                    >
+                      <Bell className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Google Place Info */}
             <div className="mb-2">
               <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
@@ -531,33 +602,35 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       )}
 
       {/* 3. CONTENIDO DE TABS */}
-      {activeTab !== 'route' && (
-        <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
-          <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
-            {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
-            {activeTab === 'ratings' && activeStop && (
-              <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
-            )}
-            {activeTab === 'group' && (
-              <div className="space-y-4 pt-4">
-                <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
-                <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
-                    <p className="text-sm text-slate-500">Comparte el código o enlace</p>
+      {
+        activeTab !== 'route' && (
+          <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
+            <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
+              {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
+              {activeTab === 'ratings' && activeStop && (
+                <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
+              )}
+              {activeTab === 'group' && (
+                <div className="space-y-4 pt-4">
+                  <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
+                  <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
+                      <p className="text-sm text-slate-500">Comparte el código o enlace</p>
+                    </div>
+                    <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
+                      <UserPlus className="w-5 h-5" /> Invitar
+                    </button>
                   </div>
-                  <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
-                    <UserPlus className="w-5 h-5" /> Invitar
-                  </button>
+                  <div className="border-t border-slate-100 pt-4">
+                    <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
+                  </div>
                 </div>
-                <div className="border-t border-slate-100 pt-4">
-                  <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* 4. BOTTOM NAVIGATION */}
       <div className="shrink-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2 z-50">
@@ -582,45 +655,51 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       </div>
 
       {/* MODAL CÁMARA */}
-      {showCamera && activeStop && (
-        <div className="fixed inset-0 z-[60] bg-black animate-in fade-in zoom-in-95 duration-200">
-          <div className="absolute top-4 right-4 z-50">
-            <button onClick={() => setShowCamera(false)} className="text-white text-lg font-bold p-4 bg-black/20 rounded-full backdrop-blur">✕</button>
+      {
+        showCamera && activeStop && (
+          <div className="fixed inset-0 z-[60] bg-black animate-in fade-in zoom-in-95 duration-200">
+            <div className="absolute top-4 right-4 z-50">
+              <button onClick={() => setShowCamera(false)} className="text-white text-lg font-bold p-4 bg-black/20 rounded-full backdrop-blur">✕</button>
+            </div>
+            <PhotoCapture
+              routeId={routeId}
+              routeName={routeName}
+              stopId={activeStop.id}
+              stopName={activeStop.name}
+              onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setShowCamera(false); }}
+              compact={false}
+            />
           </div>
-          <PhotoCapture
-            routeId={routeId}
-            routeName={routeName}
-            stopId={activeStop.id}
-            stopName={activeStop.name}
-            onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setShowCamera(false); }}
-            compact={false}
-          />
-        </div>
-      )}
+        )
+      }
 
       {/* Price Picker Modal & Chat */}
-      {pricePickerOpen && (
-        <PricePicker
-          isOpen={true}
-          onClose={() => setPricePickerOpen(null)}
-          onSelect={(price) => {
-            setBarPrices(prev => ({ ...prev, [pricePickerOpen.stopId]: { ...prev[pricePickerOpen.stopId], [pricePickerOpen.type]: price } }));
-          }}
-          currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
-          title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
-          icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
-        />
-      )}
+      {
+        pricePickerOpen && (
+          <PricePicker
+            isOpen={true}
+            onClose={() => setPricePickerOpen(null)}
+            onSelect={(price) => {
+              setBarPrices(prev => ({ ...prev, [pricePickerOpen.stopId]: { ...prev[pricePickerOpen.stopId], [pricePickerOpen.type]: price } }));
+            }}
+            currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
+            title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
+            icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
+          />
+        )
+      }
 
       {/* ROULETTE MODAL */}
-      {spinRouletteOpen && (
-        <RoundRoulette
-          participants={participants.filter(p => p.lat !== 0)}
-          onClose={() => setSpinRouletteOpen(false)}
-        />
-      )}
+      {
+        spinRouletteOpen && (
+          <RoundRoulette
+            participants={participants.filter(p => p.lat !== 0)}
+            onClose={() => setSpinRouletteOpen(false)}
+          />
+        )
+      }
 
       <RouteChat routeId={routeId} currentUserId={currentUserId} />
-    </div>
+    </div >
   );
 }
