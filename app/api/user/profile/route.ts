@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email: session.user.email },
       include: {
         badges: {
@@ -22,10 +22,6 @@ export async function GET(req: NextRequest) {
         },
       },
     });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
 
     // Estadísticas
     const [
