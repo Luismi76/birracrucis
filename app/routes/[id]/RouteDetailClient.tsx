@@ -353,7 +353,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     ? Math.round(distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng))
     : null;
 
-  const canCheckIn = distToActive != null && distToActive <= RADIUS_METERS && isPositionReliable();
+  // Manual override for "At Bar" state
+  const [manualArrivals, setManualArrivals] = useState<Set<string>>(new Set());
+
+  // Consider at bar if:
+  // 1. GPS says close enough (< RADIUS) OR
+  // 2. User manually clicked "Llegué" (manualArrivals has ID)
+  // 3. User manually added a round (implies arrival) -> implicit in rounds count? No, better explicit.
+  const isGeographicallyAtBar = distToActive != null && distToActive <= RADIUS_METERS && isPositionReliable();
+  const canCheckIn = isGeographicallyAtBar || (activeStop && manualArrivals.has(activeStop.id));
 
   useEffect(() => {
     if (!onProgressChange) return;
@@ -392,7 +400,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   const handleAddRound = async (stopId: string) => {
-    // ... same implementation ...
     vibrate();
     if (!navigator.onLine) { toast.error("No tienes conexión a internet"); return; }
     const peopleAtBar = getParticipantsAtBar(stopId);
@@ -423,14 +430,18 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   return (
     <div className="flex flex-col h-full pointer-events-auto">
       {/* 1. STATUS DE RUTA (Barra Superior) - SOLO EN TAB RUTA */}
-      {/* 1. STATUS DE RUTA (Barra Superior) - SOLO EN TAB RUTA */}
       {activeTab === 'route' && (
         <div className="shrink-0 z-40 relative">
           <InRouteActions
             isAtBar={canCheckIn}
             isRouteComplete={isRouteComplete}
             distToBar={distToActive}
-            onCheckIn={() => activeStop && handleAddRound(activeStop.id)}
+            onCheckIn={() => {
+              if (activeStop) {
+                setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                handleAddRound(activeStop.id);
+              }
+            }}
             onAddRound={() => activeStop && handleAddRound(activeStop.id)}
             onPhotoClick={() => setShowCamera(true)}
             onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
@@ -486,11 +497,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         )}
       </div>
 
-      {/* 3. CONTENIDO DE TABS (Si no es mapa) o BOTTOM NAV */}
-      {/* Si ActiveTab !== 'route', mostramos el panel de la tab ocupando todo el espacio sobre el mapa?
-          O lo mostramos COMO un panel inferior que sube?
-          El diseño original era un panel inferior que subia. Vamos a mantener eso pero sobre el mapa.
-      */}
+      {/* 3. CONTENIDO DE TABS */}
       {activeTab !== 'route' && (
         <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
           <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
