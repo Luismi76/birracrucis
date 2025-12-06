@@ -16,6 +16,7 @@ type InRouteActionsProps = {
     onSkipClick: () => void; // TODO: Implementar lógica de skip real
     onNextBarClick: () => void;
     onInviteClick: () => void; // Por si queremos mostrar botón de invitar
+    onNavigate: () => void; // Nueva prop
 
     // Datos del bar actual
     barName: string;
@@ -34,6 +35,7 @@ export default function InRouteActions({
     onSkipClick,
     onNextBarClick,
     onInviteClick,
+    onNavigate,
     barName,
     roundsCount,
     plannedRounds
@@ -70,15 +72,26 @@ export default function InRouteActions({
                     </div>
                 </div>
 
-                {/* Botón Principal: HE LLEGADO (Check-in Manual) */}
-                <button
-                    onClick={onCheckIn}
-                    className="w-full py-5 bg-slate-900 text-white rounded-2xl text-xl font-bold shadow-xl shadow-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3 relative overflow-hidden group"
-                >
-                    <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                    <MapPin className="w-6 h-6 text-amber-500" />
-                    <span>📍 He Llegado Manualmente</span>
-                </button>
+                {/* Botones de Acción (Grid) */}
+                <div className="flex gap-3">
+                    {/* 1. NAVEGAR */}
+                    <button
+                        onClick={onNavigate}
+                        className="flex-1 py-5 bg-blue-500 text-white rounded-2xl text-lg font-bold shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                        <MapPin className="w-6 h-6" />
+                        <span>Cómo llegar</span>
+                    </button>
+
+                    {/* 2. HE LLEGADO (Check-in Manual) */}
+                    <button
+                        onClick={onCheckIn}
+                        className="flex-1 py-5 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-300 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                        <Crown className="w-6 h-6 text-amber-500" />
+                        <span>He Llegado</span>
+                    </button>
+                </div>
                 <p className="text-center text-[10px] text-slate-400 mt-3">
                     El check-in automático se activará al acercarte (30m)
                 </p>

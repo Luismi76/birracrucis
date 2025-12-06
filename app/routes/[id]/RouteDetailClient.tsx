@@ -612,6 +612,14 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 }
               }}
               onInviteClick={onOpenShare || (() => { })}
+              onNavigate={() => {
+                if (activeStop) {
+                  const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                  window.open(url, '_blank');
+                } else {
+                  toast.error("No hay destino definido");
+                }
+              }}
               barName={activeStop?.name || ""}
               roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
               plannedRounds={activeStop?.plannedRounds || 0}
