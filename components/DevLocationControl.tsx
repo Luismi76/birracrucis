@@ -15,13 +15,13 @@ type DevLocationControlProps = {
 };
 
 export default function DevLocationControl({ activeStop, onSetPosition }: DevLocationControlProps) {
-    // Solo mostrar en desarrollo
-    if (process.env.NODE_ENV !== "development") return null;
+    // Solo mostrar en desarrollo (TEMPORAL: Permitir siempre para pruebas del usuario)
+    // if (process.env.NODE_ENV !== "development") return null;
 
     if (!activeStop) return null;
 
     return (
-        <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-2">
+        <div className="fixed bottom-24 right-4 z-50 flex flex-col gap-2 pointer-events-auto">
             <button
                 onClick={() => onSetPosition({ lat: activeStop.lat, lng: activeStop.lng })}
                 className="bg-purple-600 text-white p-3 rounded-full shadow-lg hover:bg-purple-700 active:scale-95 transition-all flex items-center gap-2"

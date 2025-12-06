@@ -58,50 +58,45 @@ export default function InRouteActions({
     // CASO 1: En camino al bar (Lejos)
     if (!isAtBar) {
         return (
-            <div className="p-3 bg-white/95 backdrop-blur rounded-3xl mx-4 mt-20 shadow-2xl border border-white/50 animate-slide-down">
-                {/* Info de distancia (Compacta) */}
-                <div className="flex items-center justify-between mb-3 px-2">
-                    <div className="flex items-center gap-2 overflow-hidden">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                            <MapPin className="w-4 h-4 text-blue-600" />
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Destino</p>
-                            <h3 className="text-sm font-bold text-slate-800 truncate max-w-[150px]">{barName}</h3>
-                        </div>
+            <div className="w-full bg-white border-b border-slate-200 pointer-events-auto shadow-sm z-30 flex items-center justify-between p-2 gap-2">
+                {/* Info Destino (Compacto) */}
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                        <MapPin className="w-4 h-4" />
                     </div>
-                    <div className="text-right flex-shrink-0">
-                        <span className="text-xl font-black text-slate-900">{distToBar ? distToBar : "?"}</span>
-                        <span className="text-[10px] font-bold text-slate-500 ml-1">m</span>
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Ir a</p>
+                        <h3 className="text-sm font-bold text-slate-800 truncate">{barName}</h3>
                     </div>
                 </div>
 
-                {/* Botones de Acción (Grid Compacto) */}
-                <div className="flex gap-2">
-                    {/* 1. NAVEGAR */}
-                    <button
-                        onClick={onNavigate}
-                        className="flex-1 py-3 bg-blue-500 text-white rounded-xl text-base font-bold shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                        <MapPin className="w-5 h-5" />
-                        <span>Ir</span>
-                    </button>
+                {/* Distancia */}
+                <div className="flex-none px-2 text-right">
+                    <span className="text-lg font-black text-slate-900">{distToBar ? distToBar : "?"}</span>
+                    <span className="text-[10px] font-bold text-slate-500 ml-0.5">m</span>
+                </div>
 
-                    {/* 2. FOTO (Nuevo) */}
+                {/* Acciones */}
+                <div className="flex items-center gap-2 flex-none">
                     <button
                         onClick={onPhotoClick}
-                        className="flex-none w-14 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold active:scale-95 transition-all flex items-center justify-center"
+                        className="p-2.5 bg-slate-100 text-slate-600 rounded-lg active:scale-95 transition-all"
                     >
-                        <Camera className="w-6 h-6" />
+                        <Camera className="w-5 h-5" />
                     </button>
-
-                    {/* 3. HE LLEGADO (Check-in Manual) */}
+                    <button
+                        onClick={onNavigate}
+                        className="py-2 px-3 bg-blue-600 text-white rounded-lg text-sm font-bold active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                        <MapPin className="w-4 h-4" />
+                        <span>Ir</span>
+                    </button>
                     <button
                         onClick={onCheckIn}
-                        className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-base font-bold shadow-xl shadow-slate-300 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        className="py-2 px-3 bg-slate-900 text-white rounded-lg text-sm font-bold active:scale-95 transition-all flex items-center gap-1.5"
                     >
-                        <Crown className="w-5 h-5 text-amber-500" />
-                        <span>Ya estoy</span>
+                        <Crown className="w-4 h-4 text-amber-500" />
+                        <span>Llegué</span>
                     </button>
                 </div>
             </div>
@@ -112,51 +107,44 @@ export default function InRouteActions({
     const isOverRounds = roundsCount >= plannedRounds;
 
     return (
-        <div className="p-3 bg-white/95 backdrop-blur rounded-3xl mx-4 mt-20 shadow-2xl border border-white/50 animate-slide-down space-y-2">
-
-            {/* Botón Gigante: PEDIR RONDA (Ligeramente más compacto) */}
-            <button
-                onClick={onAddRound}
-                className="w-full py-4 bg-amber-500 text-white rounded-2xl text-xl font-black shadow-xl shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden group"
-            >
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-amber-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <Beer className="w-6 h-6 fill-white/20" />
-                <span className="relative z-10">¡OTRA RONDA! 🍻</span>
-            </button>
-
-            {/* Grid de Acciones Secundarias (Más bajitas) */}
-            <div className="grid grid-cols-3 gap-2">
-                {/* Foto */}
+        <div className="w-full bg-white border-b border-slate-200 pointer-events-auto shadow-sm z-30 p-2">
+            <div className="flex items-center gap-2">
+                {/* Botón Gigante: PEDIR RONDA */}
                 <button
-                    onClick={onPhotoClick}
-                    className="py-2 flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-xl active:bg-slate-100 active:scale-95 transition-all"
+                    onClick={onAddRound}
+                    className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-lg font-black shadow-md shadow-amber-100 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
                 >
-                    <Camera className="w-5 h-5 text-slate-700 mb-0.5" />
-                    <span className="text-[10px] font-bold text-slate-600">Foto</span>
+                    <Beer className="w-5 h-5 fill-white/20" />
+                    <span>¡OTRA RONDA!</span>
                 </button>
 
-                {/* Meter Prisa */}
-                <button
-                    onClick={onNudgeClick}
-                    className="py-2 flex flex-col items-center justify-center bg-slate-50 border border-slate-100 rounded-xl active:bg-slate-100 active:scale-95 transition-all"
-                >
-                    <Bell className="w-5 h-5 text-slate-700 mb-0.5" />
-                    <span className="text-[10px] font-bold text-slate-600">Prisa</span>
-                </button>
-
-                {/* Saltar / Info */}
-                <button
-                    onClick={onNextBarClick}
-                    className={`py-2 flex flex-col items-center justify-center border rounded-xl active:scale-95 transition-all ${isOverRounds ? "bg-green-50 border-green-200" : "bg-slate-50 border-slate-100"}`}
-                >
-                    <ArrowRight className={`w-5 h-5 mb-0.5 ${isOverRounds ? "text-green-600" : "text-slate-400"}`} />
-                    <span className={`text-[10px] font-bold ${isOverRounds ? "text-green-700" : "text-slate-500"}`}>Siguiente</span>
-                </button>
+                {/* Acciones Secundarias (Iconos) */}
+                <div className="flex gap-2">
+                    <button
+                        onClick={onPhotoClick}
+                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl active:bg-slate-100 active:scale-95 transition-all"
+                    >
+                        <Camera className="w-5 h-5 text-slate-700" />
+                    </button>
+                    <button
+                        onClick={onNudgeClick}
+                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl active:bg-slate-100 active:scale-95 transition-all"
+                    >
+                        <Bell className="w-5 h-5 text-slate-700" />
+                    </button>
+                    <button
+                        onClick={onNextBarClick}
+                        className={`p-3 border rounded-xl active:scale-95 transition-all ${isOverRounds ? "bg-green-50 border-green-200 text-green-700" : "bg-slate-50 border-slate-100 text-slate-400"}`}
+                    >
+                        <ArrowRight className="w-5 h-5" />
+                    </button>
+                </div>
             </div>
-
             {isOverRounds && (
-                <div className="bg-green-100 text-green-800 text-[10px] font-bold px-3 py-1.5 rounded-lg text-center animate-pulse">
-                    ✅ Rondas cumplidas. ¡Vámonos!
+                <div className="mt-1 text-center">
+                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                        ✅ Rondas cumplidas
+                    </span>
                 </div>
             )}
         </div>

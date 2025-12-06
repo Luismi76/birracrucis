@@ -160,127 +160,121 @@ export default function RouteDetailWrapper({
   const isCompleted = routeStatus === "completed" || routeProgress.isComplete;
 
   return (
-    <div className="relative h-screen-safe w-full overflow-hidden bg-slate-200">
-      {/* CAPA 1: Mapa Fullscreen (Fondo) */}
-      <div className="absolute inset-0 z-0">
-        <RouteDetailMap stops={stops} userPosition={userPosition} participants={participants} />
-      </div>
+    <div className="flex flex-col h-screen-safe w-full bg-slate-200 overflow-hidden">
+      {/* Header - Ahora estático en el flujo flex, sticky top */}
+      <header className="shrink-0 z-50 bg-white/90 backdrop-blur-md shadow-sm safe-area-top transition-all relative">
+        <div className="px-4 py-2">
+          <div className="flex items-center justify-between gap-3">
+            {/* Volver */}
+            <Link
+              href="/routes"
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100/50 hover:bg-slate-200 transition-colors shrink-0 active-scale backdrop-blur-sm"
+              aria-label="Volver a mis rutas"
+            >
+              <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
 
-      {/* CAPA 2: UI Overlay */}
-      {/* pointer-events-none para que los clics pasen al mapa en las zonas vacías */}
-      <div className="absolute inset-0 z-10 flex flex-col pointer-events-none">
-
-        {/* Header - pointer-events-auto para que sea interactivo */}
-        <header className="pointer-events-auto bg-white/90 backdrop-blur-md shadow-sm safe-area-top transition-all">
-          <div className="px-4 py-2">
-            <div className="flex items-center justify-between gap-3">
-              {/* Volver */}
-              <Link
-                href="/routes"
-                className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100/50 hover:bg-slate-200 transition-colors shrink-0 active-scale backdrop-blur-sm"
-                aria-label="Volver a mis rutas"
-              >
-                <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-                </svg>
-              </Link>
-
-              {/* Info Central */}
-              <div className="flex-1 min-w-0 bg-slate-100/50 rounded-xl px-3 py-1.5 backdrop-blur-sm mx-auto max-w-xs text-center border border-white/20">
-                {isCompleted ? (
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 truncate uppercase tracking-wide">{routeName}</p>
-                    <p className="text-[10px] text-green-600 font-black">Ruta Completada</p>
-                  </div>
-                ) : isScheduled ? (
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 truncate uppercase tracking-wide">{routeName}</p>
-                    <p className="text-[10px] text-amber-600 font-black">
-                      {countdown.hours > 0 ? `${countdown.hours}h ${countdown.minutes}m` : `${countdown.minutes} min`} para empezar
-                    </p>
-                  </div>
-                ) : (
-                  <div>
-                    <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
-                      Bar {routeProgress.currentBarIndex + 1} / {routeProgress.totalBars}
-                    </p>
-                    <p className="text-xs font-bold text-slate-900 truncate">{routeProgress.currentBarName}</p>
-                  </div>
-                )}
-              </div>
-
-              {/* Botones Derecha */}
-              <div className="flex items-center gap-2 pointer-events-auto">
-                {/* Botón Compartir (Nuevo) */}
-                {inviteCode && (
-                  <button
-                    onClick={openShareModal}
-                    className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white shadow-sm hover:bg-amber-600 active:scale-95 transition-all"
-                    aria-label="Compartir ruta"
-                  >
-                    <Share2 className="w-5 h-5" />
-                  </button>
-                )}
-
-                {/* Menú */}
-                <div className="relative">
-                  <button
-                    onClick={() => setShowMoreMenu(!showMoreMenu)}
-                    className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors active-scale shadow-sm ${showMoreMenu ? "bg-slate-200 text-slate-800" : "bg-white text-slate-700 hover:bg-slate-50"
-                      }`}
-                    aria-label="Más opciones"
-                  >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
-                    </svg>
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {showMoreMenu && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
-                      <div className="absolute right-0 top-12 z-50 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 min-w-[200px] animate-in fade-in zoom-in-95 duration-200">
-                        {isCreator && (
-                          <Link
-                            href={`/routes/${routeId}/edit`}
-                            onClick={() => setShowMoreMenu(false)}
-                            className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3 font-medium"
-                          >
-                            <span className="text-lg">✏️</span> Editar ruta
-                          </Link>
-                        )}
-                        <div className="border-t my-1" />
-                        <div className="px-4 py-2 text-xs text-slate-500 space-y-2">
-                          <p className="flex items-center gap-2">📅 {new Date(routeDate).toLocaleDateString("es-ES", { weekday: 'short', day: 'numeric', month: 'short' })}</p>
-                          <p className="flex items-center gap-2">👥 {participantsCount} participantes</p>
-                        </div>
-                      </div>
-                    </>
-                  )}
+            {/* Info Central */}
+            <div className="flex-1 min-w-0 bg-slate-100/50 rounded-xl px-3 py-1.5 backdrop-blur-sm mx-auto max-w-xs text-center border border-white/20">
+              {isCompleted ? (
+                <div>
+                  <p className="text-xs font-bold text-slate-900 truncate uppercase tracking-wide">{routeName}</p>
+                  <p className="text-[10px] text-green-600 font-black">Ruta Completada</p>
                 </div>
+              ) : isScheduled ? (
+                <div>
+                  <p className="text-xs font-bold text-slate-900 truncate uppercase tracking-wide">{routeName}</p>
+                  <p className="text-[10px] text-amber-600 font-black">
+                    {countdown.hours > 0 ? `${countdown.hours}h ${countdown.minutes}m` : `${countdown.minutes} min`} para empezar
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">
+                    Bar {routeProgress.currentBarIndex + 1} / {routeProgress.totalBars}
+                  </p>
+                  <p className="text-xs font-bold text-slate-900 truncate">{routeProgress.currentBarName}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Botones Derecha */}
+            <div className="flex items-center gap-2 pointer-events-auto">
+              {/* Botón Compartir */}
+              {inviteCode && (
+                <button
+                  onClick={openShareModal}
+                  className="flex items-center justify-center w-10 h-10 rounded-full bg-amber-500 text-white shadow-sm hover:bg-amber-600 active:scale-95 transition-all"
+                  aria-label="Compartir ruta"
+                >
+                  <Share2 className="w-5 h-5" />
+                </button>
+              )}
+
+              {/* Menú */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowMoreMenu(!showMoreMenu)}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full transition-colors active-scale shadow-sm ${showMoreMenu ? "bg-slate-200 text-slate-800" : "bg-white text-slate-700 hover:bg-slate-50"
+                    }`}
+                  aria-label="Más opciones"
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  </svg>
+                </button>
+
+                {/* Dropdown Menu */}
+                {showMoreMenu && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setShowMoreMenu(false)} />
+                    <div className="absolute right-0 top-12 z-50 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 min-w-[200px] animate-in fade-in zoom-in-95 duration-200">
+                      {isCreator && (
+                        <Link
+                          href={`/routes/${routeId}/edit`}
+                          onClick={() => setShowMoreMenu(false)}
+                          className="w-full px-4 py-3 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-3 font-medium"
+                        >
+                          <span className="text-lg">✏️</span> Editar ruta
+                        </Link>
+                      )}
+                      <div className="border-t my-1" />
+                      <div className="px-4 py-2 text-xs text-slate-500 space-y-2">
+                        <p className="flex items-center gap-2">📅 {new Date(routeDate).toLocaleDateString("es-ES", { weekday: 'short', day: 'numeric', month: 'short' })}</p>
+                        <p className="flex items-center gap-2">👥 {participantsCount} participantes</p>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>
-        </header>
+        </div>
+      </header>
 
-        {/* Main: El espacio restante. RouteDetailClient gestionará su propio layout (bottom sheet) */}
-        <main className="flex-1 relative pointer-events-none">
-          <RouteDetailClient
-            stops={stops}
-            routeId={routeId}
-            routeName={routeName}
-            routeDate={routeDate}
-            startTime={startTime}
-            routeStatus={routeStatus}
-            currentUserId={currentUserId}
-            onPositionChange={setUserPosition}
-            onParticipantsChange={handleParticipantsChange}
-            onProgressChange={handleProgressChange}
-            isCreator={isCreator}
-            onOpenShare={openShareModal}
-          />
-        </main>
-      </div>
+      {/* Client gestiona el resto del layout (Actions + Map + Tabs) */}
+      <main className="flex-1 flex flex-col min-h-0">
+        <RouteDetailClient
+          stops={stops}
+          routeId={routeId}
+          routeName={routeName}
+          routeDate={routeDate}
+          startTime={startTime}
+          routeStatus={routeStatus}
+          currentUserId={currentUserId}
+          onPositionChange={setUserPosition}
+          onParticipantsChange={handleParticipantsChange}
+          onProgressChange={handleProgressChange}
+          isCreator={isCreator}
+          onOpenShare={openShareModal}
+        >
+          {/* El Mapa se pasa como children */}
+          <RouteDetailMap stops={stops} userPosition={userPosition} participants={participants} />
+        </RouteDetailClient>
+      </main>
+
 
       {/* Modal de Compartir */}
       {inviteCode && (
