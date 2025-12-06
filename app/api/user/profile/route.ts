@@ -23,6 +23,29 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Si el usuario no existe (ej: borrado manualmente), lo recreamos
+    if (!user) {
+      console.log("Usuario no encontrado, recreando:", session.user.email);
+      user = await prisma.user.create({
+        data: {
+          email: session.user.email,
+          name: session.user.name || "Nuevo Usuario",
+          image: session.user.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
+          onboardingCompleted: false, // Forzar onboarding
+        },
+        include: {
+          badges: {
+            include: {
+              badge: true,
+            },
+            orderBy: { earnedAt: "desc" },
+          },
+        },
+      });
+    }
+
+    if (!user) throw new Error("Could not create user");
+
     // Estadísticas
     const [
       routesCreated,
@@ -136,23 +159,6 @@ export async function PATCH(req: NextRequest) {
         notificationsEnabled: true,
       },
     });
-
-    // Si se actualizó la imagen, forzar actualización en la tabla Participant
-    // para que el mapa lo refleje sin esperar al siguiente check-in/sync
-    if (updateData.image) {
-      // No necesitamos hacer nada explícito si el endpoint GET /participants hace join con User.
-      // Verificamos GET /api/routes/[id]/participants/route.ts:
-      //   include: { user: { select: { image: true ... } } }
-      // ¡Correcto! El front ya lee del usuario.
-      // PERO: si el marker usa participant.image y este venía de user.image...
-      // Espera, el endpoint GET devuelve `image: p.user.image`.
-      // Entonces, con actualizar el User basta.
-      // EL PROBLEMA ERA QUE EL POST SOBREESCRIBÍA LA IMAGEN DEL USER CON LA DE LA SESIÓN.
-      // Ese fix ya está hecho en el otro archivo.
-
-      // Confirmación: Si la app usa 'session' para mostrar el avatar en el header, 
-      // necesitará refrescar la sesión o el cliente leer del perfil.
-    }
 
     return NextResponse.json({
       ok: true,
