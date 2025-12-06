@@ -71,8 +71,6 @@ type RouteProgress = {
   isComplete: boolean;
 };
 
-
-
 const RADIUS_METERS = 30;
 const ACCURACY_THRESHOLD = 150;
 
@@ -99,8 +97,6 @@ const PARTICIPANTS_FETCH_INTERVAL = 5000;
 const DEFAULT_BEER_PRICE = 1.50;
 const DEFAULT_TAPA_PRICE = 3.00;
 
-// ... imports
-
 type RouteDetailClientProps = {
   // ... existing props ...
   stops: StopClient[];
@@ -117,8 +113,6 @@ type RouteDetailClientProps = {
   onOpenShare?: () => void;
   children?: React.ReactNode; // Add children prop for Map
 };
-
-// ... constants ...
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, children }: RouteDetailClientProps) {
   // ... state ...
@@ -378,7 +372,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
 
   // ... Handlers (getParticipantsAtBar, handleNextBar, handleAddRound, etc) ...
-  const getParticipantsAtBar = (stopId: string) => { /* ... same ... */
+  const getParticipantsAtBar = (stopId: string) => {
     const stop = stops.find(s => s.id === stopId);
     if (!stop) return 1;
     const atBar = participants.filter(p => {
@@ -424,52 +418,50 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
-  // ... Other handlers (handleRemoveRound, handleAddBeer, etc) ...
-  // Keeping these methods for completeness if needed inside components
-
   return (
     <div className="flex flex-col h-full pointer-events-auto">
-      {/* 1. STATUS DE RUTA (Barra Superior) - SOLO EN TAB RUTA */}
-      {activeTab === 'route' && (
-        <div className="shrink-0 z-40 relative">
-          <InRouteActions
-            isAtBar={canCheckIn}
-            isRouteComplete={isRouteComplete}
-            distToBar={distToActive}
-            onCheckIn={() => {
-              if (activeStop) {
-                setManualArrivals(prev => new Set(prev).add(activeStop.id));
-                handleAddRound(activeStop.id);
-              }
-            }}
-            onAddRound={() => activeStop && handleAddRound(activeStop.id)}
-            onPhotoClick={() => setShowCamera(true)}
-            onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
-            onSpinClick={() => setSpinRouletteOpen(true)}
-            onSkipClick={() => toast("Próximamente: Votar salto")}
-            onNextBarClick={() => {
-              if (isOverPlannedRounds) handleNextBar();
-              else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
-            }}
-            onInviteClick={onOpenShare || (() => { })}
-            onNavigate={() => {
-              if (activeStop) {
-                const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-                window.open(url, '_blank');
-              } else {
-                toast.error("No hay destino definido");
-              }
-            }}
-            barName={activeStop?.name || ""}
-            roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
-            plannedRounds={activeStop?.plannedRounds || 0}
-          />
-        </div>
-      )}
-
       {/* 2. MAPA (Content) */}
       <div className="flex-1 relative">
         {children}
+
+        {/* ACTIONS PANEL (Floats at bottom) */}
+        {activeTab === 'route' && (
+          <div className="absolute bottom-4 left-4 right-4 z-40">
+            <InRouteActions
+              isAtBar={canCheckIn}
+              isRouteComplete={isRouteComplete}
+              distToBar={distToActive}
+              onCheckIn={() => {
+                if (activeStop) {
+                  setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                  handleAddRound(activeStop.id);
+                }
+              }}
+              onAddRound={() => activeStop && handleAddRound(activeStop.id)}
+              onPhotoClick={() => setShowCamera(true)}
+              onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
+              onSpinClick={() => setSpinRouletteOpen(true)}
+              onSkipClick={() => toast("Próximamente: Votar salto")}
+              onNextBarClick={() => {
+                const isOverPlannedRounds = activeStop ? ((rounds[activeStop.id] || 0) >= activeStop.plannedRounds) : false;
+                if (isOverPlannedRounds) handleNextBar();
+                else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
+              }}
+              onInviteClick={onOpenShare || (() => { })}
+              onNavigate={() => {
+                if (activeStop) {
+                  const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                  window.open(url, '_blank');
+                } else {
+                  toast.error("No hay destino definido");
+                }
+              }}
+              barName={activeStop?.name || ""}
+              roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
+              plannedRounds={activeStop?.plannedRounds || 0}
+            />
+          </div>
+        )}
 
         {/* Notificaciones Flotantes (sobre el mapa) */}
         {autoCheckinNotification && (

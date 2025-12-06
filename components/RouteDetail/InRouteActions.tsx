@@ -60,42 +60,35 @@ export default function InRouteActions({
     // CASO 1: En camino al bar (Lejos)
     if (!isAtBar) {
         return (
-            <div className="w-full bg-white border-b border-slate-200 pointer-events-auto shadow-sm z-30 flex items-center justify-between p-2 gap-2">
+            <div className="w-full bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-white/50 p-3 flex items-center justify-between gap-2 animate-slide-up">
                 {/* Info Destino (Compacto) */}
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
-                        <MapPin className="w-4 h-4" />
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-sm">
+                        <MapPin className="w-5 h-5" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Ir a</p>
-                        <h3 className="text-sm font-bold text-slate-800 truncate">{barName}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Ir a</p>
+                        <h3 className="text-base font-bold text-slate-900 truncate">{barName}</h3>
                     </div>
                 </div>
 
                 {/* Distancia */}
                 <div className="flex-none px-2 text-right">
-                    <span className="text-lg font-black text-slate-900">{distToBar ? distToBar : "?"}</span>
-                    <span className="text-[10px] font-bold text-slate-500 ml-0.5">m</span>
+                    <span className="text-xl font-black text-slate-900">{distToBar ? distToBar : "?"}</span>
+                    <span className="text-xs font-bold text-slate-500 ml-0.5">m</span>
                 </div>
 
                 {/* Acciones */}
                 <div className="flex items-center gap-2 flex-none">
                     <button
-                        onClick={onPhotoClick}
-                        className="p-2.5 bg-slate-100 text-slate-600 rounded-lg active:scale-95 transition-all"
-                    >
-                        <Camera className="w-5 h-5" />
-                    </button>
-                    <button
                         onClick={onNavigate}
-                        className="py-2 px-3 bg-blue-600 text-white rounded-lg text-sm font-bold active:scale-95 transition-all flex items-center gap-1.5"
+                        className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-all"
                     >
-                        <MapPin className="w-4 h-4" />
-                        <span>Ir</span>
+                        <ArrowRight className="w-5 h-5" />
                     </button>
                     <button
                         onClick={onCheckIn}
-                        className="py-2 px-3 bg-slate-900 text-white rounded-lg text-sm font-bold active:scale-95 transition-all flex items-center gap-1.5"
+                        className="py-2.5 px-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg shadow-slate-200 active:scale-95 transition-all flex items-center gap-1.5"
                     >
                         <Crown className="w-4 h-4 text-amber-500" />
                         <span>Llegué</span>
@@ -109,7 +102,7 @@ export default function InRouteActions({
     const isOverRounds = roundsCount >= plannedRounds;
 
     return (
-        <div className="w-full bg-white border-b border-slate-200 pointer-events-auto shadow-sm z-30 p-2">
+        <div className="w-full bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-white/50 p-2 animate-slide-up">
             <div className="flex items-center gap-2">
                 {/* Botón Gigante: PEDIR RONDA */}
                 <button
