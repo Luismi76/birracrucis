@@ -18,7 +18,7 @@ type AutoCheckinProps = {
   enabled?: boolean;
 };
 
-const CHECKIN_RADIUS_METERS = 50; // Radio para check-in automático
+const CHECKIN_RADIUS_METERS = 30; // Radio para check-in automático
 const CHECKIN_COOLDOWN_MS = 60000; // 1 minuto entre check-ins automáticos
 
 function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -112,14 +112,12 @@ export default function AutoCheckin({
         </div>
         <button
           onClick={() => setIsEnabled(!isEnabled)}
-          className={`relative w-12 h-6 rounded-full transition-colors ${
-            isEnabled ? "bg-green-500" : "bg-slate-300"
-          }`}
+          className={`relative w-12 h-6 rounded-full transition-colors ${isEnabled ? "bg-green-500" : "bg-slate-300"
+            }`}
         >
           <span
-            className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-              isEnabled ? "left-7" : "left-1"
-            }`}
+            className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${isEnabled ? "left-7" : "left-1"
+              }`}
           />
         </button>
       </div>

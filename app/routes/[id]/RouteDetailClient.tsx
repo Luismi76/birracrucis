@@ -81,7 +81,7 @@ type RouteDetailClientProps = {
   isCreator?: boolean;
 };
 
-const RADIUS_METERS = 75;
+const RADIUS_METERS = 30;
 const ACCURACY_THRESHOLD = 150;
 
 function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -128,7 +128,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [autoCheckinEnabled, setAutoCheckinEnabled] = useState(true);
   const autoCheckinStopsRef = useRef<Set<string>>(new Set());
   const [autoCheckinNotification, setAutoCheckinNotification] = useState<string | null>(null);
-  const AUTOCHECKIN_RADIUS = 50; // metros
+  const AUTOCHECKIN_RADIUS = 30; // metros
 
   // Price picker modal
   const [pricePickerOpen, setPricePickerOpen] = useState<{ type: 'beer' | 'tapa'; stopId: string } | null>(null);

@@ -21,9 +21,9 @@ export function distanceInMeters(
     const a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
         Math.cos(toRad(lat1)) *
-            Math.cos(toRad(lat2)) *
-            Math.sin(dLon / 2) *
-            Math.sin(dLon / 2);
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 }
@@ -58,4 +58,4 @@ export function formatDistance(meters: number): string {
 /**
  * Radio por defecto para considerar que alguien está "en el bar"
  */
-export const CHECKIN_RADIUS_METERS = 100;
+export const CHECKIN_RADIUS_METERS = 30;
