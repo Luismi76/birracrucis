@@ -26,8 +26,11 @@ export default function RouteOptimizer({
                 disabled={disabled || barsCount < 2}
                 className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-bold hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-purple-200 active:scale-95 flex items-center justify-center gap-2"
             >
-                <span>✨</span> Optimizar Ruta
+                <span>✨</span> Reordenar por cercanía
             </button>
+            <p className="text-xs text-slate-400 text-center px-2">
+                *Tu ruta actual ya sigue el camino más corto posible respetando el orden de tu lista.
+            </p>
 
             {showSavings && (
                 <div className="bg-green-100 border border-green-200 rounded-lg px-3 py-2 flex items-center gap-2">

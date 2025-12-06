@@ -36,6 +36,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
     // Wizard State
     const [currentStep, setCurrentStep] = useState(0);
+    const [isMobileListExpanded, setIsMobileListExpanded] = useState(false); // Nuevo estado para UI móvil
 
     // Estado del formulario básico
     const [name, setName] = useState(initialData?.name || "");
@@ -507,9 +508,24 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 )}
 
                 {/* Step 1: Map Builder (Full Width) */}
-                <div className={`${currentStep === 1 ? 'block' : 'hidden'} h-full flex flex-col md:flex-row relative`}>
-                    {/* Búsqueda y Lista (Sidebar en Desktop, Bottom Sheet en Mobile si quisiéramos) */}
-                    <div className="w-full md:w-1/3 flex flex-col border-r bg-white h-[40%] md:h-full z-10">
+                <div className={`${currentStep === 1 ? 'block' : 'hidden'} h-full md:flex md:flex-row relative`}>
+
+                    {/* Búsqueda y Lista (Sidebar en Desktop, Bottom Sheet en Mobile) */}
+                    <div
+                        className={`
+                            fixed bottom-0 left-0 right-0 z-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.1)] rounded-t-3xl transition-all duration-300
+                            md:static md:w-1/3 md:h-full md:shadow-none md:rounded-none md:border-r flex flex-col
+                            ${isMobileListExpanded ? 'h-[85%]' : 'h-[35%] md:h-full'}
+                        `}
+                    >
+                        {/* Toggle Handle (Mobile Only) */}
+                        <div
+                            className="md:hidden w-full flex justify-center py-3 cursor-pointer touch-none"
+                            onClick={() => setIsMobileListExpanded(!isMobileListExpanded)}
+                        >
+                            <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
+                        </div>
+
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
                             <BarSearchPanel
                                 placeSearchQuery={barSearch.placeSearchQuery}
@@ -567,8 +583,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                         </div>
                     </div>
 
-                    {/* Mapa */}
-                    <div className="flex-1 relative bg-slate-100 h-[60%] md:h-full">
+                    {/* Mapa (Absolute en Mobile, Flex en Desktop) */}
+                    <div className="absolute inset-0 md:static md:flex-1 bg-slate-100 h-full z-0 md:z-auto pb-[35%] md:pb-0">
                         <BarSearchMap
                             center={mapCenter}
                             radius={parseInt(radius)}
@@ -587,7 +603,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
                         />
                         {manualBarCreation.manualAddMode && (
-                            <div className="absolute inset-x-4 bottom-4 bg-white p-4 rounded-xl shadow-lg z-20 flex flex-col gap-3 animate-in slide-in-from-bottom">
+                            <div className="absolute inset-x-4 top-4 md:bottom-4 md:top-auto bg-white p-4 rounded-xl shadow-lg z-20 flex flex-col gap-3 animate-in slide-in-from-top md:slide-in-from-bottom">
                                 <p className="text-sm font-medium text-center">Toca en el mapa para añadir un punto</p>
                                 <button
                                     onClick={() => {
