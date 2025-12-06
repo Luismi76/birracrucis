@@ -8,7 +8,25 @@ import { useState, useRef, useEffect } from "react";
 export default function UserMenu() {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
+  const [avatar, setAvatar] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Intentar cargar el avatar real desde la DB
+  useEffect(() => {
+    if (session?.user?.email) {
+      // Usar la imagen de sesión como inicial
+      setAvatar(session.user.image || null);
+
+      fetch("/api/user/profile")
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok && data.profile?.image) {
+            setAvatar(data.profile.image);
+          }
+        })
+        .catch(err => console.error("Error loading avatar:", err));
+    }
+  }, [session]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -43,10 +61,10 @@ export default function UserMenu() {
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 focus:outline-none"
       >
-        {session.user?.image ? (
+        {avatar ? (
           <Image
-            src={session.user.image}
-            alt={session.user.name || "Usuario"}
+            src={avatar}
+            alt={session.user?.name || "Usuario"}
             width={32}
             height={32}
             className="rounded-full border-2 border-amber-400"

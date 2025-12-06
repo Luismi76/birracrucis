@@ -5,7 +5,7 @@ import AppWrapper from "@/components/AppWrapper";
 import AuthProvider from "@/components/AuthProvider";
 import { Toaster } from "sonner";
 import OfflineBanner from "@/components/OfflineBanner";
-import PushNotificationManager from "@/components/PushNotificationManager";
+
 import OnboardingCheck from "@/components/OnboardingCheck";
 
 const geistSans = Geist({
@@ -83,7 +83,7 @@ export default function RootLayout({
         <AuthProvider>
           <AppWrapper>{children}</AppWrapper>
           <Toaster richColors position="top-center" />
-          <PushNotificationManager />
+
           <OnboardingCheck />
           <main className="flex-1 pb-16 md:pb-0">
           </main>
