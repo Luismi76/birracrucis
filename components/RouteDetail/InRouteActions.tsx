@@ -57,38 +57,45 @@ export default function InRouteActions({
         );
     }
 
-    // CASO 1: En camino al bar (Lejos)
+    // CASO 1: En camino al bar (Top Toolbar)
     if (!isAtBar) {
         return (
-            <div className="w-full bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-white/50 p-3 flex items-center justify-between gap-2 animate-slide-up">
+            <div className="w-full bg-white border-b border-slate-200 pointer-events-auto shadow-sm z-30 flex items-center justify-between p-2 gap-2">
                 {/* Info Destino (Compacto) */}
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-sm">
-                        <MapPin className="w-5 h-5" />
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0 text-blue-600">
+                        <MapPin className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Ir a</p>
-                        <h3 className="text-base font-bold text-slate-900 truncate">{barName}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Ir a</p>
+                        <h3 className="text-sm font-bold text-slate-800 truncate">{barName}</h3>
                     </div>
                 </div>
 
                 {/* Distancia */}
                 <div className="flex-none px-2 text-right">
-                    <span className="text-xl font-black text-slate-900">{distToBar ? distToBar : "?"}</span>
-                    <span className="text-xs font-bold text-slate-500 ml-0.5">m</span>
+                    <span className="text-lg font-black text-slate-900">{distToBar ? distToBar : "?"}</span>
+                    <span className="text-[10px] font-bold text-slate-500 ml-0.5">m</span>
                 </div>
 
                 {/* Acciones */}
                 <div className="flex items-center gap-2 flex-none">
                     <button
-                        onClick={onNavigate}
-                        className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 active:scale-95 transition-all"
+                        onClick={onPhotoClick}
+                        className="p-2.5 bg-slate-100 text-slate-600 rounded-lg active:scale-95 transition-all"
                     >
-                        <ArrowRight className="w-5 h-5" />
+                        <Camera className="w-5 h-5" />
+                    </button>
+                    <button
+                        onClick={onNavigate}
+                        className="py-2 px-3 bg-blue-600 text-white rounded-lg text-sm font-bold active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                        <MapPin className="w-4 h-4" />
+                        <span>Ir</span>
                     </button>
                     <button
                         onClick={onCheckIn}
-                        className="py-2.5 px-3 bg-slate-900 text-white rounded-xl text-sm font-bold shadow-lg shadow-slate-200 active:scale-95 transition-all flex items-center gap-1.5"
+                        className="py-2 px-3 bg-slate-900 text-white rounded-lg text-sm font-bold active:scale-95 transition-all flex items-center gap-1.5"
                     >
                         <Crown className="w-4 h-4 text-amber-500" />
                         <span>Llegué</span>
@@ -98,56 +105,42 @@ export default function InRouteActions({
         );
     }
 
-    // CASO 2: En el bar (Listo para la acción)
+    // CASO 2: En el bar (Top Toolbar)
     const isOverRounds = roundsCount >= plannedRounds;
 
     return (
-        <div className="w-full bg-white/95 backdrop-blur rounded-2xl shadow-xl border border-white/50 p-2 animate-slide-up">
-            <div className="flex items-center gap-2">
-                {/* Botón Gigante: PEDIR RONDA */}
-                <button
-                    onClick={onAddRound}
-                    className="flex-1 py-3 bg-amber-500 text-white rounded-xl text-lg font-black shadow-md shadow-amber-100 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
-                >
-                    <Beer className="w-5 h-5 fill-white/20" />
-                    <span>¡OTRA RONDA!</span>
-                </button>
+        <div className="w-full bg-white border-b border-slate-200 pointer-events-auto shadow-sm z-30 flex items-center justify-between p-2 gap-2">
 
-                {/* Acciones Secundarias (Iconos) */}
-                <div className="flex gap-2">
-                    <button
-                        onClick={onPhotoClick}
-                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl active:bg-slate-100 active:scale-95 transition-all"
-                    >
-                        <Camera className="w-5 h-5 text-slate-700" />
-                    </button>
-                    <button
-                        onClick={onSpinClick}
-                        className="p-3 bg-purple-50 border border-purple-100 rounded-xl active:bg-purple-100 active:scale-95 transition-all"
-                    >
-                        <Dices className="w-5 h-5 text-purple-600" />
-                    </button>
-                    <button
-                        onClick={onNudgeClick}
-                        className="p-3 bg-slate-50 border border-slate-100 rounded-xl active:bg-slate-100 active:scale-95 transition-all"
-                    >
-                        <Bell className="w-5 h-5 text-slate-700" />
-                    </button>
-                    <button
-                        onClick={onNextBarClick}
-                        className={`p-3 border rounded-xl active:scale-95 transition-all ${isOverRounds ? "bg-green-50 border-green-200 text-green-700" : "bg-slate-50 border-slate-100 text-slate-400"}`}
-                    >
-                        <ArrowRight className="w-5 h-5" />
-                    </button>
+            {/* Izquierda: Info Bar y Rondas */}
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="flex-none">
+                    <div className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-lg border border-amber-100">
+                        <Beer className="w-3.5 h-3.5 fill-amber-500" />
+                        <span className="text-xs font-black">{roundsCount}/{plannedRounds}</span>
+                    </div>
+                </div>
+                <div className="min-w-0">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider leading-none">Estás en</p>
+                    <h3 className="text-sm font-bold text-slate-800 truncate">{barName}</h3>
                 </div>
             </div>
-            {isOverRounds && (
-                <div className="mt-1 text-center">
-                    <span className="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                        ✅ Rondas cumplidas
-                    </span>
-                </div>
-            )}
+
+            {/* Derecha: Botón Principal + Acciones */}
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={onSpinClick}
+                    className="p-2 bg-purple-50 text-purple-600 rounded-lg border border-purple-100 active:scale-95 transition-all"
+                >
+                    <Dices className="w-5 h-5" />
+                </button>
+                <button
+                    onClick={onAddRound}
+                    className="py-2 px-3 bg-amber-500 text-white rounded-lg text-sm font-bold shadow-sm shadow-amber-200 active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                    <Beer className="w-4 h-4 fill-white/20" />
+                    <span>Ronda</span>
+                </button>
+            </div>
         </div>
     );
 }

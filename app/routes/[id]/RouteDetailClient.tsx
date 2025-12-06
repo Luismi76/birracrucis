@@ -20,6 +20,7 @@ import { UserPlus } from "lucide-react";
 import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
 import RoundRoulette from "@/components/RoundRoulette";
+import { Beer, Utensils } from "lucide-react"; // Import icons for price controls
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -419,49 +420,47 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   };
 
   return (
-    <div className="flex flex-col h-full pointer-events-auto">
-      {/* 2. MAPA (Content) */}
-      <div className="flex-1 relative">
-        {children}
+    <div className="flex flex-col h-full pointer-events-auto bg-slate-50">
+      {/* 1. TOP ACTIONS BAR (Docked) */}
+      <div className="shrink-0 z-30 bg-white border-b border-slate-200">
+        <InRouteActions
+          isAtBar={canCheckIn}
+          isRouteComplete={isRouteComplete}
+          distToBar={distToActive}
+          onCheckIn={() => {
+            if (activeStop) {
+              setManualArrivals(prev => new Set(prev).add(activeStop.id));
+              handleAddRound(activeStop.id);
+            }
+          }}
+          onAddRound={() => activeStop && handleAddRound(activeStop.id)}
+          onPhotoClick={() => setShowCamera(true)}
+          onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
+          onSpinClick={() => setSpinRouletteOpen(true)}
+          onSkipClick={() => toast("Próximamente: Votar salto")}
+          onNextBarClick={() => {
+            const isOverPlannedRounds = activeStop ? ((rounds[activeStop.id] || 0) >= activeStop.plannedRounds) : false;
+            if (isOverPlannedRounds) handleNextBar();
+            else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
+          }}
+          onInviteClick={onOpenShare || (() => { })}
+          onNavigate={() => {
+            if (activeStop) {
+              const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+              window.open(url, '_blank');
+            } else {
+              toast.error("No hay destino definido");
+            }
+          }}
+          barName={activeStop?.name || ""}
+          roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
+          plannedRounds={activeStop?.plannedRounds || 0}
+        />
+      </div>
 
-        {/* ACTIONS PANEL (Floats at bottom) */}
-        {activeTab === 'route' && (
-          <div className="absolute bottom-4 left-4 right-4 z-40">
-            <InRouteActions
-              isAtBar={canCheckIn}
-              isRouteComplete={isRouteComplete}
-              distToBar={distToActive}
-              onCheckIn={() => {
-                if (activeStop) {
-                  setManualArrivals(prev => new Set(prev).add(activeStop.id));
-                  handleAddRound(activeStop.id);
-                }
-              }}
-              onAddRound={() => activeStop && handleAddRound(activeStop.id)}
-              onPhotoClick={() => setShowCamera(true)}
-              onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
-              onSpinClick={() => setSpinRouletteOpen(true)}
-              onSkipClick={() => toast("Próximamente: Votar salto")}
-              onNextBarClick={() => {
-                const isOverPlannedRounds = activeStop ? ((rounds[activeStop.id] || 0) >= activeStop.plannedRounds) : false;
-                if (isOverPlannedRounds) handleNextBar();
-                else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
-              }}
-              onInviteClick={onOpenShare || (() => { })}
-              onNavigate={() => {
-                if (activeStop) {
-                  const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-                  window.open(url, '_blank');
-                } else {
-                  toast.error("No hay destino definido");
-                }
-              }}
-              barName={activeStop?.name || ""}
-              roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
-              plannedRounds={activeStop?.plannedRounds || 0}
-            />
-          </div>
-        )}
+      {/* 2. MAPA (Content) */}
+      <div className="flex-1 relative overflow-hidden">
+        {children}
 
         {/* Notificaciones Flotantes (sobre el mapa) */}
         {autoCheckinNotification && (
@@ -476,7 +475,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           </div>
         )}
 
-        {/* DEV TOOLS (Flotante sobre mapa, bottom right) */}
+        {/* DEV TOOLS */}
         {activeTab === 'route' && (
           <DevLocationControl
             activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng } : undefined}
@@ -488,6 +487,48 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           />
         )}
       </div>
+
+      {/* 3. BOTTOM INFO SHEET (Restored) */}
+      {activeTab === 'route' && activeStop && (
+        <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative">
+          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
+          <div className="p-4 pt-1 space-y-4">
+            {/* Google Place Info */}
+            <div className="mb-2">
+              <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
+            </div>
+
+            {/* Price Controls & Actions Row */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
+                className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl">🍺</div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">Caña</p>
+                  <p className="text-lg font-black text-slate-800">
+                    {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
+                  </p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
+                className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+              >
+                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">🍢</div>
+                <div>
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">Tapa</p>
+                  <p className="text-lg font-black text-slate-800">
+                    {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
+                  </p>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3. CONTENIDO DE TABS */}
       {activeTab !== 'route' && (
