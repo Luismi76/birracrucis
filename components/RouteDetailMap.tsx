@@ -17,18 +17,20 @@ type Stop = {
 
 type Participant = {
     odId: string;
-    odIduserId: string;
+    id: string; // Ensure id is present
     name: string | null;
     image: string | null;
     lat: number;
     lng: number;
-    lastSeenAt: string;
+    lastSeenAt: string | null;
+    isGuest?: boolean;
 };
 
 type RouteDetailMapProps = {
     stops: Stop[];
     userPosition?: { lat: number; lng: number } | null;
     participants?: Participant[];
+    onParticipantClick?: (participant: Participant) => void;
 };
 
 const mapContainerStyle = {
@@ -51,14 +53,11 @@ const mapOptions = {
     ],
 };
 
-
-// Distancia en metros para agrupar participantes
 const CLUSTER_RADIUS_METERS = 10;
 
-// Función auxiliar para distancia (Haversine)
 function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
     var R = 6371; // Radius of the earth in km
-    var dLat = deg2rad(lat2 - lat1);  // deg2rad below
+    var dLat = deg2rad(lat2 - lat1);
     var dLon = deg2rad(lon2 - lon1);
     var a =
         Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -66,27 +65,19 @@ function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2
         Math.sin(dLon / 2) * Math.sin(dLon / 2)
         ;
     var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    var d = R * c; // Distance in km
-    return d * 1000; // Distance in m
+    var d = R * c; // Distance in m
+    return d * 1000;
 }
 
 function deg2rad(deg: number) {
     return deg * (Math.PI / 180)
 }
 
-// Colores para los avatares de participantes
 const PARTICIPANT_COLORS = [
-    "#ef4444", // red
-    "#f97316", // orange
-    "#eab308", // yellow
-    "#22c55e", // green
-    "#06b6d4", // cyan
-    "#3b82f6", // blue
-    "#8b5cf6", // violet
-    "#ec4899", // pink
+    "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
 ];
 
-export default function RouteDetailMap({ stops, userPosition, participants = [] }: RouteDetailMapProps) {
+export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES,
@@ -288,7 +279,7 @@ export default function RouteDetailMap({ stops, userPosition, participants = [] 
 
                     return (
                         <OverlayView
-                            key={isGroup ? `cluster-${i}` : `participant-${firstMember.odIduserId}`}
+                            key={isGroup ? `cluster-${i}` : `participant-${firstMember.id}`}
                             position={{ lat: cluster.lat, lng: cluster.lng }}
                             mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
                             getPixelPositionOffset={(width, height) => ({

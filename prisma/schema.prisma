@@ -57,6 +57,7 @@ model User {
   photos         Photo[]
   messages       Message[]
   sentNudges     Nudge[]       @relation("NudgeSender")
+  receivedNudges Nudge[]       @relation("NudgeTarget")
   skipVotes      SkipVote[]
   drinks         Drink[]
   paidDrinks     Drink[]       @relation("DrinkPayer")
@@ -229,8 +230,11 @@ model Nudge {
   routeId   String
   sender    User     @relation("NudgeSender", fields: [senderId], references: [id], onDelete: Cascade)
   senderId  String
-  message   String   @default("¡Date prisa, te estamos esperando!")
-  createdAt DateTime @default(now())
+  message       String   @default("¡Date prisa, te estamos esperando!")
+  targetUserId  String?
+  targetGuestId String?
+  targetUser    User?    @relation("NudgeTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now())
 }
 
 model Message {

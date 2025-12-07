@@ -20,7 +20,9 @@ import { toast } from "sonner";
 import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
 import RankingView from "@/components/RankingView";
-import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus } from "lucide-react"; // Import icons for actions
+import ParticipantPicker from "@/components/ParticipantPicker";
+import { useRouteStream } from "@/hooks/useRouteStream";
+import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell } from "lucide-react"; // Import icons for actions
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -34,6 +36,14 @@ const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
 const PotManager = dynamic(() => import("@/components/PotManager"), {
   loading: () => <div className="h-24 bg-slate-100 rounded-xl animate-pulse" />,
 });
+
+const RouteDetailMap = dynamic(
+  () => import("@/components/RouteDetailMap"),
+  {
+    loading: () => <div className="w-full h-full bg-slate-200 animate-pulse" />,
+    ssr: false
+  }
+);
 
 type StopClient = {
   id: string;
@@ -51,14 +61,15 @@ type StopClient = {
 };
 
 type Participant = {
-  odId: string;
-  odIduserId: string;
   id: string;
+  odId: string;
   name: string | null;
   image: string | null;
   lat: number;
   lng: number;
-  lastSeenAt: string;
+  lastSeenAt: string | null;
+  isActive: boolean;
+  isGuest?: boolean;
 };
 
 // Tipo para el progreso de la ruta (compartido con el wrapper)
@@ -112,10 +123,10 @@ type RouteDetailClientProps = {
   onProgressChange?: (progress: RouteProgress) => void;
   isCreator?: boolean;
   onOpenShare?: () => void;
-  children?: React.ReactNode; // Add children prop for Map
+
 };
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, children }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare }: RouteDetailClientProps) {
   // ... state ...
   const { data: session } = useSession();
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -129,6 +140,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [fabOpen, setFabOpen] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
   const [rankingOpen, setRankingOpen] = useState(false);
+  const [notificationPickerOpen, setNotificationPickerOpen] = useState(false);
 
   // Tabs simplificadas
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
@@ -137,7 +149,35 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Auto-checkin silencioso
   const [autoCheckinEnabled, setAutoCheckinEnabled] = useState(true);
   const autoCheckinStopsRef = useRef<Set<string>>(new Set());
+
   const [autoCheckinNotification, setAutoCheckinNotification] = useState<string | null>(null);
+
+  // SSE Global Connection
+  const { participants: streamParticipants } = useRouteStream({
+    routeId,
+    enabled: true,
+    onParticipants: (data) => {
+      setParticipants(data);
+      onParticipantsChange?.(data);
+    },
+    onNudges: (nudges) => {
+      nudges.forEach(n => {
+        // Prevent duplicate toasts if re-renders happen? Sonner dedupes by ID usually, but here we generate new ID or no ID.
+        // Also SSE might send same nudges if logic is "since connection". 
+        // But we implemented lastNudgeId tracking in backend, so we only get NEW ones.
+        toast(`🔔 ${n.sender.name || 'Alguien'} dice:`, {
+          description: n.message,
+          duration: 5000,
+          action: {
+            label: "Ver",
+            onClick: () => console.log("Nudge clicked"),
+          },
+        });
+        // Vibrate pattern for attention
+        vibrate([200, 100, 200]);
+      });
+    }
+  });
   const AUTOCHECKIN_RADIUS = 30; // metros
 
   // Price picker modal
@@ -398,6 +438,40 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
+  const handleSendNudge = async (target: { id: string, name?: string | null, isGuest?: boolean }, message?: string) => {
+    try {
+      const isGlobal = target.id === 'all';
+      const body: any = { message };
+
+      if (!isGlobal) {
+        if (target.isGuest) {
+          body.targetGuestId = target.id;
+        } else {
+          // If not explicit, assume User ID unless it's a guest ID format (which we might not know for sure, 
+          // but our participant object should ideally have isGuest flag)
+          // In useRouteStream, we set isGuest: !p.userId.
+          // So we should trust target.isGuest.
+          body.targetUserId = target.id;
+        }
+      }
+
+      const res = await fetch(`/api/routes/${routeId}/nudge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error");
+
+      // Vibrate to confirm
+      vibrate([50, 50, 50]);
+    } catch (err) {
+      console.error("Error sending nudge:", err);
+      throw err; // Re-throw for picker to handle error toast
+    }
+  };
+
   const handleAddRound = async (stopId: string) => {
     vibrate();
     if (!navigator.onLine) { toast.error("No tienes conexión a internet"); return; }
@@ -464,7 +538,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 2. MAPA (Content) */}
       <div className="flex-1 relative overflow-hidden">
-        {children}
+        <RouteDetailMap
+          stops={stops}
+          userPosition={position}
+          participants={participants}
+          onParticipantClick={(p) => handleSendNudge({ id: p.id, name: p.name, isGuest: p.isGuest })}
+        />
 
         {/* Notificaciones Flotantes (sobre el mapa) */}
         {autoCheckinNotification && (
@@ -599,6 +678,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       )} */}
                     </button>
                   </div>
+
+                  {/* Botón Extra: Avisar a Alguien */}
+                  <button
+                    onClick={() => setNotificationPickerOpen(true)}
+                    className="w-full p-3 bg-slate-50 border-2 border-slate-200 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 font-bold active:scale-95 transition-all hover:bg-slate-100 hover:border-slate-300"
+                  >
+                    <Bell className="w-5 h-5 text-amber-500" />
+                    <span>Avisar a alguien...</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -734,6 +822,17 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           <RankingView
             routeId={routeId}
             onClose={() => setRankingOpen(false)}
+          />
+        )
+      }
+
+      {/* NOTIFICATION PICKER MODAL */}
+      {
+        notificationPickerOpen && (
+          <ParticipantPicker
+            participants={participants}
+            onClose={() => setNotificationPickerOpen(false)}
+            onSelect={handleSendNudge}
           />
         )
       }

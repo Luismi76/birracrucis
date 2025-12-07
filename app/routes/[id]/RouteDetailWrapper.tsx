@@ -8,13 +8,7 @@ import { MapSkeleton, BarCardSkeleton } from "@/components/ui/Skeleton";
 import { Share2 } from "lucide-react";
 
 // Lazy loading de componentes pesados
-const RouteDetailMap = dynamic(
-  () => import("@/components/RouteDetailMap"),
-  {
-    loading: () => <MapSkeleton />,
-    ssr: false
-  }
-);
+
 
 const RouteDetailClient = dynamic(
   () => import("./RouteDetailClient"),
@@ -42,14 +36,15 @@ type Stop = {
 };
 
 type Participant = {
-  odId: string;
-  odIduserId: string;
   id: string;
+  odId: string;
   name: string | null;
   image: string | null;
   lat: number;
   lng: number;
-  lastSeenAt: string;
+  lastSeenAt: string | null; // Allow null
+  isActive?: boolean;
+  isGuest?: boolean;
 };
 
 // Estado del progreso de la ruta para el header adaptativo
@@ -269,10 +264,7 @@ export default function RouteDetailWrapper({
           onProgressChange={handleProgressChange}
           isCreator={isCreator}
           onOpenShare={openShareModal}
-        >
-          {/* El Mapa se pasa como children */}
-          <RouteDetailMap stops={stops} userPosition={userPosition} participants={participants} />
-        </RouteDetailClient>
+        />
       </main>
 
 

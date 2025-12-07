@@ -27,19 +27,24 @@ export async function GET(
     const { id: routeId } = await params;
 
     // Verify user/guest is a participant of this route
+    // Verify user/guest is a participant of this route
     let isParticipant = false;
+    let currentUserId: string | null = null;
+    let currentGuestId: string | null = null;
 
     if (session?.user?.email) {
         const user = await prisma.user.findUnique({
             where: { email: session.user.email }
         });
         if (user) {
+            currentUserId = user.id;
             const participant = await prisma.participant.findUnique({
                 where: { routeId_userId: { routeId, userId: user.id } }
             });
             isParticipant = !!participant;
         }
     } else if (guestId) {
+        currentGuestId = guestId;
         const participant = await prisma.participant.findUnique({
             where: { routeId_guestId: { routeId, guestId } }
         });
@@ -71,6 +76,19 @@ export async function GET(
 
             let lastParticipantsHash = "";
             let lastMessageId = "";
+            let lastNudgeId = "";
+
+            // Init lastNudgeId to avoid sending old nudges
+            try {
+                const lastNudge = await prisma.nudge.findFirst({
+                    where: { routeId },
+                    orderBy: { createdAt: "desc" },
+                    select: { id: true }
+                });
+                if (lastNudge) lastNudgeId = lastNudge.id;
+            } catch (e) {
+                console.error("Error init nudge:", e);
+            }
 
             const sendUpdate = async () => {
                 try {
@@ -149,6 +167,42 @@ export async function GET(
                                 `event: messages\ndata: ${JSON.stringify(messagesWithGuestInfo)}\n\n`
                             )
                         );
+                    }
+
+                    // Check for new Nudges
+                    const nudges = await prisma.nudge.findMany({
+                        where: {
+                            routeId,
+                            ...(lastNudgeId && { id: { gt: lastNudgeId } }),
+                        },
+                        include: {
+                            sender: { select: { name: true } }
+                        },
+                        orderBy: { createdAt: "asc" }
+                    });
+
+                    if (nudges.length > 0) {
+                        lastNudgeId = nudges[nudges.length - 1].id;
+
+                        // Filter nudges for this user
+                        const relevantNudges = nudges.filter((n: any) => {
+                            // If no target, it's global -> for everyone
+                            if (!n.targetUserId && !n.targetGuestId) return true;
+
+                            // If targeted, check if matches current user/guest
+                            if (currentUserId && n.targetUserId === currentUserId) return true;
+                            if (currentGuestId && n.targetGuestId === currentGuestId) return true;
+
+                            return false;
+                        });
+
+                        if (relevantNudges.length > 0) {
+                            controller.enqueue(
+                                encoder.encode(
+                                    `event: nudges\ndata: ${JSON.stringify(relevantNudges)}\n\n`
+                                )
+                            );
+                        }
                     }
 
                     // Heartbeat para mantener conexión

@@ -24,11 +24,18 @@ type Message = {
     };
 };
 
+type Nudge = {
+    id: string;
+    message: string;
+    sender: { name: string | null };
+};
+
 type UseRouteStreamOptions = {
     routeId: string;
     enabled?: boolean;
     onParticipants?: (participants: Participant[]) => void;
     onMessages?: (messages: Message[]) => void;
+    onNudges?: (nudges: Nudge[]) => void;
     onError?: (error: Error) => void;
 };
 
@@ -43,6 +50,7 @@ export function useRouteStream({
     enabled = true,
     onParticipants,
     onMessages,
+    onNudges,
     onError,
 }: UseRouteStreamOptions) {
     const [status, setStatus] = useState<ConnectionStatus>("disconnected");
@@ -95,6 +103,15 @@ export function useRouteStream({
             }
         });
 
+        eventSource.addEventListener("nudges", (event) => {
+            try {
+                const newNudges = JSON.parse(event.data) as Nudge[];
+                onNudges?.(newNudges);
+            } catch (e) {
+                console.error("[SSE] Error parsing nudges:", e);
+            }
+        });
+
         eventSource.onerror = () => {
             setStatus("error");
             eventSource.close();
@@ -111,7 +128,7 @@ export function useRouteStream({
 
             onError?.(new Error("SSE connection error"));
         };
-    }, [routeId, enabled, onParticipants, onMessages, onError]);
+    }, [routeId, enabled, onParticipants, onMessages, onNudges, onError]);
 
     useEffect(() => {
         connect();
