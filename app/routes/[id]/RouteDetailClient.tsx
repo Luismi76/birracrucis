@@ -19,8 +19,8 @@ import BarPlaceInfo from "@/components/BarPlaceInfo";
 import { toast } from "sonner";
 import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
-import RoundRoulette from "@/components/RoundRoulette";
-import { Beer, Utensils, MapPin, Crown, Camera, Dices, Bell, UserPlus } from "lucide-react"; // Import icons for actions
+import RankingView from "@/components/RankingView";
+import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus } from "lucide-react"; // Import icons for actions
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -128,7 +128,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
   const [showCamera, setShowCamera] = useState(false);
-  const [spinRouletteOpen, setSpinRouletteOpen] = useState(false);
+  const [rankingOpen, setRankingOpen] = useState(false);
 
   // Tabs simplificadas
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
@@ -440,7 +440,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           onAddRound={() => activeStop && handleAddRound(activeStop.id)}
           onPhotoClick={() => setShowCamera(true)}
           onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
-          onSpinClick={() => setSpinRouletteOpen(true)}
+          onSpinClick={() => setRankingOpen(true)}
           onSkipClick={() => toast("Próximamente: Votar salto")}
           onNextBarClick={() => {
             const isOverPlannedRounds = activeStop ? ((rounds[activeStop.id] || 0) >= activeStop.plannedRounds) : false;
@@ -530,39 +530,73 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 </div>
               ) : (
                 /* ESTADO: EN EL BAR */
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    {/* Botón Gigante: PEDIR RONDA */}
-                    <button
-                      onClick={() => activeStop && handleAddRound(activeStop.id)}
-                      className="flex-1 py-4 bg-amber-500 text-white rounded-2xl text-xl font-black shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
-                    >
-                      <Beer className="w-6 h-6 fill-white/20" />
-                      <span>¡OTRA RONDA!</span>
-                    </button>
-                  </div>
+                <div className="flex flex-col gap-3">
+                  {/* Botón Principal: PEDIR RONDA - Reducido */}
+                  <button
+                    onClick={() => activeStop && handleAddRound(activeStop.id)}
+                    className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    <Beer className="w-5 h-5" />
+                    <div className="flex flex-col items-start">
+                      <span className="text-base">Añadir Ronda</span>
+                      <span className="text-xs text-amber-100">Registra tu consumición</span>
+                    </div>
+                  </button>
 
-                  {/* Botones Secundarios */}
-                  <div className="flex gap-2">
+                  {/* Grid 2x2 de Acciones Rápidas */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Foto del Bar */}
                     <button
                       onClick={() => setShowCamera(true)}
-                      className="p-3 bg-slate-100 text-slate-600 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
+                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
                     >
-                      <Camera className="w-5 h-5" />
-                      <span>Foto</span>
+                      <Camera className="w-6 h-6 text-slate-700" />
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-slate-800">Foto</div>
+                        <div className="text-xs text-slate-500">del Bar</div>
+                      </div>
                     </button>
+
+                    {/* Ranking */}
                     <button
-                      onClick={() => setSpinRouletteOpen(true)}
-                      className="p-3 bg-purple-100 text-purple-700 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
+                      onClick={() => setRankingOpen(true)}
+                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
                     >
-                      <Dices className="w-5 h-5" />
-                      <span>Ruleta</span>
+                      <Trophy className="w-6 h-6 text-amber-600" />
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-slate-800">Ranking</div>
+                        <div className="text-xs text-slate-500">Ver stats</div>
+                      </div>
                     </button>
+
+                    {/* Grupo */}
                     <button
-                      onClick={() => toast("¡Prisa enviada! 🔔")}
-                      className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+                      onClick={() => { vibrate(30); setActiveTab('group'); }}
+                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
                     >
-                      <Bell className="w-5 h-5" />
+                      <Users className="w-6 h-6 text-blue-600" />
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-slate-800">Grupo</div>
+                        <div className="text-xs text-slate-500">Ver todos</div>
+                      </div>
+                    </button>
+
+                    {/* Chat */}
+                    <button
+                      onClick={() => { /* Open chat - implement later */ }}
+                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 relative"
+                    >
+                      <MessageCircle className="w-6 h-6 text-green-600" />
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-slate-800">Chat</div>
+                        <div className="text-xs text-slate-500">Mensajes</div>
+                      </div>
+                      {/* Badge de notificaciones - placeholder */}
+                      {/* {unreadMessages > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                          {unreadMessages > 9 ? '9+' : unreadMessages}
+                        </span>
+                      )} */}
                     </button>
                   </div>
                 </div>
@@ -694,12 +728,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         )
       }
 
-      {/* ROULETTE MODAL */}
+      {/* RANKING MODAL */}
       {
-        spinRouletteOpen && (
-          <RoundRoulette
-            participants={participants.filter(p => p.lat !== 0)}
-            onClose={() => setSpinRouletteOpen(false)}
+        rankingOpen && (
+          <RankingView
+            routeId={routeId}
+            onClose={() => setRankingOpen(false)}
           />
         )
       }
