@@ -51,19 +51,27 @@ export async function GET(
     });
 
     // Drinks by user
+    // Drinks by user
     const drinksByUser = drinks.reduce((acc, drink) => {
-      const userId = drink.user.id;
+      const userId = drink.user?.id || drink.guestId;
+
+      if (!userId) return acc;
+
       if (!acc[userId]) {
+        // Si es guest, creamos un objeto de usuario simulado
+        const userObj = drink.user || { id: userId, name: "Invitado", image: null };
+
         acc[userId] = {
-          user: drink.user,
+          user: userObj,
           count: 0,
           types: {} as Record<string, number>,
         };
       }
+
       acc[userId].count++;
       acc[userId].types[drink.type] = (acc[userId].types[drink.type] || 0) + 1;
       return acc;
-    }, {} as Record<string, { user: typeof drinks[0]["user"]; count: number; types: Record<string, number> }>);
+    }, {} as Record<string, { user: { id: string; name: string | null; image: string | null }; count: number; types: Record<string, number> }>);
 
     // Drinks paid by user
     const drinksPaidByUser = drinks.reduce((acc, drink) => {
@@ -110,13 +118,13 @@ export async function GET(
     const ratedBars = barRatings.filter((b) => b.avgRating !== null);
     const bestBar = ratedBars.length > 0
       ? ratedBars.reduce((best, bar) =>
-          (bar.avgRating || 0) > (best.avgRating || 0) ? bar : best
-        )
+        (bar.avgRating || 0) > (best.avgRating || 0) ? bar : best
+      )
       : null;
     const worstBar = ratedBars.length > 0
       ? ratedBars.reduce((worst, bar) =>
-          (bar.avgRating || 0) < (worst.avgRating || 0) ? bar : worst
-        )
+        (bar.avgRating || 0) < (worst.avgRating || 0) ? bar : worst
+      )
       : null;
 
     // Chat messages count
