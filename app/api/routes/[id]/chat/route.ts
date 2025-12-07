@@ -71,7 +71,7 @@ export async function GET(
     // For guest messages, get participant info
     const messagesWithGuestInfo = await Promise.all(
       messages.map(async (msg) => {
-        if (msg.guestId && !msg.user) {
+        if (msg.guestId) {
           const participant = await prisma.participant.findUnique({
             where: { routeId_guestId: { routeId, guestId: msg.guestId } }
           });
