@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import PhotoCapture from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
@@ -116,6 +117,7 @@ type RouteDetailClientProps = {
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, children }: RouteDetailClientProps) {
   // ... state ...
+  const { data: session } = useSession();
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [locError, setLocError] = useState<string | null>(null);
@@ -247,6 +249,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   useEffect(() => {
     const fetchUserSettings = async () => {
+      // Only fetch settings for authenticated users, not guests
+      if (!session?.user) return;
+
       try {
         const res = await fetch("/api/user/profile");
         if (res.ok) {
@@ -260,7 +265,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       }
     };
     fetchUserSettings();
-  }, []);
+  }, [session]);
 
   useEffect(() => {
     if (!autoCheckinEnabled || !position || !activeStop || isRouteComplete) return;

@@ -148,7 +148,7 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
               </div>
             ) : (
               messages.map((msg) => {
-                const isOwn = msg.user.id === currentUserId;
+                const isOwn = msg.user?.id === currentUserId;
                 return (
                   <div
                     key={msg.id}
@@ -156,11 +156,11 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
                   >
                     {!isOwn && (
                       <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 border-2 border-white shadow-sm flex-shrink-0 mb-1">
-                        {msg.user.image ? (
+                        {msg.user?.image ? (
                           <img src={msg.user.image} alt={msg.user.name || "User"} className="w-full h-full object-cover" />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-xs font-bold text-slate-600">
-                            {msg.user.name?.charAt(0).toUpperCase() || "?"}
+                            {msg.user?.name?.charAt(0).toUpperCase() || "?"}
                           </div>
                         )}
                       </div>
@@ -174,7 +174,7 @@ export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
                     >
                       {!isOwn && (
                         <p className="text-xs font-bold text-amber-600 mb-1">
-                          {msg.user.name || "Anónimo"}
+                          {msg.user?.name || "Anónimo"}
                         </p>
                       )}
                       <p className="text-sm leading-relaxed break-words">{msg.content}</p>
