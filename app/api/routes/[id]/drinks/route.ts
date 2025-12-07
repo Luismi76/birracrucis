@@ -18,7 +18,17 @@ export async function GET(
 
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    let userId: string | undefined;
+    let guestId: string | undefined;
+
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      userId = user?.id;
+    } else {
+      guestId = req.cookies.get("birracrucis_guestId")?.value;
+    }
+
+    if (!userId && !guestId) {
       return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
     }
 
@@ -34,14 +44,25 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
 
-    // Calcular estadísticas por usuario
+    // Calcular estadísticas (agrupando por quien sea)
+    let statsData = {};
+    // ... simplificado por ahora, stats complejos para guests requiere refactor mayor
+
+    // Calcular estadísticas por usuario (solo registrados para no romper compatibilidad rápida)
     const stats = await prisma.drink.groupBy({
       by: ["userId"],
-      where: { routeId },
+      where: { routeId, userId: { not: null } },
       _count: { id: true },
     });
 
-    // Calcular quién ha pagado más
+    // Estadisticas de guests
+    const guestStats = await prisma.drink.groupBy({
+      by: ["guestId"],
+      where: { routeId, guestId: { not: null } },
+      _count: { id: true }
+    });
+
+    // Calcular quién ha pagado más (pagadores siempre son Users por ahora?)
     const paidStats = await prisma.drink.groupBy({
       by: ["paidById"],
       where: { routeId, paidById: { not: null } },
@@ -52,7 +73,7 @@ export async function GET(
       ok: true,
       drinks,
       stats: {
-        byUser: stats,
+        byUser: [...stats, ...guestStats.map(g => ({ userId: g.guestId, _count: g._count }))], // Hack mezcla
         byPayer: paidStats,
       },
     });
@@ -76,20 +97,21 @@ export async function POST(
 
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    let userId: string | undefined;
+    let guestId: string | undefined;
+
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      userId = user?.id;
+    } else {
+      guestId = req.cookies.get("birracrucis_guestId")?.value;
+    }
+
+    if (!userId && !guestId) {
       return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
     }
 
     const { id: routeId } = await params;
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
-
     const body = await req.json();
     const { stopId, type = "beer", paidById } = body;
 
@@ -101,7 +123,8 @@ export async function POST(
       data: {
         routeId,
         stopId,
-        userId: user.id,
+        userId: userId, // Optional, can be undefined/null
+        guestId: guestId, // Optional
         type,
         paidById: paidById || null,
       },
