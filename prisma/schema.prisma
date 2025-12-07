@@ -237,8 +237,9 @@ model Message {
   id        String   @id @default(cuid())
   route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
   routeId   String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId    String
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  guestId   String?  // Para mensajes de invitados
   content   String
   createdAt DateTime @default(now())
 
