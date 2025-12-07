@@ -123,9 +123,30 @@ export async function GET(
 
                     if (messages.length > 0) {
                         lastMessageId = messages[messages.length - 1].id;
+
+                        // Process guest messages to include participant info
+                        const messagesWithGuestInfo = await Promise.all(
+                            messages.map(async (msg: any) => {
+                                if (msg.guestId) {
+                                    const participant = await prisma.participant.findUnique({
+                                        where: { routeId_guestId: { routeId, guestId: msg.guestId } }
+                                    });
+                                    return {
+                                        ...msg,
+                                        user: {
+                                            id: msg.guestId,
+                                            name: participant?.name || "Invitado",
+                                            image: participant?.avatar || null,
+                                        }
+                                    };
+                                }
+                                return msg;
+                            })
+                        );
+
                         controller.enqueue(
                             encoder.encode(
-                                `event: messages\ndata: ${JSON.stringify(messages)}\n\n`
+                                `event: messages\ndata: ${JSON.stringify(messagesWithGuestInfo)}\n\n`
                             )
                         );
                     }

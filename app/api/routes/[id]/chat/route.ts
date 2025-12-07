@@ -72,9 +72,21 @@ export async function GET(
     const messagesWithGuestInfo = await Promise.all(
       messages.map(async (msg: any) => {
         if (msg.guestId) {
+          console.log('🔍 Processing guest message:', {
+            messageId: msg.id,
+            guestId: msg.guestId,
+            routeId
+          });
+
           const participant = await prisma.participant.findUnique({
             where: { routeId_guestId: { routeId, guestId: msg.guestId } }
           });
+
+          console.log('👤 Participant found:', {
+            name: participant?.name,
+            avatar: participant?.avatar
+          });
+
           return {
             ...msg,
             user: {
@@ -87,6 +99,8 @@ export async function GET(
         return msg;
       })
     );
+
+    console.log('📨 Returning messages:', messagesWithGuestInfo.length);
 
     return NextResponse.json({ ok: true, messages: messagesWithGuestInfo });
   } catch (error) {
