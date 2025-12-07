@@ -240,32 +240,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   }, []);
 
   useEffect(() => {
-    if ("geolocation" in navigator) {
-      handleStartWatch();
-    }
-  }, []);
-
-  useEffect(() => {
-    const fetchUserSettings = async () => {
-      try {
-        const res = await fetch("/api/user/profile");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.settings) {
-            setAutoCheckinEnabled(data.settings.autoCheckinEnabled);
-          }
-        }
-      } catch (err) {
-        console.warn("Error obteniendo configuracion:", err);
-      }
-    };
-    fetchUserSettings();
-  }, []);
-
-  useEffect(() => {
-    if (!autoCheckinEnabled || !position || !activeStop || isRouteComplete) return;
-    if (autoCheckinStopsRef.current.has(activeStop.id)) return;
-
     const distToBar = distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng);
 
     if (distToBar <= AUTOCHECKIN_RADIUS) {

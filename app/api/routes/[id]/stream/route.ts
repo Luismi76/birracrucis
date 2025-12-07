@@ -15,11 +15,40 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const guestId = cookieStore.get("guestId")?.value;
+
+    // Allow both authenticated users and guests
+    if (!session?.user?.email && !guestId) {
         return new Response("No autenticado", { status: 401 });
     }
 
     const { id: routeId } = await params;
+
+    // Verify user/guest is a participant of this route
+    let isParticipant = false;
+
+    if (session?.user?.email) {
+        const user = await prisma.user.findUnique({
+            where: { email: session.user.email }
+        });
+        if (user) {
+            const participant = await prisma.participant.findUnique({
+                where: { routeId_userId: { routeId, userId: user.id } }
+            });
+            isParticipant = !!participant;
+        }
+    } else if (guestId) {
+        const participant = await prisma.participant.findUnique({
+            where: { routeId_guestId: { routeId, guestId } }
+        });
+        isParticipant = !!participant;
+    }
+
+    if (!isParticipant) {
+        return new Response("No eres participante de esta ruta", { status: 403 });
+    }
 
     // Verificar que la ruta existe
     const route = await prisma.route.findUnique({
