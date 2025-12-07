@@ -65,14 +65,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Verificar si ya existe
-    const whereClause = userId
-      ? { routeId_userId: { routeId: route.id, userId } }
-      : { routeId_guestId: { routeId: route.id, guestId: guestId! } };
+    let existingParticipant = null;
 
-    // @ts-ignore
-    const existingParticipant = await prisma.participant.findFirst({
-      where: { ...whereClause, routeId: route.id }
-    });
+    if (userId) {
+      existingParticipant = await prisma.participant.findUnique({
+        where: { routeId_userId: { routeId: route.id, userId } }
+      });
+    } else if (guestId) {
+      existingParticipant = await prisma.participant.findUnique({
+        where: { routeId_guestId: { routeId: route.id, guestId } }
+      });
+    }
 
     if (existingParticipant) {
       const response = NextResponse.json({
