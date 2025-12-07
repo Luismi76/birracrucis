@@ -573,7 +573,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 3. BOTTOM INFO SHEET (Restored) */}
       {activeTab === 'route' && activeStop && (
-        <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up">
+        <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up max-h-[55vh] overflow-y-auto">
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
           <div className="p-4 pt-1 space-y-4">
             {/* ACCIONES PRINCIPALES (Nuevo Bloque Unificado) */}
@@ -647,36 +647,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                         <div className="text-xs text-slate-500">Ver stats</div>
                       </div>
                     </button>
-
-                    {/* Grupo */}
-                    <button
-                      onClick={() => { vibrate(30); setActiveTab('group'); }}
-                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
-                    >
-                      <Users className="w-6 h-6 text-blue-600" />
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-slate-800">Grupo</div>
-                        <div className="text-xs text-slate-500">Ver todos</div>
-                      </div>
-                    </button>
-
-                    {/* Chat */}
-                    <button
-                      onClick={() => { /* Open chat - implement later */ }}
-                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 relative"
-                    >
-                      <MessageCircle className="w-6 h-6 text-green-600" />
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-slate-800">Chat</div>
-                        <div className="text-xs text-slate-500">Mensajes</div>
-                      </div>
-                      {/* Badge de notificaciones - placeholder */}
-                      {/* {unreadMessages > 0 && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                          {unreadMessages > 9 ? '9+' : unreadMessages}
-                        </span>
-                      )} */}
-                    </button>
                   </div>
 
                   {/* Botón Extra: Avisar a Alguien */}
@@ -726,7 +696,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             </div>
           </div>
         </div>
-      )}
+      )
+      }
 
       {/* 3. CONTENIDO DE TABS */}
       {
