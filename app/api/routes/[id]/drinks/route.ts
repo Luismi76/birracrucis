@@ -25,7 +25,7 @@ export async function GET(
       const user = await prisma.user.findUnique({ where: { email: session.user.email } });
       userId = user?.id;
     } else {
-      guestId = req.cookies.get("birracrucis_guestId")?.value;
+      guestId = req.cookies.get("guestId")?.value;
     }
 
     if (!userId && !guestId) {
@@ -104,7 +104,7 @@ export async function POST(
       const user = await prisma.user.findUnique({ where: { email: session.user.email } });
       userId = user?.id;
     } else {
-      guestId = req.cookies.get("birracrucis_guestId")?.value;
+      guestId = req.cookies.get("guestId")?.value;
     }
 
     if (!userId && !guestId) {

@@ -19,7 +19,7 @@ export async function POST(
       const user = await prisma.user.findUnique({ where: { email: session.user.email } });
       userId = user?.id;
     } else {
-      guestId = req.cookies.get("birracrucis_guestId")?.value;
+      guestId = req.cookies.get("guestId")?.value;
     }
 
     if (!userId && !guestId) {
@@ -59,7 +59,7 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    const guestId = req.cookies.get("birracrucis_guestId")?.value;
+    const guestId = req.cookies.get("guestId")?.value;
 
     if (!session?.user?.email && !guestId) {
       return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
