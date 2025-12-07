@@ -234,446 +234,422 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   useEffect(() => {
     return () => {
       if (watchIdRef.current != null && "geolocation" in navigator) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
-    };
-  }, []);
+        useEffect(() => {
+          if (!position || !routeId) return;
+          const now = Date.now();
+          if (now - lastLocationSentRef.current < LOCATION_UPDATE_INTERVAL) return;
+          lastLocationSentRef.current = now;
+          fetch(`/api/routes/${routeId}/participants`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ lat: position.lat, lng: position.lng }),
+          }).catch(err => console.warn("Error enviando ubicación:", err));
+        }, [position, routeId]);
 
-  useEffect(() => {
-    const distToBar = distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng);
+        useEffect(() => {
+          if (!routeId || !onParticipantsChange) return;
+          const fetchParticipants = async () => {
+            try {
+              const res = await fetch(`/api/routes/${routeId}/participants`);
+              if (res.ok) {
+                const data = await res.json();
+                if (data.ok && data.participants) {
+                  setParticipants(data.participants);
+                  onParticipantsChange(data.participants);
+                }
+              }
+            } catch (err) {
+              console.warn("Error obteniendo participantes:", err);
+            }
+          };
+          fetchParticipants();
+          const interval = setInterval(fetchParticipants, PARTICIPANTS_FETCH_INTERVAL);
+          return () => clearInterval(interval);
+        }, [routeId, onParticipantsChange]);
 
-    if (distToBar <= AUTOCHECKIN_RADIUS) {
-      autoCheckinStopsRef.current.add(activeStop.id);
-      // handleAddRound(activeStop.id); // DISABLED: Manual control requested
-      setAutoCheckinNotification(`Llegaste a ${activeStop.name}`);
-      setTimeout(() => setAutoCheckinNotification(null), 3000);
-      if ("vibrate" in navigator) {
-        navigator.vibrate([200, 100, 200]);
-      }
-      fetch(`/api/stops/${activeStop.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ arrivedAt: new Date().toISOString() }),
-      }).catch(console.error);
-    }
-  }, [position, activeStop, autoCheckinEnabled, isRouteComplete]);
+        const handleStartWatch = () => {
+          if (!("geolocation" in navigator)) return;
+          setLocError(null);
+          setUseWatch(true);
+          const id = navigator.geolocation.watchPosition(
+            (pos) => {
+              const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+              setPosition(newPos);
+              setAccuracy(pos.coords.accuracy ?? null);
+              onPositionChange?.(newPos);
+            },
+            (err) => {
+              console.warn("Error watchPosition:", err.message);
+            },
+            { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
+          );
+          watchIdRef.current = id;
+        };
 
-  useEffect(() => {
-    if (!position || !routeId) return;
-    const now = Date.now();
-    if (now - lastLocationSentRef.current < LOCATION_UPDATE_INTERVAL) return;
-    lastLocationSentRef.current = now;
-    fetch(`/api/routes/${routeId}/participants`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lat: position.lat, lng: position.lng }),
-    }).catch(err => console.warn("Error enviando ubicación:", err));
-  }, [position, routeId]);
+        const handleStopWatch = () => { /* ... Unused but keeping ... */ };
 
-  useEffect(() => {
-    if (!routeId || !onParticipantsChange) return;
-    const fetchParticipants = async () => {
-      try {
-        const res = await fetch(`/api/routes/${routeId}/participants`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.participants) {
-            setParticipants(data.participants);
-            onParticipantsChange(data.participants);
+        const isPositionReliable = () => {
+          if (accuracy == null) return false;
+          return accuracy <= ACCURACY_THRESHOLD;
+        };
+
+        const distToActive = (position && activeStop)
+          ? Math.round(distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng))
+          : null;
+
+        // Manual override for "At Bar" state
+        const [manualArrivals, setManualArrivals] = useState<Set<string>>(new Set());
+
+        // Consider at bar if:
+        // 1. GPS says close enough (< RADIUS) OR
+        // 2. User manually clicked "Llegué" (manualArrivals has ID)
+        // 3. User manually added a round (implies arrival) -> implicit in rounds count? No, better explicit.
+        const isGeographicallyAtBar = distToActive != null && distToActive <= RADIUS_METERS && isPositionReliable();
+        const canCheckIn = isGeographicallyAtBar || (activeStop && manualArrivals.has(activeStop.id));
+
+        useEffect(() => {
+          if (!onProgressChange) return;
+          onProgressChange({
+            currentBarIndex,
+            currentBarName: activeStop?.name || "",
+            distanceToBar: distToActive,
+            isAtBar: canCheckIn,
+            completedBars: completedStops,
+            totalBars: stops.length,
+            isComplete: isRouteComplete,
+          });
+        }, [currentBarIndex, activeStop?.name, distToActive, canCheckIn, completedStops, stops.length, isRouteComplete, onProgressChange]);
+
+
+        // ... Handlers (getParticipantsAtBar, handleNextBar, handleAddRound, etc) ...
+        const getParticipantsAtBar = (stopId: string) => {
+          const stop = stops.find(s => s.id === stopId);
+          if (!stop) return 1;
+          const atBar = participants.filter(p => {
+            if (currentUserId && (p.id === currentUserId || (p as any).userId === currentUserId)) return false;
+            if (p.lat === 0 && p.lng === 0) return false;
+            const dist = distanceInMeters(p.lat, p.lng, stop.lat, stop.lng);
+            return dist <= RADIUS_METERS;
+          });
+          const userAtBar = canCheckIn ? 1 : 0;
+          return Math.max(1, atBar.length + userAtBar);
+        };
+
+        const handleNextBar = () => {
+          if (currentBarIndex < stops.length - 1) {
+            setCurrentBarIndex(prev => prev + 1);
+          } else {
+            setCurrentBarIndex(stops.length);
           }
-        }
-      } catch (err) {
-        console.warn("Error obteniendo participantes:", err);
-      }
-    };
-    fetchParticipants();
-    const interval = setInterval(fetchParticipants, PARTICIPANTS_FETCH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [routeId, onParticipantsChange]);
+        };
 
-  const handleStartWatch = () => {
-    if (!("geolocation" in navigator)) return;
-    setLocError(null);
-    setUseWatch(true);
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setPosition(newPos);
-        setAccuracy(pos.coords.accuracy ?? null);
-        onPositionChange?.(newPos);
-      },
-      (err) => {
-        console.warn("Error watchPosition:", err.message);
-      },
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-    );
-    watchIdRef.current = id;
-  };
-
-  const handleStopWatch = () => { /* ... Unused but keeping ... */ };
-
-  const isPositionReliable = () => {
-    if (accuracy == null) return false;
-    return accuracy <= ACCURACY_THRESHOLD;
-  };
-
-  const distToActive = (position && activeStop)
-    ? Math.round(distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng))
-    : null;
-
-  // Manual override for "At Bar" state
-  const [manualArrivals, setManualArrivals] = useState<Set<string>>(new Set());
-
-  // Consider at bar if:
-  // 1. GPS says close enough (< RADIUS) OR
-  // 2. User manually clicked "Llegué" (manualArrivals has ID)
-  // 3. User manually added a round (implies arrival) -> implicit in rounds count? No, better explicit.
-  const isGeographicallyAtBar = distToActive != null && distToActive <= RADIUS_METERS && isPositionReliable();
-  const canCheckIn = isGeographicallyAtBar || (activeStop && manualArrivals.has(activeStop.id));
-
-  useEffect(() => {
-    if (!onProgressChange) return;
-    onProgressChange({
-      currentBarIndex,
-      currentBarName: activeStop?.name || "",
-      distanceToBar: distToActive,
-      isAtBar: canCheckIn,
-      completedBars: completedStops,
-      totalBars: stops.length,
-      isComplete: isRouteComplete,
-    });
-  }, [currentBarIndex, activeStop?.name, distToActive, canCheckIn, completedStops, stops.length, isRouteComplete, onProgressChange]);
-
-
-  // ... Handlers (getParticipantsAtBar, handleNextBar, handleAddRound, etc) ...
-  const getParticipantsAtBar = (stopId: string) => {
-    const stop = stops.find(s => s.id === stopId);
-    if (!stop) return 1;
-    const atBar = participants.filter(p => {
-      if (currentUserId && (p.id === currentUserId || (p as any).userId === currentUserId)) return false;
-      if (p.lat === 0 && p.lng === 0) return false;
-      const dist = distanceInMeters(p.lat, p.lng, stop.lat, stop.lng);
-      return dist <= RADIUS_METERS;
-    });
-    const userAtBar = canCheckIn ? 1 : 0;
-    return Math.max(1, atBar.length + userAtBar);
-  };
-
-  const handleNextBar = () => {
-    if (currentBarIndex < stops.length - 1) {
-      setCurrentBarIndex(prev => prev + 1);
-    } else {
-      setCurrentBarIndex(stops.length);
-    }
-  };
-
-  const handleAddRound = async (stopId: string) => {
-    vibrate();
-    if (!navigator.onLine) { toast.error("No tienes conexión a internet"); return; }
-    const peopleAtBar = getParticipantsAtBar(stopId);
-    setRounds(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
-    setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + peopleAtBar }));
-    try {
-      const res = await fetch(`/api/stops/${stopId}/checkin`, { method: 'POST' });
-      if (!res.ok) throw new Error('Failed to check in');
-      for (let i = 0; i < peopleAtBar; i++) {
-        fetch(`/api/routes/${routeId}/drinks`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stopId, type: 'beer' }),
-        }).catch(console.error);
-      }
-      toast.success("¡Ronda registrada!");
-    } catch (err) {
-      console.error(err);
-      setRounds(prev => ({ ...prev, [stopId]: Math.max(0, (prev[stopId] || 0) - 1) }));
-      setBeers(prev => ({ ...prev, [stopId]: Math.max(0, (prev[stopId] || 0) - peopleAtBar) }));
-      toast.error("Error al registrar la ronda. Inténtalo de nuevo.");
-    }
-  };
-
-  return (
-    <div className="flex flex-col h-full pointer-events-auto bg-slate-50">
-      {/* 1. TOP ACTIONS BAR (Docked) */}
-      <div className="shrink-0 z-30 bg-white border-b border-slate-200">
-        <InRouteActions
-          isAtBar={canCheckIn}
-          isRouteComplete={isRouteComplete}
-          distToBar={distToActive}
-          onCheckIn={() => {
-            if (activeStop) {
-              setManualArrivals(prev => new Set(prev).add(activeStop.id));
-              handleAddRound(activeStop.id);
+        const handleAddRound = async (stopId: string) => {
+          vibrate();
+          if (!navigator.onLine) { toast.error("No tienes conexión a internet"); return; }
+          const peopleAtBar = getParticipantsAtBar(stopId);
+          setRounds(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
+          setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + peopleAtBar }));
+          try {
+            const res = await fetch(`/api/stops/${stopId}/checkin`, { method: 'POST' });
+            if (!res.ok) throw new Error('Failed to check in');
+            for (let i = 0; i < peopleAtBar; i++) {
+              fetch(`/api/routes/${routeId}/drinks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ stopId, type: 'beer' }),
+              }).catch(console.error);
             }
-          }}
-          onAddRound={() => activeStop && handleAddRound(activeStop.id)}
-          onPhotoClick={() => setShowCamera(true)}
-          onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
-          onSpinClick={() => setSpinRouletteOpen(true)}
-          onSkipClick={() => toast("Próximamente: Votar salto")}
-          onNextBarClick={() => {
-            const isOverPlannedRounds = activeStop ? ((rounds[activeStop.id] || 0) >= activeStop.plannedRounds) : false;
-            if (isOverPlannedRounds) handleNextBar();
-            else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
-          }}
-          onInviteClick={onOpenShare || (() => { })}
-          onNavigate={() => {
-            if (activeStop) {
-              const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-              window.open(url, '_blank');
-            } else {
-              toast.error("No hay destino definido");
+            toast.success("¡Ronda registrada!");
+          } catch (err) {
+            console.error(err);
+            setRounds(prev => ({ ...prev, [stopId]: Math.max(0, (prev[stopId] || 0) - 1) }));
+            setBeers(prev => ({ ...prev, [stopId]: Math.max(0, (prev[stopId] || 0) - peopleAtBar) }));
+            toast.error("Error al registrar la ronda. Inténtalo de nuevo.");
+          }
+        };
+
+        return (
+          <div className="flex flex-col h-full pointer-events-auto bg-slate-50">
+            {/* 1. TOP ACTIONS BAR (Docked) */}
+            <div className="shrink-0 z-30 bg-white border-b border-slate-200">
+              <InRouteActions
+                isAtBar={canCheckIn}
+                isRouteComplete={isRouteComplete}
+                distToBar={distToActive}
+                onCheckIn={() => {
+                  if (activeStop) {
+                    setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                    handleAddRound(activeStop.id);
+                  }
+                }}
+                onAddRound={() => activeStop && handleAddRound(activeStop.id)}
+                onPhotoClick={() => setShowCamera(true)}
+                onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
+                onSpinClick={() => setSpinRouletteOpen(true)}
+                onSkipClick={() => toast("Próximamente: Votar salto")}
+                onNextBarClick={() => {
+                  const isOverPlannedRounds = activeStop ? ((rounds[activeStop.id] || 0) >= activeStop.plannedRounds) : false;
+                  if (isOverPlannedRounds) handleNextBar();
+                  else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
+                }}
+                onInviteClick={onOpenShare || (() => { })}
+                onNavigate={() => {
+                  if (activeStop) {
+                    const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                    window.open(url, '_blank');
+                  } else {
+                    toast.error("No hay destino definido");
+                  }
+                }}
+                barName={activeStop?.name || ""}
+                roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
+                plannedRounds={activeStop?.plannedRounds || 0}
+              />
+            </div>
+
+            {/* 2. MAPA (Content) */}
+            <div className="flex-1 relative overflow-hidden">
+              {children}
+
+              {/* Notificaciones Flotantes (sobre el mapa) */}
+              {autoCheckinNotification && (
+                <div className="absolute top-4 left-4 right-4 z-50 animate-slide-down pointer-events-none">
+                  <div className="bg-green-500/90 backdrop-blur text-white rounded-2xl p-4 shadow-xl flex items-center gap-3">
+                    <span className="text-2xl">✅</span>
+                    <div>
+                      <p className="font-bold">Check-in automático</p>
+                      <p className="text-sm text-green-100">{autoCheckinNotification}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* DEV TOOLS */}
+              {activeTab === 'route' && (
+                <DevLocationControl
+                  activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng } : undefined}
+                  onSetPosition={(pos) => {
+                    setPosition(pos);
+                    setAccuracy(5);
+                    toast.success(`Teletransportado a ${activeStop?.name} 📍`);
+                  }}
+                />
+              )}
+            </div>
+
+            {/* 3. BOTTOM INFO SHEET (Restored) */}
+            {activeTab === 'route' && activeStop && (
+              <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up">
+                <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
+                <div className="p-4 pt-1 space-y-4">
+                  {/* ACCIONES PRINCIPALES (Nuevo Bloque Unificado) */}
+                  <div className="flex flex-col gap-3 mb-2">
+                    {!canCheckIn ? (
+                      /* ESTADO: EN CAMINO */
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            if (activeStop) {
+                              const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                              window.open(url, '_blank');
+                            }
+                          }}
+                          className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
+                        >
+                          <MapPin className="w-6 h-6" />
+                          <span className="text-xs font-bold">Cómo llegar</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            if (activeStop) {
+                              setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                              handleAddRound(activeStop.id);
+                            }
+                          }}
+                          className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
+                        >
+                          <Crown className="w-6 h-6 text-amber-500" />
+                          <span className="text-lg font-bold">Ya llegué</span>
+                        </button>
+                      </div>
+                    ) : (
+                      /* ESTADO: EN EL BAR */
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          {/* Botón Gigante: PEDIR RONDA */}
+                          <button
+                            onClick={() => activeStop && handleAddRound(activeStop.id)}
+                            className="flex-1 py-4 bg-amber-500 text-white rounded-2xl text-xl font-black shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
+                          >
+                            <Beer className="w-6 h-6 fill-white/20" />
+                            <span>¡OTRA RONDA!</span>
+                          </button>
+                        </div>
+
+                        {/* Botones Secundarios */}
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setShowCamera(true)}
+                            className="p-3 bg-slate-100 text-slate-600 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
+                          >
+                            <Camera className="w-5 h-5" />
+                            <span>Foto</span>
+                          </button>
+                          <button
+                            onClick={() => setSpinRouletteOpen(true)}
+                            className="p-3 bg-purple-100 text-purple-700 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
+                          >
+                            <Dices className="w-5 h-5" />
+                            <span>Ruleta</span>
+                          </button>
+                          <button
+                            onClick={() => toast("¡Prisa enviada! 🔔")}
+                            className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center active:scale-95 transition-all"
+                          >
+                            <Bell className="w-5 h-5" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Google Place Info */}
+                  <div className="mb-2">
+                    <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
+                  </div>
+
+                  {/* Price Controls & Actions Row */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
+                      className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl">🍺</div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Caña</p>
+                        <p className="text-lg font-black text-slate-800">
+                          {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
+                        </p>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
+                      className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">🍢</div>
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Tapa</p>
+                        <p className="text-lg font-black text-slate-800">
+                          {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
+                        </p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 3. CONTENIDO DE TABS */}
+            {
+              activeTab !== 'route' && (
+                <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
+                  <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
+                    {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
+                    {activeTab === 'ratings' && activeStop && (
+                      <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
+                    )}
+                    {activeTab === 'group' && (
+                      <div className="space-y-4 pt-4">
+                        <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
+                        <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
+                          <div>
+                            <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
+                            <p className="text-sm text-slate-500">Comparte el código o enlace</p>
+                          </div>
+                          <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
+                            <UserPlus className="w-5 h-5" /> Invitar
+                          </button>
+                        </div>
+                        <div className="border-t border-slate-100 pt-4">
+                          <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
             }
-          }}
-          barName={activeStop?.name || ""}
-          roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
-          plannedRounds={activeStop?.plannedRounds || 0}
-        />
-      </div>
 
-      {/* 2. MAPA (Content) */}
-      <div className="flex-1 relative overflow-hidden">
-        {children}
-
-        {/* Notificaciones Flotantes (sobre el mapa) */}
-        {autoCheckinNotification && (
-          <div className="absolute top-4 left-4 right-4 z-50 animate-slide-down pointer-events-none">
-            <div className="bg-green-500/90 backdrop-blur text-white rounded-2xl p-4 shadow-xl flex items-center gap-3">
-              <span className="text-2xl">✅</span>
-              <div>
-                <p className="font-bold">Check-in automático</p>
-                <p className="text-sm text-green-100">{autoCheckinNotification}</p>
+            {/* 4. BOTTOM NAVIGATION */}
+            <div className="shrink-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2 z-50">
+              <div className="flex justify-around items-center">
+                {[
+                  { id: 'route', icon: '🍻', label: 'Bar' },
+                  { id: 'photos', icon: '📸', label: 'Fotos' },
+                  { id: 'ratings', icon: '⭐', label: 'Valorar' },
+                  { id: 'group', icon: '👥', label: 'Grupo' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => { vibrate(30); setActiveTab(tab.id as any); }}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16 ${activeTab === tab.id ? 'bg-amber-50 text-amber-600' : 'text-slate-400 hover:bg-slate-50'
+                      }`}
+                  >
+                    <span className="text-xl">{tab.icon}</span>
+                    <span className="text-[10px] font-bold">{tab.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {/* DEV TOOLS */}
-        {activeTab === 'route' && (
-          <DevLocationControl
-            activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng } : undefined}
-            onSetPosition={(pos) => {
-              setPosition(pos);
-              setAccuracy(5);
-              toast.success(`Teletransportado a ${activeStop?.name} 📍`);
-            }}
-          />
-        )}
-      </div>
-
-      {/* 3. BOTTOM INFO SHEET (Restored) */}
-      {activeTab === 'route' && activeStop && (
-        <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up">
-          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
-          <div className="p-4 pt-1 space-y-4">
-            {/* ACCIONES PRINCIPALES (Nuevo Bloque Unificado) */}
-            <div className="flex flex-col gap-3 mb-2">
-              {!canCheckIn ? (
-                /* ESTADO: EN CAMINO */
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (activeStop) {
-                        const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-                        window.open(url, '_blank');
-                      }
-                    }}
-                    className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
-                  >
-                    <MapPin className="w-6 h-6" />
-                    <span className="text-xs font-bold">Cómo llegar</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (activeStop) {
-                        setManualArrivals(prev => new Set(prev).add(activeStop.id));
-                        handleAddRound(activeStop.id);
-                      }
-                    }}
-                    className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
-                  >
-                    <Crown className="w-6 h-6 text-amber-500" />
-                    <span className="text-lg font-bold">Ya llegué</span>
-                  </button>
-                </div>
-              ) : (
-                /* ESTADO: EN EL BAR */
-                <div className="flex flex-col gap-2">
-                  <div className="flex gap-2">
-                    {/* Botón Gigante: PEDIR RONDA */}
-                    <button
-                      onClick={() => activeStop && handleAddRound(activeStop.id)}
-                      className="flex-1 py-4 bg-amber-500 text-white rounded-2xl text-xl font-black shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2 relative overflow-hidden"
-                    >
-                      <Beer className="w-6 h-6 fill-white/20" />
-                      <span>¡OTRA RONDA!</span>
-                    </button>
+            {/* MODAL CÁMARA */}
+            {
+              showCamera && activeStop && (
+                <div className="fixed inset-0 z-[60] bg-black animate-in fade-in zoom-in-95 duration-200">
+                  <div className="absolute top-4 right-4 z-50">
+                    <button onClick={() => setShowCamera(false)} className="text-white text-lg font-bold p-4 bg-black/20 rounded-full backdrop-blur">✕</button>
                   </div>
-
-                  {/* Botones Secundarios */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setShowCamera(true)}
-                      className="p-3 bg-slate-100 text-slate-600 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
-                    >
-                      <Camera className="w-5 h-5" />
-                      <span>Foto</span>
-                    </button>
-                    <button
-                      onClick={() => setSpinRouletteOpen(true)}
-                      className="p-3 bg-purple-100 text-purple-700 rounded-xl flex-1 flex items-center justify-center gap-2 font-bold text-sm active:scale-95 transition-all"
-                    >
-                      <Dices className="w-5 h-5" />
-                      <span>Ruleta</span>
-                    </button>
-                    <button
-                      onClick={() => toast("¡Prisa enviada! 🔔")}
-                      className="p-3 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center active:scale-95 transition-all"
-                    >
-                      <Bell className="w-5 h-5" />
-                    </button>
-                  </div>
+                  <PhotoCapture
+                    routeId={routeId}
+                    routeName={routeName}
+                    stopId={activeStop.id}
+                    stopName={activeStop.name}
+                    onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setShowCamera(false); }}
+                    compact={false}
+                  />
                 </div>
-              )}
-            </div>
+              )
+            }
 
-            {/* Google Place Info */}
-            <div className="mb-2">
-              <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
-            </div>
+            {/* Price Picker Modal & Chat */}
+            {
+              pricePickerOpen && (
+                <PricePicker
+                  isOpen={true}
+                  onClose={() => setPricePickerOpen(null)}
+                  onSelect={(price) => {
+                    setBarPrices(prev => ({ ...prev, [pricePickerOpen.stopId]: { ...prev[pricePickerOpen.stopId], [pricePickerOpen.type]: price } }));
+                  }}
+                  currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
+                  title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
+                  icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
+                />
+              )
+            }
 
-            {/* Price Controls & Actions Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
-                className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl">🍺</div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Caña</p>
-                  <p className="text-lg font-black text-slate-800">
-                    {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
-                  </p>
-                </div>
-              </button>
+            {/* ROULETTE MODAL */}
+            {
+              spinRouletteOpen && (
+                <RoundRoulette
+                  participants={participants.filter(p => p.lat !== 0)}
+                  onClose={() => setSpinRouletteOpen(false)}
+                />
+              )
+            }
 
-              <button
-                onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
-                className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">🍢</div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Tapa</p>
-                  <p className="text-lg font-black text-slate-800">
-                    {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 3. CONTENIDO DE TABS */}
-      {
-        activeTab !== 'route' && (
-          <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
-            <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
-              {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
-              {activeTab === 'ratings' && activeStop && (
-                <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
-              )}
-              {activeTab === 'group' && (
-                <div className="space-y-4 pt-4">
-                  <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
-                  <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
-                      <p className="text-sm text-slate-500">Comparte el código o enlace</p>
-                    </div>
-                    <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
-                      <UserPlus className="w-5 h-5" /> Invitar
-                    </button>
-                  </div>
-                  <div className="border-t border-slate-100 pt-4">
-                    <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )
+            <RouteChat routeId={routeId} currentUserId={currentUserId} />
+          </div >
+        );
       }
-
-      {/* 4. BOTTOM NAVIGATION */}
-      <div className="shrink-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2 z-50">
-        <div className="flex justify-around items-center">
-          {[
-            { id: 'route', icon: '🍻', label: 'Bar' },
-            { id: 'photos', icon: '📸', label: 'Fotos' },
-            { id: 'ratings', icon: '⭐', label: 'Valorar' },
-            { id: 'group', icon: '👥', label: 'Grupo' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => { vibrate(30); setActiveTab(tab.id as any); }}
-              className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16 ${activeTab === tab.id ? 'bg-amber-50 text-amber-600' : 'text-slate-400 hover:bg-slate-50'
-                }`}
-            >
-              <span className="text-xl">{tab.icon}</span>
-              <span className="text-[10px] font-bold">{tab.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* MODAL CÁMARA */}
-      {
-        showCamera && activeStop && (
-          <div className="fixed inset-0 z-[60] bg-black animate-in fade-in zoom-in-95 duration-200">
-            <div className="absolute top-4 right-4 z-50">
-              <button onClick={() => setShowCamera(false)} className="text-white text-lg font-bold p-4 bg-black/20 rounded-full backdrop-blur">✕</button>
-            </div>
-            <PhotoCapture
-              routeId={routeId}
-              routeName={routeName}
-              stopId={activeStop.id}
-              stopName={activeStop.name}
-              onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setShowCamera(false); }}
-              compact={false}
-            />
-          </div>
-        )
-      }
-
-      {/* Price Picker Modal & Chat */}
-      {
-        pricePickerOpen && (
-          <PricePicker
-            isOpen={true}
-            onClose={() => setPricePickerOpen(null)}
-            onSelect={(price) => {
-              setBarPrices(prev => ({ ...prev, [pricePickerOpen.stopId]: { ...prev[pricePickerOpen.stopId], [pricePickerOpen.type]: price } }));
-            }}
-            currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
-            title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
-            icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
-          />
-        )
-      }
-
-      {/* ROULETTE MODAL */}
-      {
-        spinRouletteOpen && (
-          <RoundRoulette
-            participants={participants.filter(p => p.lat !== 0)}
-            onClose={() => setSpinRouletteOpen(false)}
-          />
-        )
-      }
-
-      <RouteChat routeId={routeId} currentUserId={currentUserId} />
-    </div >
-  );
-}
