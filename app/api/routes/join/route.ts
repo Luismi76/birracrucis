@@ -97,14 +97,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Crear participante
-    // @ts-ignore
+    // Para invitados: guestId debe ser string, userId debe ser null
+    // Para usuarios: userId debe ser string, guestId debe ser null
     await prisma.participant.create({
       data: {
         routeId: route.id,
-        userId: userId || undefined,
-        guestId: guestId || undefined,
-        name: name ?? undefined,
-        avatar: avatar ?? undefined,
+        ...(userId ? { userId } : { guestId: guestId!, name, avatar }),
       }
     });
 
@@ -132,7 +130,16 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error("Error en POST /api/routes/join:", error);
-    return NextResponse.json({ ok: false, error: "Error al unirse a la ruta" }, { status: 500 });
+    console.error("Error details:", {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      error
+    });
+    return NextResponse.json({
+      ok: false,
+      error: "Error al unirse a la ruta",
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : String(error)) : undefined
+    }, { status: 500 });
   }
 }
 
