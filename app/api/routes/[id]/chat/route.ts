@@ -70,7 +70,7 @@ export async function GET(
 
     // For guest messages, get participant info
     const messagesWithGuestInfo = await Promise.all(
-      messages.map(async (msg) => {
+      messages.map(async (msg: any) => {
         if (msg.guestId) {
           const participant = await prisma.participant.findUnique({
             where: { routeId_guestId: { routeId, guestId: msg.guestId } }
@@ -148,6 +148,7 @@ export async function POST(
       if (participant) {
         isParticipant = true;
         userName = participant.name;
+        userImage = participant.avatar;
       }
     }
 
