@@ -611,6 +611,23 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           body: JSON.stringify({ stopId, type: 'beer' }),
         }).catch(console.error);
       }
+
+      // GAMIFICATION: Registrar consumo en sistema de gamificación
+      if (currentUserId) {
+        try {
+          const { recordBeerConsumption, awardAchievement } = await import('@/lib/gamification-helpers');
+
+          // Registrar consumo del usuario actual
+          await recordBeerConsumption(routeId, currentUserId, stopId, 1);
+
+          // Intentar otorgar logro de primera cerveza (falla silenciosamente si ya existe)
+          await awardAchievement(routeId, currentUserId, 'first_beer');
+        } catch (gamificationError) {
+          // No fallar si gamificación falla, solo log
+          console.error('Gamification error:', gamificationError);
+        }
+      }
+
       toast.success("¡Ronda registrada!");
     } catch (err) {
       console.error(err);
