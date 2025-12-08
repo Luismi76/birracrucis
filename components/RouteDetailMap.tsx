@@ -32,6 +32,7 @@ type RouteDetailMapProps = {
     userPosition?: { lat: number; lng: number } | null;
     participants?: Participant[];
     onParticipantClick?: (participant: Participant) => void;
+    isRouteComplete?: boolean; // Si es true, tooltips siempre visibles
 };
 
 // Componente para tooltip fijo del bar
@@ -152,13 +153,14 @@ const PARTICIPANT_COLORS = [
     "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
 ];
 
-export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick }: RouteDetailMapProps) {
+export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick, isRouteComplete = false }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES,
     });
 
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
+    const [hoveredStopId, setHoveredStopId] = useState<string | null>(null);
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
     const [userHasInteracted, setUserHasInteracted] = useState(false);
@@ -332,25 +334,37 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
                         }}
                         title={`${stop.name} - Rondas: ${stop.actualRounds}/${stop.plannedRounds}`}
                         onClick={() => setSelectedStop(stop)}
+                        onMouseOver={() => setHoveredStopId(stop.id)}
+                        onMouseOut={() => setHoveredStopId(null)}
                     />
                 ))}
 
-                {/* Tooltips permanentes de bares */}
-                {stops.map((stop, index) => (
-                    <OverlayView
-                        key={`tooltip-${stop.id}`}
-                        position={{ lat: stop.lat, lng: stop.lng }}
-                        mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-                        getPixelPositionOffset={(width, height) => ({
-                            x: -(width / 2),
-                            y: -height - 60, // Posicionar arriba del marcador
-                        })}
-                    >
-                        <div onClick={() => setSelectedStop(stop)} className="cursor-pointer">
-                            <BarTooltip stop={stop} index={index} />
-                        </div>
-                    </OverlayView>
-                ))}
+                {/* Tooltips de bares (siempre visibles si ruta completada, solo hover si activa) */}
+                {stops
+                    .filter(stop => isRouteComplete || stop.id === hoveredStopId)
+                    .map((stop, index) => {
+                        const stopIndex = stops.findIndex(s => s.id === stop.id);
+                        return (
+                            <OverlayView
+                                key={`tooltip-${stop.id}`}
+                                position={{ lat: stop.lat, lng: stop.lng }}
+                                mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                                getPixelPositionOffset={(width, height) => ({
+                                    x: -(width / 2),
+                                    y: -height - 60, // Posicionar arriba del marcador
+                                })}
+                            >
+                                <div
+                                    onClick={() => setSelectedStop(stop)}
+                                    className="cursor-pointer"
+                                    onMouseEnter={() => setHoveredStopId(stop.id)}
+                                    onMouseLeave={() => setHoveredStopId(null)}
+                                >
+                                    <BarTooltip stop={stop} index={stopIndex} />
+                                </div>
+                            </OverlayView>
+                        );
+                    })}
 
                 {/* Marcador de posición del usuario */}
                 {userPosition && (
