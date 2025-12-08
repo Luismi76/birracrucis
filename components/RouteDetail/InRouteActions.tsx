@@ -54,31 +54,18 @@ export default function InRouteActions({
     // VISTA ÚNICA: BARRA SUPERIOR INFORMATIVA (Sin botones)
     return (
         <div className="w-full bg-white border-b border-slate-200 pointer-events-auto shadow-sm z-30 flex items-center justify-between p-2 gap-2">
-            {/* User Profile / Back */}
-            <div className="flex-none flex items-center gap-2">
+            {/* Finish Button (Only for Creator) */}
+            {onFinishClick ? (
                 <button
-                    onClick={() => window.location.href = "/"}
-                    className="w-8 h-8 rounded-full overflow-hidden border border-slate-200 shadow-sm active:scale-95 transition-transform"
+                    onClick={onFinishClick}
+                    className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center active:scale-95 transition-transform border border-red-200 flex-none"
+                    title="Finalizar Ruta"
                 >
-                    {currentUser?.image ? (
-                        <img src={currentUser.image} alt="User" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-500">
-                            {(currentUser?.name || "?").charAt(0).toUpperCase()}
-                        </div>
-                    )}
+                    <Flag className="w-4 h-4" />
                 </button>
-                {/* Finish Button (Only for Creator) */}
-                {onFinishClick && (
-                    <button
-                        onClick={onFinishClick}
-                        className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center active:scale-95 transition-transform border border-red-200"
-                        title="Finalizar Ruta"
-                    >
-                        <Flag className="w-4 h-4" />
-                    </button>
-                )}
-            </div>
+            ) : (
+                <div className="w-8" />
+            )}
 
             {/* Info Bar */}
             <div className="flex items-center gap-2 min-w-0 flex-1 justify-center text-center">
