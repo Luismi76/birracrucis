@@ -27,6 +27,13 @@ import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
 import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell } from "lucide-react"; // Import icons for actions
 import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
+import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, AchievementsToast, useAchievements, DrinkComparison, WeatherWidget, BarChallenge, PredictionsPanel, QuickReactions } from "@/components/route-detail";
+import { useOfflineQueue } from "@/hooks/useOfflineQueue";
+import { useBatterySaver } from "@/hooks/useBatterySaver";
+import AccessibilityPanel from "@/components/AccessibilityPanel";
+import SystemStatus from "@/components/SystemStatus";
+import ThemeToggle from "@/components/ThemeToggle";
+import ConfettiTrigger from "@/components/ConfettiTrigger";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -258,6 +265,60 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   // Detectar si nos hemos pasado de rondas planificadas
   const isOverPlannedRounds = activeStop && (rounds[activeStop.id] || 0) >= activeStop.plannedRounds;
+
+  // ========== SPRINT 4: OPTIMIZATION HOOKS ==========
+
+  // Offline queue
+  const offlineQueue = useOfflineQueue();
+
+  // Battery saver
+  const batterySaver = useBatterySaver();
+
+  // Accessibility settings
+  const [accessibilitySettings, setAccessibilitySettings] = useState({
+    highContrast: false,
+    largeText: false,
+    reducedMotion: false,
+    screenReaderMode: false,
+  });
+
+  // Cargar settings de accesibilidad del localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = localStorage.getItem("accessibility_settings");
+    if (saved) {
+      try {
+        setAccessibilitySettings(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error loading accessibility settings:", e);
+      }
+    }
+  }, []);
+
+  // Guardar settings de accesibilidad
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("accessibility_settings", JSON.stringify(accessibilitySettings));
+
+    // Aplicar clases CSS según settings
+    if (accessibilitySettings.highContrast) {
+      document.body.classList.add("high-contrast");
+    } else {
+      document.body.classList.remove("high-contrast");
+    }
+
+    if (accessibilitySettings.largeText) {
+      document.body.classList.add("large-text");
+    } else {
+      document.body.classList.remove("large-text");
+    }
+
+    if (accessibilitySettings.reducedMotion) {
+      document.body.classList.add("reduced-motion");
+    } else {
+      document.body.classList.remove("reduced-motion");
+    }
+  }, [accessibilitySettings]);
 
   // ... Auto-avance logic (useEffects) ...
   useEffect(() => {
@@ -559,56 +620,265 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
+  // ========== CÁLCULOS PARA NUEVOS COMPONENTES ==========
+
+  // Calcular progreso global
+  const completionPercent = stops.length > 0 ? (completedStops / stops.length) * 100 : 0;
+
+  // Calcular tiempo estimado de finalización
+  const calculateEstimatedFinish = () => {
+    if (stops.length === 0) return null;
+    const avgTimePerBar = 30; // minutos por defecto
+    const remainingBars = stops.length - currentBarIndex;
+    const minutesRemaining = remainingBars * avgTimePerBar;
+    const estimatedFinish = new Date(Date.now() + minutesRemaining * 60000);
+    return estimatedFinish.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  const calculateTimeRemaining = () => {
+    if (stops.length === 0) return null;
+    const avgTimePerBar = 30;
+    const remainingBars = stops.length - currentBarIndex;
+    const minutesRemaining = remainingBars * avgTimePerBar;
+    const hours = Math.floor(minutesRemaining / 60);
+    const minutes = minutesRemaining % 60;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
+  };
+
+  // Calcular ritmo (pace)
+  const calculatePace = () => {
+    // TODO: Implementar cálculo real basado en tiempos planificados
+    // Por ahora retorna 0 (ritmo perfecto)
+    return 0;
+  };
+
+  // Preparar datos de participantes para ParticipantsAtBar
+  const participantsWithDistance = useMemo(() => {
+    if (!activeStop) return [];
+    return participants.map(p => ({
+      id: p.id,
+      name: p.name,
+      image: p.image,
+      distance: Math.round(distanceInMeters(p.lat, p.lng, activeStop.lat, activeStop.lng)),
+      isAtBar: distanceInMeters(p.lat, p.lng, activeStop.lat, activeStop.lng) <= RADIUS_METERS,
+    }));
+  }, [participants, activeStop]);
+
+  // Calcular datos del bote (pot)
+  const potData = {
+    currentAmount: totalSpent,
+    targetAmount: totalSpent * 1.1, // Ejemplo: 10% más como objetivo
+    participantsCount: participants.length,
+    paidCount: participants.length, // TODO: Implementar tracking real de pagos
+  };
+
+  // Generar notificaciones inteligentes
+  const smartNotifications = useSmartNotifications({
+    participants: participantsWithDistance,
+    currentBarId: activeStop?.id || "",
+    timeInBar: 15, // TODO: Calcular tiempo real en bar
+    plannedDuration: 30,
+    roundsCompleted: activeStop ? (rounds[activeStop.id] || 0) : 0,
+    plannedRounds: activeStop?.plannedRounds || 0,
+    potPaid: potData.currentAmount,
+    potTotal: potData.targetAmount,
+  });
+
+  // ========== CÁLCULOS PARA SPRINT 2 ==========
+
+  // Datos del próximo bar
+  const nextBarData = useMemo(() => {
+    if (currentBarIndex >= stops.length - 1) return null;
+    const nextBar = stops[currentBarIndex + 1];
+    if (!nextBar || !position) return null;
+
+    const distance = Math.round(
+      distanceInMeters(position.lat, position.lng, nextBar.lat, nextBar.lng)
+    );
+
+    // Estimar tiempo de llegada (asumiendo 5 km/h caminando)
+    const walkingSpeedKmH = 5;
+    const minutesToArrive = Math.round((distance / 1000) / walkingSpeedKmH * 60);
+    const eta = new Date(Date.now() + minutesToArrive * 60000);
+    const etaString = eta.toLocaleTimeString("es-ES", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+    return {
+      barName: nextBar.name,
+      address: nextBar.address,
+      distance,
+      estimatedArrival: etaString,
+      googlePlaceId: nextBar.googlePlaceId,
+    };
+  }, [currentBarIndex, stops, position]);
+
+  // Detectar logros (achievements)
+  const currentUserBeers = activeStop ? (beers[activeStop.id] || 0) : 0;
+  const totalUserBeers = Object.values(beers).reduce((sum, b) => sum + b, 0);
+
+  const achievements = useAchievements({
+    rounds: activeStop ? (rounds[activeStop.id] || 0) : 0,
+    photos: 0, // TODO: Obtener número real de fotos
+    beersCount: totalUserBeers,
+    completedBars: completedStops,
+    totalBars: stops.length,
+    userName: session?.user?.name || "Usuario",
+  });
+
+  // Preparar datos para comparativa de bebidas
+  const participantsWithBeers = useMemo(() => {
+    return participants.map(p => {
+      // Calcular total de cervezas por participante
+      // TODO: Implementar tracking real por participante
+      const participantBeers = Math.floor(Math.random() * 10); // Placeholder
+      return {
+        id: p.id,
+        name: p.name,
+        image: p.image,
+        beersCount: participantBeers,
+      };
+    });
+  }, [participants]);
+
+  // ========== DATOS PARA SPRINT 3 ==========
+
+  // Datos de desafíos (placeholder)
+  const barChallenges = useMemo(() => {
+    if (!activeStop) return [];
+    return [
+      {
+        id: "photo-1",
+        type: "photo" as const,
+        title: "Foto con el camarero",
+        description: "Hazte una foto con el camarero o camarera del bar",
+        points: 50,
+        completed: false,
+      },
+      {
+        id: "specialty-1",
+        type: "specialty" as const,
+        title: "Prueba la especialidad",
+        description: "Pide la cerveza o tapa especial de la casa",
+        points: 30,
+        completed: false,
+      },
+    ];
+  }, [activeStop]);
+
+  // Datos de predicciones (placeholder)
+  const predictions = useMemo(() => [
+    {
+      id: "pred-1",
+      type: "first_arrival" as const,
+      question: "¿Quién llegará primero al próximo bar?",
+      options: participants.slice(0, 3).map(p => p.name || "Usuario"),
+      points: 20,
+    },
+    {
+      id: "pred-2",
+      type: "rounds_count" as const,
+      question: "¿Cuántas rondas haremos en total?",
+      options: ["5-7", "8-10", "11-15", "16+"],
+      points: 30,
+    },
+  ], [participants]);
+
+  // Datos de reacciones (placeholder)
+  const quickReactions = useMemo(() => {
+    if (!activeStop) return [];
+    return [
+      {
+        type: "good_beer" as const,
+        emoji: "🍺",
+        label: "Buena cerveza",
+        count: 0,
+        userReacted: false,
+      },
+      {
+        type: "great_food" as const,
+        emoji: "😋",
+        label: "Tapas increíbles",
+        count: 0,
+        userReacted: false,
+      },
+      {
+        type: "good_music" as const,
+        emoji: "🎶",
+        label: "Buena música",
+        count: 0,
+        userReacted: false,
+      },
+      {
+        type: "good_vibe" as const,
+        emoji: "👍",
+        label: "Buen ambiente",
+        count: 0,
+        userReacted: false,
+      },
+    ];
+  }, [activeStop]);
+
+  // ========== SPRINT 5: CONFETTI TRIGGERS ==========
+
+  const [showAchievementConfetti, setShowAchievementConfetti] = useState(false);
+  const [showCompletionConfetti, setShowCompletionConfetti] = useState(false);
+
+  // Trigger confetti cuando se completa la ruta
+  useEffect(() => {
+    if (routeStatus === "completed" && !showCompletionConfetti) {
+      setShowCompletionConfetti(true);
+    }
+  }, [routeStatus, showCompletionConfetti]);
+
+  // Trigger confetti cuando se consigue un logro
+  useEffect(() => {
+    if (achievements.length > 0) {
+      setShowAchievementConfetti(true);
+      setTimeout(() => setShowAchievementConfetti(false), 100);
+    }
+  }, [achievements.length]);
+
   return (
-    <div className="flex flex-col h-full pointer-events-auto bg-slate-50">
-      {/* 1. TOP ACTIONS BAR (Docked) */}
-      <div className="shrink-0 z-30 bg-white border-b border-slate-200">
-        <InRouteActions
-          isAtBar={canCheckIn}
-          isRouteComplete={isRouteComplete}
-          distToBar={distToActive}
-          routeStatus={routeStatus}
-          onCheckIn={() => {
-            if (activeStop) {
-              setManualArrivals(prev => new Set(prev).add(activeStop.id));
-              handleAddRound(activeStop.id);
-            }
-          }}
-          onAddRound={() => activeStop && handleAddRound(activeStop.id)}
-          onPhotoClick={() => photoCaptureRef.current?.trigger()}
-          onNudgeClick={() => setNotificationPickerOpen(true)}
-          onSpinClick={() => setRankingOpen(true)}
-          onSkipClick={() => toast("Próximamente: Votar salto")}
-          onNextBarClick={() => {
-            const isOverPlannedRounds = activeStop ? ((rounds[activeStop.id] || 0) >= activeStop.plannedRounds) : false;
-            if (isOverPlannedRounds) handleNextBar();
-            else { toast("¿Ya te vas? Aún quedan rondas..."); handleNextBar(); }
-          }}
-          onInviteClick={onOpenShare || (() => { })}
-          onNavigate={() => {
-            if (activeStop) {
-              const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-              window.open(url, '_blank');
-            } else {
-              toast.error("No hay destino definido");
-            }
-          }}
-          onFinishClick={isCreator && canFinishRoute ? () => {
-            if (confirm("¿Seguro que quieres finalizar la ruta? Nadie podrá compartir su ubicación.")) {
-              handleFinishRoute();
-            }
-          } : isCreator ? () => {
-            toast.error("Completa todas las rondas del último bar para finalizar la ruta");
-          } : undefined}
-          barName={activeStop?.name || ""}
-          roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
-          plannedRounds={activeStop?.plannedRounds || 0}
-          currentUser={{
-            name: session?.user?.name || participants.find(p => p.id === currentUserId)?.name || "Invitado",
-            image: session?.user?.image || participants.find(p => p.id === currentUserId)?.image
-          }}
+    <div className="flex flex-col h-full pointer-events-auto bg-slate-50 dark:bg-slate-900">
+      {/* SYSTEM STATUS - Sprint 4 */}
+      <SystemStatus
+        isOnline={offlineQueue.isOnline}
+        queueSize={offlineQueue.queueSize}
+        batteryLevel={batterySaver.batteryLevel}
+        batterySaverMode={batterySaver.mode}
+      />
+
+      {/* ACCESSIBILITY PANEL - Sprint 4 */}
+      <AccessibilityPanel
+        settings={accessibilitySettings}
+        onSettingsChange={setAccessibilitySettings}
+      />
+
+      {/* THEME TOGGLE - Sprint 5 */}
+      <ThemeToggle />
+
+      {/* CONFETTI TRIGGERS - Sprint 5 */}
+      <ConfettiTrigger trigger={showAchievementConfetti} type="achievement" />
+      <ConfettiTrigger trigger={showCompletionConfetti} type="completion" />
+
+      {/* 1. ROUTE PROGRESS HEADER (Nuevo) */}
+      {routeStatus !== "completed" && (
+        <RouteProgressHeader
+          routeName={routeName}
+          currentBarIndex={currentBarIndex}
+          totalBars={stops.length}
+          activeParticipants={participants.filter(p => p.lastSeenAt).length}
+          completionPercent={completionPercent}
+          estimatedFinishTime={calculateEstimatedFinish()}
+          timeRemaining={calculateTimeRemaining()}
         />
-      </div>
+      )}
+
+      {/* Smart Notifications */}
+      <SmartNotifications notifications={smartNotifications} />
 
       {/* 2. MAPA (Content) */}
       <div className="flex-1 relative overflow-hidden">
@@ -616,6 +886,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           stops={stops}
           userPosition={position}
           participants={participants}
+          isRouteComplete={routeStatus === "completed"}
           onParticipantClick={(p) => handleSendNudge({ id: p.id, name: p.name, isGuest: p.isGuest })}
         />
 
@@ -647,8 +918,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 3. BOTTOM INFO SHEET */}
       {activeTab === 'route' && activeStop && (
-        <div className={`shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up overflow-y-auto ${routeStatus === "completed" ? "max-h-[35vh]" : "max-h-[55vh]"}`}>
-          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
+        <div className={`shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up overflow-y-auto ${routeStatus === "completed" ? "max-h-[30vh]" : "max-h-[40vh]"}`}>
+          <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full mx-auto mt-3 mb-1" />
 
           {/* RUTA COMPLETADA: Mostrar resumen */}
           {routeStatus === "completed" ? (
@@ -666,6 +937,93 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           ) : (
             /* RUTA ACTIVA: Mostrar acciones y controles */
             <div className="p-4 pt-1 space-y-4">
+              {/* WIDGETS EN GRID 2 COLUMNAS */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* POT WIDGET */}
+                <PotWidget
+                  currentAmount={potData.currentAmount}
+                  targetAmount={potData.targetAmount}
+                  participantsCount={potData.participantsCount}
+                  paidCount={potData.paidCount}
+                  onClick={() => setActiveTab('group')}
+                />
+
+                {/* PARTICIPANTS AT BAR */}
+                <ParticipantsAtBar
+                  participants={participantsWithDistance}
+                  barName={activeStop.name}
+                />
+              </div>
+
+              {/* PACE INDICATOR - Full width */}
+              <PaceIndicator minutesAhead={calculatePace()} />
+
+              {/* NEXT BAR PREVIEW */}
+              {nextBarData && (
+                <NextBarPreview
+                  barName={nextBarData.barName}
+                  address={nextBarData.address}
+                  distance={nextBarData.distance}
+                  estimatedArrival={nextBarData.estimatedArrival}
+                  googlePlaceId={nextBarData.googlePlaceId}
+                  onViewOnMap={() => {
+                    // TODO: Implementar centrado de mapa en próximo bar
+                    toast.info("Próximo bar en el mapa");
+                  }}
+                />
+              )}
+
+              {/* DRINK COMPARISON & WEATHER - Grid 2 columnas */}
+              <div className="grid grid-cols-2 gap-3">
+                {/* DRINK COMPARISON */}
+                <DrinkComparison
+                  participants={participantsWithBeers}
+                  currentUserId={currentUserId}
+                />
+
+                {/* WEATHER WIDGET */}
+                {activeStop && (
+                  <WeatherWidget lat={activeStop.lat} lng={activeStop.lng} />
+                )}
+              </div>
+
+              {/* ACHIEVEMENTS TOAST */}
+              <AchievementsToast achievements={achievements} />
+
+              {/* BAR CHALLENGE */}
+              {barChallenges.length > 0 && (
+                <BarChallenge
+                  barName={activeStop.name}
+                  challenges={barChallenges}
+                  onCompleteChallenge={(id) => {
+                    toast.success("¡Desafío completado! +50 puntos");
+                    // TODO: Implementar lógica de completar desafío
+                  }}
+                />
+              )}
+
+              {/* PREDICTIONS PANEL */}
+              {predictions.length > 0 && (
+                <PredictionsPanel
+                  predictions={predictions}
+                  onMakePrediction={(predId, option) => {
+                    toast.success(`Predicción registrada: ${option}`);
+                    // TODO: Implementar lógica de predicciones
+                  }}
+                />
+              )}
+
+              {/* QUICK REACTIONS */}
+              {quickReactions.length > 0 && (
+                <QuickReactions
+                  barId={activeStop.id}
+                  reactions={quickReactions}
+                  onReact={(type) => {
+                    toast.success("¡Reacción añadida!");
+                    // TODO: Implementar lógica de reacciones
+                  }}
+                />
+              )}
               {/* ACCIONES PRINCIPALES */}
               <div className="flex flex-col gap-3 mb-2">
                 {!canCheckIn ? (
@@ -703,7 +1061,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     {/* Botón Principal: PEDIR RONDA */}
                     <button
                       onClick={() => activeStop && handleAddRound(activeStop.id)}
-                      className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 dark:shadow-amber-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
                       <Beer className="w-5 h-5" />
                       <div className="flex flex-col items-start">
@@ -717,24 +1075,24 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       {/* Foto del Bar */}
                       <button
                         onClick={() => photoCaptureRef.current?.trigger()}
-                        className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
+                        className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
                       >
-                        <Camera className="w-6 h-6 text-slate-700" />
+                        <Camera className="w-6 h-6 text-slate-700 dark:text-slate-200" />
                         <div className="text-center">
-                          <div className="text-sm font-bold text-slate-800">Foto</div>
-                          <div className="text-xs text-slate-500">del Bar</div>
+                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Foto</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">del Bar</div>
                         </div>
                       </button>
 
                       {/* Ranking */}
                       <button
                         onClick={() => setRankingOpen(true)}
-                        className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
+                        className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
                       >
-                        <Trophy className="w-6 h-6 text-amber-600" />
+                        <Trophy className="w-6 h-6 text-amber-600 dark:text-amber-400" />
                         <div className="text-center">
-                          <div className="text-sm font-bold text-slate-800">Ranking</div>
-                          <div className="text-xs text-slate-500">Ver stats</div>
+                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Ranking</div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400">Ver stats</div>
                         </div>
                       </button>
                     </div>
@@ -742,9 +1100,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     {/* Botón Extra: Avisar a Alguien */}
                     <button
                       onClick={() => setNotificationPickerOpen(true)}
-                      className="w-full p-3 bg-slate-50 border-2 border-slate-200 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 font-bold active:scale-95 transition-all hover:bg-slate-100 hover:border-slate-300"
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500"
                     >
-                      <Bell className="w-5 h-5 text-amber-500" />
+                      <Bell className="w-5 h-5 text-amber-500 dark:text-amber-400" />
                       <span>Avisar a alguien...</span>
                     </button>
                   </div>
@@ -760,12 +1118,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
-                  className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+                  className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl">🍺</div>
+                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">🍺</div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Caña</p>
-                    <p className="text-lg font-black text-slate-800">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Caña</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-slate-100">
                       {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
                     </p>
                   </div>
@@ -773,12 +1131,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
                 <button
                   onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
-                  className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+                  className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
                 >
-                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">🍢</div>
+                  <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xl">🍢</div>
                   <div>
-                    <p className="text-[10px] font-bold text-slate-500 uppercase">Tapa</p>
-                    <p className="text-lg font-black text-slate-800">
+                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tapa</p>
+                    <p className="text-lg font-black text-slate-800 dark:text-slate-100">
                       {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
                     </p>
                   </div>
