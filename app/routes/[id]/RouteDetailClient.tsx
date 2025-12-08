@@ -148,6 +148,36 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [showSummary, setShowSummary] = useState(false);
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
+
+  // Handler para añadir ronda y registrar consumo
+  const handleAddRound = async (stopId: string) => {
+    if (!currentUserId) {
+      toast.error('Debes estar autenticado');
+      return;
+    }
+
+    try {
+      // Registrar consumo de cerveza en el backend
+      const { recordBeerConsumption, awardAchievement } = await import('@/lib/gamification-helpers');
+
+      const success = await recordBeerConsumption(routeId, currentUserId, stopId, 1);
+
+      if (success) {
+        toast.success('¡Ronda registrada! 🍺');
+
+        // Intentar otorgar logro de primera cerveza (si aplica)
+        await awardAchievement(routeId, currentUserId, 'first_beer');
+
+        // TODO: Aquí iría la lógica adicional de añadir ronda
+        // Por ejemplo, actualizar el estado local, etc.
+      } else {
+        toast.error('Error al registrar la ronda');
+      }
+    } catch (error) {
+      console.error('Error adding round:', error);
+      toast.error('Error al registrar la ronda');
+    }
+  };
   const [fabOpen, setFabOpen] = useState(false);
   const photoCaptureRef = useRef<PhotoCaptureHandle>(null);
   const [rankingOpen, setRankingOpen] = useState(false);
