@@ -131,3 +131,112 @@ export async function sendInvitationEmail({
     return { success: false, error };
   }
 }
+
+type SendRouteSummaryEmailParams = {
+  to: string;
+  userName: string;
+  routeName: string;
+  routeDate: Date;
+  stopsVisited: number;
+  totalStops: number;
+};
+
+export async function sendRouteSummaryEmail({
+  to,
+  userName,
+  routeName,
+  routeDate,
+  stopsVisited,
+  totalStops,
+}: SendRouteSummaryEmailParams) {
+  const formattedDate = routeDate.toLocaleDateString("es-ES", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric"
+  });
+
+  const client = getResendClient();
+
+  if (!client) {
+    console.warn("Resend API key not configured - summary email not sent");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `Resumen de ruta: ${routeName}`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 32px 24px; text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 8px;">🏁</div>
+              <h1 style="color: white; margin: 0; font-size: 24px;">¡Ruta Finalizada!</h1>
+            </div>
+
+            <!-- Content -->
+            <div style="padding: 32px 24px;">
+              <p style="color: #475569; margin: 0 0 24px 0; line-height: 1.6;">
+                Hola <strong style="color: #1e293b;">${userName}</strong>, gracias por participar.
+                Aquí tienes el resumen de tu aventura cervecera:
+              </p>
+
+              <!-- Stats Card -->
+              <div style="background: #ecfdf5; border: 2px solid #34d399; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                <h3 style="color: #065f46; margin: 0 0 8px 0; font-size: 18px;">
+                  ${routeName}
+                </h3>
+                <p style="color: #047857; margin: 0 0 16px 0; font-size: 14px;">
+                  📅 ${formattedDate}
+                </p>
+                
+                <div style="display: flex; gap: 12px; border-top: 1px solid #a7f3d0; padding-top: 12px;">
+                   <div>
+                      <div style="font-size: 24px; font-weight: bold; color: #059669;">${stopsVisited}</div>
+                      <div style="font-size: 12px; color: #047857; text-transform: uppercase;">Bares Visitados</div>
+                   </div>
+                   <div style="border-left: 1px solid #a7f3d0; padding-left: 12px;">
+                      <div style="font-size: 24px; font-weight: bold; color: #059669;">${totalStops}</div>
+                      <div style="font-size: 12px; color: #047857; text-transform: uppercase;">Total Ruta</div>
+                   </div>
+                </div>
+              </div>
+
+              <p style="color: #64748b; font-size: 14px; text-align: center; margin: 24px 0 0 0;">
+                ¡Esperamos verte en la próxima! 🍻
+              </p>
+            </div>
+
+            <!-- Footer -->
+            <div style="background: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; margin: 0; font-size: 12px;">
+                Birracrucis
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      console.error("Error sending summary email:", error);
+      return { success: false, error };
+    }
+
+    return { success: true, id: data?.id };
+  } catch (error) {
+    console.error("Error sending summary email:", error);
+    return { success: false, error };
+  }
+}

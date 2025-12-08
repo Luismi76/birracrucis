@@ -110,6 +110,8 @@ export default function RouteDetailWrapper({
   const [participants, setParticipants] = useState<Participant[]>([]);
   // showMap state removed as map is always visible now
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Debug logs removed
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Estado del progreso de la ruta (recibido del RouteDetailClient)

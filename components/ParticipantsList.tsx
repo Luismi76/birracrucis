@@ -29,6 +29,7 @@ type ParticipantsListProps = {
   currentUserId?: string;
   currentStop?: Stop | null;
   userPosition?: { lat: number; lng: number } | null;
+  participants: Participant[];
 };
 
 const RADIUS_METERS = 100;
@@ -38,22 +39,26 @@ export default function ParticipantsList({
   currentUserId,
   currentStop,
   userPosition,
+  participants,
 }: ParticipantsListProps) {
-  const [participants, setParticipants] = useState<Participant[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Usar SSE para actualizaciones en tiempo real
+  // SSE handling removed (lifted up)
+  /* Internal SSE removed - using props */
+  /*
   const handleParticipants = useCallback((data: Participant[]) => {
     setParticipants(data);
   }, []);
 
   const { status } = useRouteStream({
-    routeId,
-    enabled: true,
-    onParticipants: handleParticipants,
-  });
+     routeId,
+     enabled: true,
+     onParticipants: handleParticipants,
+   });
+  const status = "disconnected"; 
+  */
 
-  const loading = status === "connecting" && participants.length === 0;
+  const loading = participants.length === 0;
 
   // Clasificar participantes con memoización
   const { atBar, away, unknown } = useMemo(() => {
@@ -250,13 +255,12 @@ const ParticipantRow = memo(function ParticipantRow({
         )}
         {/* Indicador de estado */}
         <span
-          className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${
-            status === "atBar"
-              ? "bg-green-500"
-              : status === "away"
+          className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${status === "atBar"
+            ? "bg-green-500"
+            : status === "away"
               ? "bg-orange-500"
               : "bg-slate-300"
-          }`}
+            }`}
         />
       </div>
 

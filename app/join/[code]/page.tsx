@@ -44,7 +44,11 @@ export default function JoinRoutePage() {
       if (!code) return;
 
       try {
-        const res = await fetch(`/api/routes/join?code=${encodeURIComponent(code)}`);
+        const storedGuestId = localStorage.getItem("guestId");
+        const queryParams = new URLSearchParams({ code });
+        if (storedGuestId) queryParams.append("guestId", storedGuestId);
+
+        const res = await fetch(`/api/routes/join?${queryParams.toString()}`);
         const data: ApiResponse = await res.json();
 
         if (!data.ok) {

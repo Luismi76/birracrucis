@@ -7,7 +7,9 @@ import { Suspense } from "react";
 
 function SignInContent() {
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/";
+  const rawCallbackUrl = searchParams.get("callbackUrl") || "/";
+  // Sanitizar callback para evitar redirección a localhost en móvil
+  const callbackUrl = rawCallbackUrl.includes("localhost") ? "/" : rawCallbackUrl;
   const error = searchParams.get("error");
 
   return (

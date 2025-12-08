@@ -192,7 +192,7 @@ export async function GET(req: NextRequest) {
       isParticipant = !!p;
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       ok: true,
       route: {
         id: route.id,
@@ -206,6 +206,18 @@ export async function GET(req: NextRequest) {
       isParticipant,
       isAuthenticated: !!session?.user,
     });
+
+    if (isParticipant && guestId && !session?.user) {
+      response.cookies.set("guestId", guestId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30 // 30 días
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("Error en GET /api/routes/join:", error);
     return NextResponse.json({ ok: false, error: "Error al obtener información" }, { status: 500 });

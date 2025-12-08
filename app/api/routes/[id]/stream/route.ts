@@ -1,4 +1,4 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
@@ -21,12 +21,11 @@ export async function GET(
 
     // Allow both authenticated users and guests
     if (!session?.user?.email && !guestId) {
-        return new Response("No autenticado", { status: 401 });
+        return new NextResponse("No autenticado", { status: 401 });
     }
 
     const { id: routeId } = await params;
 
-    // Verify user/guest is a participant of this route
     // Verify user/guest is a participant of this route
     let isParticipant = false;
     let currentUserId: string | null = null;
@@ -52,7 +51,7 @@ export async function GET(
     }
 
     if (!isParticipant) {
-        return new Response("No eres participante de esta ruta", { status: 403 });
+        return new NextResponse("No eres participante de esta ruta", { status: 403 });
     }
 
     // Verificar que la ruta existe
@@ -62,13 +61,14 @@ export async function GET(
     });
 
     if (!route) {
-        return new Response("Ruta no encontrada", { status: 404 });
+        return new NextResponse("Ruta no encontrada", { status: 404 });
     }
 
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
         async start(controller) {
+            console.log(`[SSE] Connected: ${routeId} (User: ${currentUserId || "Guest-" + currentGuestId})`);
             // Enviar evento inicial de conexión
             controller.enqueue(
                 encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: "ok" })}\n\n`)
@@ -78,21 +78,31 @@ export async function GET(
             let lastMessageId = "";
             let lastNudgeId = "";
 
-            // Init lastNudgeId to avoid sending old nudges
-            try {
-                const lastNudge = await prisma.nudge.findFirst({
-                    where: { routeId },
-                    orderBy: { createdAt: "desc" },
-                    select: { id: true }
-                });
-                if (lastNudge) lastNudgeId = lastNudge.id;
-            } catch (e) {
-                console.error("Error init nudge:", e);
+            // Init lastNudgeId
+            const lastNudgeIdParam = req.nextUrl.searchParams.get("lastNudgeId");
+            if (lastNudgeIdParam) {
+                lastNudgeId = lastNudgeIdParam;
+            } else {
+                try {
+                    const lastNudge = await prisma.nudge.findFirst({
+                        where: { routeId },
+                        orderBy: { createdAt: "desc" },
+                        select: { id: true }
+                    });
+                    if (lastNudge) lastNudgeId = lastNudge.id;
+                } catch (e) {
+                    // ignore
+                }
             }
 
+            let isUpdating = false;
+
             const sendUpdate = async () => {
+                if (req.signal.aborted || isUpdating) return;
+                isUpdating = true;
+
                 try {
-                    // Obtener participantes
+                    // Obtener participantes (Query 1)
                     const participants = await prisma.participant.findMany({
                         where: { routeId, isActive: true },
                         include: {
@@ -101,6 +111,17 @@ export async function GET(
                             },
                         },
                         orderBy: { joinedAt: "asc" },
+                    });
+
+                    // Map participants for O(1) lookup
+                    const guestMap = new Map();
+                    participants.forEach(p => {
+                        if (p.guestId) {
+                            guestMap.set(p.guestId, {
+                                name: p.name || "Invitado",
+                                image: p.avatar
+                            });
+                        }
                     });
 
                     const participantsData = participants.map((p) => ({
@@ -119,14 +140,16 @@ export async function GET(
                     const newHash = JSON.stringify(participantsData);
                     if (newHash !== lastParticipantsHash) {
                         lastParticipantsHash = newHash;
-                        controller.enqueue(
-                            encoder.encode(
-                                `event: participants\ndata: ${JSON.stringify(participantsData)}\n\n`
-                            )
-                        );
+                        if (!req.signal.aborted) {
+                            controller.enqueue(
+                                encoder.encode(
+                                    `event: participants\ndata: ${JSON.stringify(participantsData)}\n\n`
+                                )
+                            );
+                        }
                     }
 
-                    // Obtener mensajes nuevos
+                    // Obtener mensajes nuevos (Query 2)
                     const messages = await prisma.message.findMany({
                         where: {
                             routeId,
@@ -142,34 +165,32 @@ export async function GET(
                     if (messages.length > 0) {
                         lastMessageId = messages[messages.length - 1].id;
 
-                        // Process guest messages to include participant info
-                        const messagesWithGuestInfo = await Promise.all(
-                            messages.map(async (msg: any) => {
-                                if (msg.guestId) {
-                                    const participant = await prisma.participant.findUnique({
-                                        where: { routeId_guestId: { routeId, guestId: msg.guestId } }
-                                    });
-                                    return {
-                                        ...msg,
-                                        user: {
-                                            id: msg.guestId,
-                                            name: participant?.name || "Invitado",
-                                            image: participant?.avatar || null,
-                                        }
-                                    };
-                                }
-                                return msg;
-                            })
-                        );
+                        // Enrich guest messages using the map (No extra DB calls)
+                        const messagesWithGuestInfo = messages.map((msg: any) => {
+                            if (msg.guestId) {
+                                const guestInfo = guestMap.get(msg.guestId);
+                                return {
+                                    ...msg,
+                                    user: {
+                                        id: msg.guestId,
+                                        name: guestInfo?.name || "Invitado",
+                                        image: guestInfo?.image || null,
+                                    }
+                                };
+                            }
+                            return msg;
+                        });
 
-                        controller.enqueue(
-                            encoder.encode(
-                                `event: messages\ndata: ${JSON.stringify(messagesWithGuestInfo)}\n\n`
-                            )
-                        );
+                        if (!req.signal.aborted) {
+                            controller.enqueue(
+                                encoder.encode(
+                                    `event: messages\ndata: ${JSON.stringify(messagesWithGuestInfo)}\n\n`
+                                )
+                            );
+                        }
                     }
 
-                    // Check for new Nudges
+                    // Check for new Nudges (Query 3)
                     const nudges = await prisma.nudge.findMany({
                         where: {
                             routeId,
@@ -196,7 +217,7 @@ export async function GET(
                             return false;
                         });
 
-                        if (relevantNudges.length > 0) {
+                        if (relevantNudges.length > 0 && !req.signal.aborted) {
                             controller.enqueue(
                                 encoder.encode(
                                     `event: nudges\ndata: ${JSON.stringify(relevantNudges)}\n\n`
@@ -206,32 +227,37 @@ export async function GET(
                     }
 
                     // Heartbeat para mantener conexión
-                    controller.enqueue(encoder.encode(`: heartbeat\n\n`));
+                    if (!req.signal.aborted) {
+                        controller.enqueue(encoder.encode(`: heartbeat\n\n`));
+                    }
                 } catch (error) {
+                    // Ignore disconnect errors to keep logs clean
+                    if (req.signal.aborted) return;
                     console.error("[SSE] Error fetching data:", error);
+                } finally {
+                    isUpdating = false;
                 }
             };
 
             // Enviar actualización inmediata
-            await sendUpdate();
+            sendUpdate();
 
-            // Actualizar cada 3 segundos (más eficiente que polling desde cliente)
+            // Usar setInterval con bloqueo para mantener la conexión viva
             const interval = setInterval(sendUpdate, 3000);
 
-            // Cleanup cuando se cierra la conexión
+            // Cleanup
             req.signal.addEventListener("abort", () => {
+                console.log(`[SSE] Disconnected/Aborted: ${routeId}`);
                 clearInterval(interval);
-                controller.close();
             });
         },
     });
 
-    return new Response(stream, {
+    return new NextResponse(stream, {
         headers: {
             "Content-Type": "text/event-stream",
             "Cache-Control": "no-cache, no-transform",
-            Connection: "keep-alive",
-            "X-Accel-Buffering": "no", // Para nginx
+            "Connection": "keep-alive",
         },
     });
 }

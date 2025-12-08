@@ -65,6 +65,16 @@ export async function POST(
     const body = await req.json();
     const { lat, lng } = body;
 
+    // Check Route Status First (Privacy Guard)
+    const route = await prisma.route.findUnique({
+      where: { id: routeId },
+      select: { status: true }
+    });
+
+    if (!route || route.status === 'completed') {
+      return NextResponse.json({ ok: false, error: "Ruta finalizada o no encontrada" }, { status: 403 });
+    }
+
     if (typeof lat !== "number" || typeof lng !== "number") {
       return NextResponse.json({ ok: false, error: "lat y lng son requeridos" }, { status: 400 });
     }

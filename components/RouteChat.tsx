@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouteStream } from "@/hooks/useRouteStream";
+import { useState, useEffect, useRef } from "react";
 
 type Message = {
   id: string;
@@ -17,71 +16,42 @@ type Message = {
 type RouteChatProps = {
   routeId: string;
   currentUserId?: string;
+  messages: Message[];
+  onSendMessage?: (content: string) => Promise<void>;
 };
 
-export default function RouteChat({ routeId, currentUserId }: RouteChatProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function RouteChat({ routeId, currentUserId, messages, onSendMessage }: RouteChatProps) {
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [lastReadCount, setLastReadCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const initialLoadDone = useRef(false);
+
+  // Derive unread count from total messages vs last read count
+  // If chat is open, we assume everything is read locally
+  const unreadCount = isOpen ? 0 : Math.max(0, messages.length - lastReadCount);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // Callback para nuevos mensajes del SSE
-  const handleNewMessages = useCallback((newMsgs: Message[]) => {
-    if (!initialLoadDone.current) {
-      // Primera carga - reemplazar todo
-      setMessages(newMsgs);
-      initialLoadDone.current = true;
-    } else {
-      // Mensajes nuevos - añadir
-      setMessages(prev => {
-        const existingIds = new Set(prev.map(m => m.id));
-        const uniqueNew = newMsgs.filter(m => !existingIds.has(m.id));
-        if (uniqueNew.length > 0 && !isOpen) {
-          setUnreadCount(c => c + uniqueNew.length);
-        }
-        return [...prev, ...uniqueNew];
-      });
-    }
-  }, [isOpen]);
-
-  // Usar SSE para actualizaciones en tiempo real
-  const { status } = useRouteStream({
-    routeId,
-    enabled: true,
-    onMessages: handleNewMessages,
-  });
-
+  // Update read count when chat is open
   useEffect(() => {
     if (isOpen) {
       scrollToBottom();
-      setUnreadCount(0);
+      setLastReadCount(messages.length);
     }
-  }, [messages, isOpen]);
+  }, [messages.length, isOpen]);
+
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
 
     setSending(true);
     try {
-      const res = await fetch(`/api/routes/${routeId}/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: newMessage }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data.ok) {
-          setMessages(prev => [...prev, data.message]);
-          setNewMessage("");
-        }
+      if (onSendMessage) {
+        await onSendMessage(newMessage);
+        setNewMessage("");
       }
     } catch (err) {
       console.error("Error sending message:", err);

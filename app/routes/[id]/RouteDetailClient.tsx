@@ -3,8 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
-import PhotoCapture from "@/components/PhotoCapture";
+import PhotoCapture, { PhotoCaptureHandle } from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
+
 import NudgeButton from "@/components/NudgeButton";
 import RouteChat from "@/components/RouteChat";
 import SkipVoteButton from "@/components/SkipVoteButton";
@@ -21,6 +22,7 @@ import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
 import RankingView from "@/components/RankingView";
 import ParticipantPicker from "@/components/ParticipantPicker";
+import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
 import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell } from "lucide-react"; // Import icons for actions
 
@@ -138,9 +140,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [showSummary, setShowSummary] = useState(false);
   const [isSheetExpanded, setIsSheetExpanded] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
+  const photoCaptureRef = useRef<PhotoCaptureHandle>(null);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [notificationPickerOpen, setNotificationPickerOpen] = useState(false);
+  const [notificationTarget, setNotificationTarget] = useState<Participant | null>(null);
+
+  // Debug loop removed
 
   // Tabs simplificadas
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
@@ -153,6 +158,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [autoCheckinNotification, setAutoCheckinNotification] = useState<string | null>(null);
 
   // SSE Global Connection
+  const [messages, setMessages] = useState<any[]>([]); // Should be Message type
+
   const { participants: streamParticipants } = useRouteStream({
     routeId,
     enabled: true,
@@ -160,11 +167,18 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       setParticipants(data);
       onParticipantsChange?.(data);
     },
+    onMessages: (newMessages) => {
+      // Simple merge or replace? 
+      // Hook typically gives ALL messages or NEW calls?
+      // Our hook implementation sends parsed new messages.
+      setMessages(prev => {
+        const existingIds = new Set(prev.map((m) => m.id));
+        const uniqueNew = newMessages.filter((m: any) => !existingIds.has(m.id));
+        return [...prev, ...uniqueNew];
+      });
+    },
     onNudges: (nudges) => {
       nudges.forEach(n => {
-        // Prevent duplicate toasts if re-renders happen? Sonner dedupes by ID usually, but here we generate new ID or no ID.
-        // Also SSE might send same nudges if logic is "since connection". 
-        // But we implemented lastNudgeId tracking in backend, so we only get NEW ones.
         toast(`🔔 ${n.sender.name || 'Alguien'} dice:`, {
           description: n.message,
           duration: 5000,
@@ -173,7 +187,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             onClick: () => console.log("Nudge clicked"),
           },
         });
-        // Vibrate pattern for attention
         vibrate([200, 100, 200]);
       });
     }
@@ -438,6 +451,30 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
+  // Handle Route Completion
+  const handleFinishRoute = async () => {
+    try {
+      const res = await fetch(`/api/routes/${routeId}/finish`, { method: "POST" });
+      if (!res.ok) throw new Error("Error finishing route");
+      toast.success("Ruta finalizada correctamente");
+      window.location.reload();
+    } catch (err) {
+      toast.error("Error al finalizar la ruta");
+      console.error(err);
+    }
+  };
+
+  // Effect to clean up location watching if route is completed
+  useEffect(() => {
+    if (routeStatus === "completed") {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setUseWatch(false);
+    }
+  }, [routeStatus]);
+
   const handleSendNudge = async (target: { id: string, name?: string | null, isGuest?: boolean }, message?: string) => {
     try {
       const isGlobal = target.id === 'all';
@@ -512,8 +549,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             }
           }}
           onAddRound={() => activeStop && handleAddRound(activeStop.id)}
-          onPhotoClick={() => setShowCamera(true)}
-          onNudgeClick={() => toast("¡Prisa enviada! 🔔")}
+          onPhotoClick={() => photoCaptureRef.current?.trigger()}
+          onNudgeClick={() => setNotificationPickerOpen(true)}
           onSpinClick={() => setRankingOpen(true)}
           onSkipClick={() => toast("Próximamente: Votar salto")}
           onNextBarClick={() => {
@@ -530,9 +567,14 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               toast.error("No hay destino definido");
             }
           }}
+          onFinishClick={isCreator ? () => confirm("¿Seguro que quieres finalizar la ruta? Nadie podrá compartir su ubicación.") && handleFinishRoute() : undefined}
           barName={activeStop?.name || ""}
           roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
           plannedRounds={activeStop?.plannedRounds || 0}
+          currentUser={{
+            name: session?.user?.name || participants.find(p => p.id === currentUserId)?.name || "Invitado",
+            image: session?.user?.image || participants.find(p => p.id === currentUserId)?.image
+          }}
         />
       </div>
 
@@ -626,7 +668,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <div className="grid grid-cols-2 gap-2">
                     {/* Foto del Bar */}
                     <button
-                      onClick={() => setShowCamera(true)}
+                      onClick={() => photoCaptureRef.current?.trigger()}
                       className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
                     >
                       <Camera className="w-6 h-6 text-slate-700" />
@@ -710,7 +752,13 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               )}
               {activeTab === 'group' && (
                 <div className="space-y-4 pt-4">
-                  <ParticipantsList routeId={routeId} currentUserId={currentUserId} currentStop={activeStop} userPosition={position} />
+                  <ParticipantsList
+                    routeId={routeId}
+                    currentUserId={currentUserId}
+                    currentStop={activeStop}
+                    userPosition={position}
+                    participants={participants}
+                  />
                   <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
                     <div>
                       <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
@@ -718,6 +766,16 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     </div>
                     <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
                       <UserPlus className="w-5 h-5" /> Invitar
+                    </button>
+                  </div>
+
+                  <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
+                    <div>
+                      <h3 className="font-bold text-slate-800">Enviar Avisos</h3>
+                      <p className="text-sm text-slate-500">Notifica a los participantes</p>
+                    </div>
+                    <button onClick={() => setNotificationPickerOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-amber-500 text-amber-600 rounded-lg font-bold shadow-sm active:scale-95 transition-all hover:bg-amber-50">
+                      <Bell className="w-5 h-5" /> Avisar
                     </button>
                   </div>
                   <div className="border-t border-slate-100 pt-4">
@@ -753,23 +811,16 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       </div>
 
       {/* MODAL CÁMARA */}
-      {
-        showCamera && activeStop && (
-          <div className="fixed inset-0 z-[60] bg-black animate-in fade-in zoom-in-95 duration-200">
-            <div className="absolute top-4 right-4 z-50">
-              <button onClick={() => setShowCamera(false)} className="text-white text-lg font-bold p-4 bg-black/20 rounded-full backdrop-blur">✕</button>
-            </div>
-            <PhotoCapture
-              routeId={routeId}
-              routeName={routeName}
-              stopId={activeStop.id}
-              stopName={activeStop.name}
-              onPhotoUploaded={() => { setPhotoRefresh(prev => prev + 1); setShowCamera(false); }}
-              compact={false}
-            />
-          </div>
-        )
-      }
+      {/* Photo Capture (Hidden Input) */}
+      <PhotoCapture
+        ref={photoCaptureRef}
+        routeId={routeId}
+        routeName={routeName}
+        stopId={activeStop?.id}
+        stopName={activeStop?.name}
+        onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
+        compact={false}
+      />
 
       {/* Price Picker Modal & Chat */}
       {
@@ -803,12 +854,37 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           <ParticipantPicker
             participants={participants}
             onClose={() => setNotificationPickerOpen(false)}
-            onSelect={handleSendNudge}
+            onSelect={(participant) => {
+              setNotificationTarget(participant as any); // 2 steps flow
+              setNotificationPickerOpen(false);
+            }}
           />
         )
       }
 
-      <RouteChat routeId={routeId} currentUserId={currentUserId} />
-    </div >
+      {/* NOTIFICATION ACTIONS MODAL */}
+      {
+        notificationTarget && (
+          <NotificationActions
+            targetName={notificationTarget.name || "Invitado"}
+            onClose={() => setNotificationTarget(null)}
+            onSend={(msg) => handleSendNudge(notificationTarget, msg)}
+          />
+        )
+      }
+
+      <RouteChat
+        routeId={routeId}
+        currentUserId={currentUserId}
+        messages={messages}
+        onSendMessage={async (content) => {
+          await fetch(`/api/routes/${routeId}/chat`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content }),
+          });
+        }}
+      />
+    </div>
   );
 }
