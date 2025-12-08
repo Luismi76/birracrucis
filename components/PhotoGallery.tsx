@@ -128,7 +128,7 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
               <button
                 key={photo.id}
                 onClick={() => setSelectedPhoto(photo)}
-                className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity active-scale relative"
+                className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity active-scale relative rounded-xl shadow-sm border border-slate-100"
               >
                 <OptimizedImage
                   src={photo.url}

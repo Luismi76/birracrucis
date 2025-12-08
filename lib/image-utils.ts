@@ -127,8 +127,18 @@ export async function addWatermark(
                 return;
             }
 
-            // 1. Dibujar imagen original
+            // 1. Configurar contexto y filtros "Vivid"
+            ctx.filter = "saturate(1.3) contrast(1.1) brightness(1.05)";
+
+            // Opcional: Bordes redondeados "quemados" en la imagen (estilo tarjeta)
+            // Para que funcione en JPEG (sin transparencia), necesitamos un color de fondo (negro o blanco).
+            // Pero el usuario pidió "bordes redondeados", que puede ser solamento visual.
+            // Sin embargo, para darle un toque "procesado", podemos hacer un recorte suave
+            // o simplemente aplicar el filtro.
+            // Vamos a aplicar solo el filtro Vivid aquí para asegurar calidad.
+
             ctx.drawImage(img, 0, 0);
+            ctx.filter = "none"; // Reset filter for text/overlays
 
             const w = img.width;
             const h = img.height;
