@@ -42,6 +42,8 @@ model User {
   autoCheckinEnabled   Boolean            @default(true)
   notificationsEnabled Boolean            @default(true)
   onboardingCompleted  Boolean            @default(false)
+  totalPoints          Int                @default(0)
+  level                Int                @default(1)
   accounts             Account[]
   barRatings           BarRating[]
   paidDrinks           Drink[]            @relation("DrinkPayer")
@@ -60,6 +62,10 @@ model User {
   sessions             Session[]
   skipVotes            SkipVote[]
   badges               UserBadge[]
+  achievements         Achievement[]
+  beerConsumptions     BeerConsumption[]
+  predictions          Prediction[]
+  barReactions         BarReaction[]
 }
 
 model VerificationToken {
@@ -111,6 +117,10 @@ model Route {
   stops              RouteStop[]
   skipVotes          SkipVote[]
   earnedBadges       UserBadge[]
+  achievements       Achievement[]
+  beerConsumptions   BeerConsumption[]
+  predictions        Prediction[]
+  barReactions       BarReaction[]
 
   @@index([creatorId])
   @@index([status, date(sort: Desc)])
@@ -118,27 +128,29 @@ model Route {
 }
 
 model RouteStop {
-  id             String      @id @default(cuid())
-  routeId        String
-  name           String
-  address        String
-  lat            Float
-  lng            Float
-  order          Int
-  plannedRounds  Int
-  maxRounds      Int?
-  actualRounds   Int         @default(0)
-  googlePlaceId  String?
-  stayDuration   Int         @default(30)
-  walkTimeToNext Int?
-  arrivedAt      DateTime?
-  departedAt     DateTime?
-  ratings        BarRating[]
-  drinks         Drink[]
-  photos         Photo[]
-  rounds         Round[]
-  route          Route       @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  skipVotes      SkipVote[]
+  id               String            @id @default(cuid())
+  routeId          String
+  name             String
+  address          String
+  lat              Float
+  lng              Float
+  order            Int
+  plannedRounds    Int
+  maxRounds        Int?
+  actualRounds     Int               @default(0)
+  googlePlaceId    String?
+  stayDuration     Int               @default(30)
+  walkTimeToNext   Int?
+  arrivedAt        DateTime?
+  departedAt       DateTime?
+  ratings          BarRating[]
+  drinks           Drink[]
+  photos           Photo[]
+  rounds           Round[]
+  route            Route             @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  skipVotes        SkipVote[]
+  beerConsumptions BeerConsumption[]
+  barReactions     BarReaction[]
 
   @@index([routeId, order])
 }
@@ -341,4 +353,80 @@ model PotContribution {
   route    Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
   @@unique([routeId, userId])
+}
+
+// ========== GAMIFICATION MODELS ==========
+
+model Achievement {
+  id          String   @id @default(cuid())
+  userId      String
+  routeId     String
+  type        String // 'first_beer', 'speed_demon', 'social_butterfly', 'night_owl', 'early_bird', 'marathon_runner', 'bar_hopper'
+  title       String
+  description String
+  points      Int      @default(0)
+  earnedAt    DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, routeId, type])
+  @@index([userId])
+  @@index([routeId])
+  @@index([earnedAt])
+}
+
+model BeerConsumption {
+  id        String   @id @default(cuid())
+  userId    String
+  routeId   String
+  stopId    String
+  count     Int      @default(1)
+  timestamp DateTime @default(now())
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop  RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@index([userId, routeId])
+  @@index([routeId])
+  @@index([stopId])
+  @@index([timestamp])
+}
+
+model Prediction {
+  id         String    @id @default(cuid())
+  userId     String
+  routeId    String
+  type       String // 'finish_time', 'total_beers', 'mvp', 'slowest_drinker', 'most_social'
+  prediction String // JSON string with prediction data
+  result     String? // Actual result when resolved
+  points     Int       @default(0)
+  isCorrect  Boolean?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([userId, routeId])
+  @@index([routeId])
+  @@index([createdAt])
+}
+
+model BarReaction {
+  id        String   @id @default(cuid())
+  userId    String
+  routeId   String
+  stopId    String
+  type      String // 'fire', 'heart', 'thumbs_up', 'party', 'star'
+  createdAt DateTime @default(now())
+
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop  RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, routeId, stopId, type])
+  @@index([routeId, stopId])
+  @@index([stopId])
 }
