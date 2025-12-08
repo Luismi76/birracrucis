@@ -632,90 +632,105 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up max-h-[55vh] overflow-y-auto">
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
           <div className="p-4 pt-1 space-y-4">
-            {/* ACCIONES PRINCIPALES (Nuevo Bloque Unificado) */}
-            <div className="flex flex-col gap-3 mb-2">
-              {!canCheckIn ? (
-                /* ESTADO: EN CAMINO */
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      if (activeStop) {
-                        const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-                        window.open(url, '_blank');
-                      }
-                    }}
-                    className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
-                  >
-                    <MapPin className="w-6 h-6" />
-                    <span className="text-xs font-bold">Cómo llegar</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      if (activeStop) {
-                        setManualArrivals(prev => new Set(prev).add(activeStop.id));
-                        handleAddRound(activeStop.id);
-                      }
-                    }}
-                    className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
-                  >
-                    <Crown className="w-6 h-6 text-amber-500" />
-                    <span className="text-lg font-bold">Ya llegué</span>
-                  </button>
-                </div>
-              ) : (
-                /* ESTADO: EN EL BAR */
-                <div className="flex flex-col gap-3">
-                  {/* Botón Principal: PEDIR RONDA - Reducido */}
-                  <button
-                    onClick={() => activeStop && handleAddRound(activeStop.id)}
-                    className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2"
-                  >
-                    <Beer className="w-5 h-5" />
-                    <div className="flex flex-col items-start">
-                      <span className="text-base">Añadir Ronda</span>
-                      <span className="text-xs text-amber-100">Registra tu consumición</span>
-                    </div>
-                  </button>
-
-                  {/* Grid 2x2 de Acciones Rápidas */}
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Foto del Bar */}
+            {/* ACCIONES PRINCIPALES (Solo si la ruta NO está completada) */}
+            {routeStatus !== "completed" && (
+              <div className="flex flex-col gap-3 mb-2">
+                {!canCheckIn ? (
+                  /* ESTADO: EN CAMINO */
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => photoCaptureRef.current?.trigger()}
-                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
+                      onClick={() => {
+                        if (activeStop) {
+                          const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                          window.open(url, '_blank');
+                        }
+                      }}
+                      className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
                     >
-                      <Camera className="w-6 h-6 text-slate-700" />
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-slate-800">Foto</div>
-                        <div className="text-xs text-slate-500">del Bar</div>
-                      </div>
+                      <MapPin className="w-6 h-6" />
+                      <span className="text-xs font-bold">Cómo llegar</span>
                     </button>
 
-                    {/* Ranking */}
                     <button
-                      onClick={() => setRankingOpen(true)}
-                      className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
+                      onClick={() => {
+                        if (activeStop) {
+                          setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                          handleAddRound(activeStop.id);
+                        }
+                      }}
+                      className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
                     >
-                      <Trophy className="w-6 h-6 text-amber-600" />
-                      <div className="text-center">
-                        <div className="text-sm font-bold text-slate-800">Ranking</div>
-                        <div className="text-xs text-slate-500">Ver stats</div>
-                      </div>
+                      <Crown className="w-6 h-6 text-amber-500" />
+                      <span className="text-lg font-bold">Ya llegué</span>
                     </button>
                   </div>
+                ) : (
+                  /* ESTADO: EN EL BAR */
+                  <div className="flex flex-col gap-3">
+                    {/* Botón Principal: PEDIR RONDA - Reducido */}
+                    <button
+                      onClick={() => activeStop && handleAddRound(activeStop.id)}
+                      className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <Beer className="w-5 h-5" />
+                      <div className="flex flex-col items-start">
+                        <span className="text-base">Añadir Ronda</span>
+                        <span className="text-xs text-amber-100">Registra tu consumición</span>
+                      </div>
+                    </button>
 
-                  {/* Botón Extra: Avisar a Alguien */}
-                  <button
-                    onClick={() => setNotificationPickerOpen(true)}
-                    className="w-full p-3 bg-slate-50 border-2 border-slate-200 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 font-bold active:scale-95 transition-all hover:bg-slate-100 hover:border-slate-300"
-                  >
-                    <Bell className="w-5 h-5 text-amber-500" />
-                    <span>Avisar a alguien...</span>
-                  </button>
+                    {/* Grid 2x2 de Acciones Rápidas */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Foto del Bar */}
+                      <button
+                        onClick={() => photoCaptureRef.current?.trigger()}
+                        className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
+                      >
+                        <Camera className="w-6 h-6 text-slate-700" />
+                        <div className="text-center">
+                          <div className="text-sm font-bold text-slate-800">Foto</div>
+                          <div className="text-xs text-slate-500">del Bar</div>
+                        </div>
+                      </button>
+
+                      {/* Ranking */}
+                      <button
+                        onClick={() => setRankingOpen(true)}
+                        className="p-4 bg-white border-2 border-slate-200 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50"
+                      >
+                        <Trophy className="w-6 h-6 text-amber-600" />
+                        <div className="text-center">
+                          <div className="text-sm font-bold text-slate-800">Ranking</div>
+                          <div className="text-xs text-slate-500">Ver stats</div>
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Botón Extra: Avisar a Alguien */}
+                    <button
+                      onClick={() => setNotificationPickerOpen(true)}
+                      className="w-full p-3 bg-slate-50 border-2 border-slate-200 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 font-bold active:scale-95 transition-all hover:bg-slate-100 hover:border-slate-300"
+                    >
+                      <Bell className="w-5 h-5 text-amber-500" />
+                      <span>Avisar a alguien...</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Mensaje para rutas completadas */}
+            {routeStatus === "completed" && (
+              <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl">🎉</div>
+                  <div>
+                    <h3 className="font-bold text-green-800">Ruta Completada</h3>
+                    <p className="text-sm text-green-600">Revisa las fotos, valoraciones y estadísticas</p>
+                  </div>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* Google Place Info */}
             <div className="mb-2">
