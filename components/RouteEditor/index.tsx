@@ -440,8 +440,13 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Error al guardar la ruta");
 
-            toast.success(isEditing ? "Ruta actualizada correctamente" : "Ruta creada correctamente");
-            router.push(`/routes/${data.route.id}`);
+            if (isEditing) {
+                toast.success("Ruta actualizada correctamente");
+                router.push(`/routes/${data.route.id}`);
+            } else {
+                toast.success("Plantilla creada. Ahora crea una edición para usar la ruta.");
+                router.push("/routes");
+            }
             router.refresh();
         } catch (err) {
             const message = (err as Error).message;

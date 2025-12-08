@@ -91,7 +91,7 @@ export default function ReviewStep({
                             <div className="absolute left-3 top-3 bottom-3 w-0.5 bg-slate-200 -z-10"></div>
 
                             {bars.map((bar, index) => (
-                                <div key={bar!.placeId} className="flex items-center gap-3">
+                                <div key={`bar-${index}`} className="flex items-center gap-3">
                                     <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ring-4 ring-white ${bar!.isStart ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'}`}>
                                         {index + 1}
                                     </div>

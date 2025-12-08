@@ -17,6 +17,7 @@ type RoutePreviewModalProps = {
     isOpen: boolean;
     onClose: () => void;
     routeId: string;
+    isOwnTemplate?: boolean; // Si es plantilla propia del usuario
     initialData?: {
         name: string;
         description: string | null;
@@ -46,7 +47,7 @@ type FullRouteData = {
     };
 };
 
-export default function RoutePreviewModal({ isOpen, onClose, routeId, initialData }: RoutePreviewModalProps) {
+export default function RoutePreviewModal({ isOpen, onClose, routeId, isOwnTemplate = false, initialData }: RoutePreviewModalProps) {
     const [loading, setLoading] = useState(true);
     const [fullRoute, setFullRoute] = useState<FullRouteData | null>(null);
 
@@ -235,14 +236,16 @@ export default function RoutePreviewModal({ isOpen, onClose, routeId, initialDat
                         >
                             Cerrar
                         </button>
-                        <div className="flex-1">
-                            <CloneRouteButton
-                                routeId={routeId}
-                                routeName={displayData.name}
-                                className="w-full justify-center py-3 text-base"
-                                label="Usar Plantilla"
-                            />
-                        </div>
+                        {!isOwnTemplate && (
+                            <div className="flex-1">
+                                <CloneRouteButton
+                                    routeId={routeId}
+                                    routeName={displayData.name}
+                                    className="w-full justify-center py-3 text-base"
+                                    label="Usar Plantilla"
+                                />
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

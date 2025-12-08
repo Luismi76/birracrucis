@@ -113,6 +113,8 @@ export async function POST(req: NextRequest) {
         creatorId: userId || null,
         // Public visibility
         isPublic: body.isPublic ?? false,
+        // Template system - new routes are templates by default
+        isTemplate: true,
         // Campos de tiempo
         startMode: startMode ?? "manual",
         startTime: startTime ? new Date(startTime) : null,

@@ -62,10 +62,10 @@ export const authOptions: NextAuthOptions = {
           if (existingUser) {
             // Usuario existe, verificar si ya tiene esta cuenta vinculada
             const hasAccount = existingUser.accounts.some(
-              acc => acc.provider === account.provider && acc.providerAccountId === account.providerAccountId
+              acc => acc.provider === account?.provider && acc.providerAccountId === account?.providerAccountId
             );
 
-            if (!hasAccount) {
+            if (!hasAccount && account) {
               // Vincular nueva cuenta OAuth al usuario existente
               await prisma.account.create({
                 data: {
