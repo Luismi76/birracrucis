@@ -33,7 +33,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   session: {
-    strategy: "database",
+    strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 días
   },
   events: {
@@ -51,12 +51,57 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
+      // Para OAuth providers, vincular cuenta si el usuario ya existe
+      if (account?.provider !== "credentials" && user.email) {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email },
+            include: { accounts: true }
+          });
+
+          if (existingUser) {
+            // Usuario existe, verificar si ya tiene esta cuenta vinculada
+            const hasAccount = existingUser.accounts.some(
+              acc => acc.provider === account.provider && acc.providerAccountId === account.providerAccountId
+            );
+
+            if (!hasAccount) {
+              // Vincular nueva cuenta OAuth al usuario existente
+              await prisma.account.create({
+                data: {
+                  userId: existingUser.id,
+                  type: account.type,
+                  provider: account.provider,
+                  providerAccountId: account.providerAccountId,
+                  refresh_token: account.refresh_token,
+                  access_token: account.access_token,
+                  expires_at: account.expires_at,
+                  token_type: account.token_type,
+                  scope: account.scope,
+                  id_token: account.id_token,
+                  session_state: account.session_state,
+                }
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error linking account:", error);
+        }
+      }
       return true;
     },
-    async session({ session, user }) {
-      // Con database sessions, el user viene de la DB
+    async jwt({ token, user, account }) {
+      if (user) {
+        token.id = user.id;
+      }
+      if (account) {
+        token.accessToken = account.access_token;
+      }
+      return token;
+    },
+    async session({ session, token }) {
       if (session.user) {
-        session.user.id = user.id;
+        session.user.id = token.id as string || token.sub || "";
       }
       return session;
     },

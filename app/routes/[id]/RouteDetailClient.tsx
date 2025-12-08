@@ -17,6 +17,7 @@ import ParticipantsList from "@/components/ParticipantsList";
 // InvitationManager removed
 import PricePicker from "@/components/PricePicker";
 import BarPlaceInfo from "@/components/BarPlaceInfo";
+import CompletedRouteSummary from "@/components/CompletedRouteSummary";
 import { toast } from "sonner";
 import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
@@ -465,6 +466,16 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
+  // Calcular si se puede finalizar la ruta
+  // Solo se puede finalizar cuando:
+  // 1. Estamos en el último bar (currentBarIndex >= stops.length - 1)
+  // 2. Se han completado todas las rondas planificadas del último bar
+  const lastStop = stops[stops.length - 1];
+  const canFinishRoute =
+    currentBarIndex >= stops.length - 1 &&
+    lastStop &&
+    (rounds[lastStop.id] || 0) >= lastStop.plannedRounds;
+
   // Handle Route Completion
   const handleFinishRoute = async () => {
     try {
@@ -556,6 +567,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           isAtBar={canCheckIn}
           isRouteComplete={isRouteComplete}
           distToBar={distToActive}
+          routeStatus={routeStatus}
           onCheckIn={() => {
             if (activeStop) {
               setManualArrivals(prev => new Set(prev).add(activeStop.id));
@@ -581,7 +593,13 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               toast.error("No hay destino definido");
             }
           }}
-          onFinishClick={isCreator ? () => confirm("¿Seguro que quieres finalizar la ruta? Nadie podrá compartir su ubicación.") && handleFinishRoute() : undefined}
+          onFinishClick={isCreator && canFinishRoute ? () => {
+            if (confirm("¿Seguro que quieres finalizar la ruta? Nadie podrá compartir su ubicación.")) {
+              handleFinishRoute();
+            }
+          } : isCreator ? () => {
+            toast.error("Completa todas las rondas del último bar para finalizar la ruta");
+          } : undefined}
           barName={activeStop?.name || ""}
           roundsCount={activeStop ? (rounds[activeStop.id] || 0) : 0}
           plannedRounds={activeStop?.plannedRounds || 0}
@@ -614,8 +632,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           </div>
         )}
 
-        {/* DEV TOOLS */}
-        {activeTab === 'route' && (
+        {/* DEV TOOLS - Solo en desarrollo */}
+        {activeTab === 'route' && process.env.NODE_ENV === 'development' && (
           <DevLocationControl
             activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng } : undefined}
             onSetPosition={(pos) => {
@@ -627,13 +645,28 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         )}
       </div>
 
-      {/* 3. BOTTOM INFO SHEET (Restored) */}
+      {/* 3. BOTTOM INFO SHEET */}
       {activeTab === 'route' && activeStop && (
-        <div className="shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up max-h-[55vh] overflow-y-auto">
+        <div className={`shrink-0 bg-white border-t border-slate-200 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up overflow-y-auto ${routeStatus === "completed" ? "max-h-[35vh]" : "max-h-[55vh]"}`}>
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 mb-1" />
-          <div className="p-4 pt-1 space-y-4">
-            {/* ACCIONES PRINCIPALES (Solo si la ruta NO está completada) */}
-            {routeStatus !== "completed" && (
+
+          {/* RUTA COMPLETADA: Mostrar resumen */}
+          {routeStatus === "completed" ? (
+            <CompletedRouteSummary
+              routeId={routeId}
+              routeName={routeName}
+              routeDate={routeDate}
+              stops={stops}
+              participants={participants}
+              onViewPhotos={() => setActiveTab('photos')}
+              onViewRatings={() => setActiveTab('ratings')}
+              onViewGroup={() => setActiveTab('group')}
+              onShare={onOpenShare}
+            />
+          ) : (
+            /* RUTA ACTIVA: Mostrar acciones y controles */
+            <div className="p-4 pt-1 space-y-4">
+              {/* ACCIONES PRINCIPALES */}
               <div className="flex flex-col gap-3 mb-2">
                 {!canCheckIn ? (
                   /* ESTADO: EN CAMINO */
@@ -667,7 +700,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 ) : (
                   /* ESTADO: EN EL BAR */
                   <div className="flex flex-col gap-3">
-                    {/* Botón Principal: PEDIR RONDA - Reducido */}
+                    {/* Botón Principal: PEDIR RONDA */}
                     <button
                       onClick={() => activeStop && handleAddRound(activeStop.id)}
                       className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -717,55 +750,42 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   </div>
                 )}
               </div>
-            )}
 
-            {/* Mensaje para rutas completadas */}
-            {routeStatus === "completed" && (
-              <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl">🎉</div>
-                  <div>
-                    <h3 className="font-bold text-green-800">Ruta Completada</h3>
-                    <p className="text-sm text-green-600">Revisa las fotos, valoraciones y estadísticas</p>
-                  </div>
-                </div>
+              {/* Google Place Info */}
+              <div className="mb-2">
+                <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
               </div>
-            )}
 
-            {/* Google Place Info */}
-            <div className="mb-2">
-              <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
+              {/* Price Controls */}
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
+                  className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+                >
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl">🍺</div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Caña</p>
+                    <p className="text-lg font-black text-slate-800">
+                      {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
+                    </p>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
+                  className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
+                >
+                  <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">🍢</div>
+                  <div>
+                    <p className="text-[10px] font-bold text-slate-500 uppercase">Tapa</p>
+                    <p className="text-lg font-black text-slate-800">
+                      {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
+                    </p>
+                  </div>
+                </button>
+              </div>
             </div>
-
-            {/* Price Controls & Actions Row */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
-                className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-xl">🍺</div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Caña</p>
-                  <p className="text-lg font-black text-slate-800">
-                    {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
-                  </p>
-                </div>
-              </button>
-
-              <button
-                onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
-                className="flex items-center gap-3 p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 active:scale-95 transition-all text-left"
-              >
-                <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-xl">🍢</div>
-                <div>
-                  <p className="text-[10px] font-bold text-slate-500 uppercase">Tapa</p>
-                  <p className="text-lg font-black text-slate-800">
-                    {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
-                  </p>
-                </div>
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )
       }

@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
+import { useSession } from "next-auth/react";
 import ShareModal from "@/components/ShareModal";
 import { MapSkeleton, BarCardSkeleton } from "@/components/ui/Skeleton";
 import { Share2 } from "lucide-react";
@@ -106,12 +107,10 @@ export default function RouteDetailWrapper({
   creatorName,
   participantsCount,
 }: RouteDetailWrapperProps) {
+  const { data: session } = useSession();
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
-  // showMap state removed as map is always visible now
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-
-  // Debug logs removed
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Estado del progreso de la ruta (recibido del RouteDetailClient)
@@ -162,16 +161,31 @@ export default function RouteDetailWrapper({
       <header className="shrink-0 z-50 bg-white/90 backdrop-blur-md shadow-sm safe-area-top transition-all relative">
         <div className="px-4 py-2">
           <div className="flex items-center justify-between gap-3">
-            {/* Volver */}
-            <Link
-              href="/routes"
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100/50 hover:bg-slate-200 transition-colors shrink-0 active-scale backdrop-blur-sm"
-              aria-label="Volver a mis rutas"
-            >
-              <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
-              </svg>
-            </Link>
+            {/* Left Section: Back + Avatar */}
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/routes"
+                className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100/50 hover:bg-slate-200 transition-colors active-scale backdrop-blur-sm"
+                aria-label="Volver a mis rutas"
+              >
+                <svg className="w-5 h-5 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+                </svg>
+              </Link>
+
+              {/* User Avatar */}
+              {session?.user && (
+                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-sm">
+                  {session.user.image ? (
+                    <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
+                      {(session.user.name || "?").charAt(0).toUpperCase()}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
 
             {/* Info Central */}
             <div className="flex-1 min-w-0 bg-slate-100/50 rounded-xl px-3 py-1.5 backdrop-blur-sm mx-auto max-w-xs text-center border border-white/20">

@@ -13,6 +13,7 @@ type Stop = {
     plannedRounds: number;
     actualRounds: number;
     maxRounds: number | null;
+    googlePlaceId?: string | null;
 };
 
 type Participant = {
@@ -32,6 +33,80 @@ type RouteDetailMapProps = {
     participants?: Participant[];
     onParticipantClick?: (participant: Participant) => void;
 };
+
+// Componente para tooltip fijo del bar
+function BarTooltip({ stop, index }: { stop: Stop; index: number }) {
+    const [placeDetails, setPlaceDetails] = useState<{
+        photo?: string;
+        rating?: number;
+    } | null>(null);
+
+    useEffect(() => {
+        if (!stop.googlePlaceId) return;
+
+        const service = new google.maps.places.PlacesService(document.createElement('div'));
+        service.getDetails(
+            {
+                placeId: stop.googlePlaceId,
+                fields: ['photos', 'rating']
+            },
+            (place, status) => {
+                if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+                    setPlaceDetails({
+                        photo: place.photos?.[0]?.getUrl({ maxWidth: 80, maxHeight: 60 }),
+                        rating: place.rating
+                    });
+                }
+            }
+        );
+    }, [stop.googlePlaceId]);
+
+    const getStatusColor = () => {
+        if (stop.actualRounds >= stop.plannedRounds) return "bg-green-500";
+        if (stop.actualRounds > 0) return "bg-amber-500";
+        return "bg-slate-400";
+    };
+
+    return (
+        <div className="bg-white rounded-lg shadow-lg p-2 min-w-[140px] max-w-[180px] border-2 border-slate-200">
+            {/* Número del bar */}
+            <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full ${getStatusColor()} text-white flex items-center justify-center text-xs font-bold border-2 border-white`}>
+                {index + 1}
+            </div>
+
+            {/* Imagen de Google Places */}
+            {placeDetails?.photo && (
+                <img
+                    src={placeDetails.photo}
+                    alt={stop.name}
+                    className="w-full h-14 object-cover rounded mb-1"
+                />
+            )}
+
+            {/* Nombre del bar */}
+            <h4 className="font-bold text-xs text-slate-800 truncate mb-1">
+                {stop.name}
+            </h4>
+
+            {/* Rating */}
+            {placeDetails?.rating && (
+                <div className="flex items-center gap-1 mb-1">
+                    <span className="text-amber-500 text-xs">⭐</span>
+                    <span className="text-xs font-semibold text-slate-700">
+                        {placeDetails.rating.toFixed(1)}
+                    </span>
+                </div>
+            )}
+
+            {/* Rondas */}
+            <div className="text-[10px] text-slate-600">
+                <span className="font-semibold">{stop.actualRounds}</span>
+                <span className="text-slate-400">/{stop.plannedRounds}</span>
+                <span className="ml-1">rondas</span>
+            </div>
+        </div>
+    );
+}
 
 const mapContainerStyle = {
     width: "100%",
@@ -86,9 +161,10 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
     const [selectedStop, setSelectedStop] = useState<Stop | null>(null);
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
+    const [userHasInteracted, setUserHasInteracted] = useState(false);
 
-    // Calcular el centro y zoom para mostrar toda la ruta
-    const mapCenter = useMemo(() => {
+    // Calcular el centro inicial para mostrar toda la ruta
+    const initialCenter = useMemo(() => {
         if (stops.length === 0) return { lat: 40.4168, lng: -3.7038 }; // Madrid por defecto
 
         const avgLat = stops.reduce((sum, stop) => sum + stop.lat, 0) / stops.length;
@@ -209,10 +285,12 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
         <div className="relative w-full h-full">
             <GoogleMap
                 mapContainerStyle={mapContainerStyle}
-                center={mapCenter}
+                center={userHasInteracted ? undefined : initialCenter}
                 zoom={14}
                 options={mapOptions}
                 onLoad={(mapInstance) => setMap(mapInstance)}
+                onDragStart={() => setUserHasInteracted(true)}
+                onZoomChanged={() => setUserHasInteracted(true)}
             >
                 {/* Servicio de Direcciones (Walking) */}
                 {origin && destination && !directionsResponse && (
@@ -252,8 +330,26 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
                             scaledSize: new google.maps.Size(40, 50),
                             anchor: new google.maps.Point(20, 50),
                         }}
+                        title={`${stop.name} - Rondas: ${stop.actualRounds}/${stop.plannedRounds}`}
                         onClick={() => setSelectedStop(stop)}
                     />
+                ))}
+
+                {/* Tooltips permanentes de bares */}
+                {stops.map((stop, index) => (
+                    <OverlayView
+                        key={`tooltip-${stop.id}`}
+                        position={{ lat: stop.lat, lng: stop.lng }}
+                        mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                        getPixelPositionOffset={(width, height) => ({
+                            x: -(width / 2),
+                            y: -height - 60, // Posicionar arriba del marcador
+                        })}
+                    >
+                        <div onClick={() => setSelectedStop(stop)} className="cursor-pointer">
+                            <BarTooltip stop={stop} index={index} />
+                        </div>
+                    </OverlayView>
                 ))}
 
                 {/* Marcador de posición del usuario */}
