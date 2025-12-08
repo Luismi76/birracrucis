@@ -94,9 +94,24 @@ export async function compressImage(
  * @param text Texto de la marca de agua
  * @returns Promise con el dataURL de la imagen con marca de agua
  */
+/**
+ * Opciones para la marca de agua
+ */
+type WatermarkOptions = {
+    appName?: string;
+    routeName: string;
+    stopName?: string;
+};
+
+/**
+ * Añade una marca de agua premium a una imagen
+ * @param dataUrl DataURL de la imagen
+ * @param options Opciones de texto para la marca de agua
+ * @returns Promise con el dataURL de la imagen con marca de agua
+ */
 export async function addWatermark(
     dataUrl: string,
-    text: string
+    options: WatermarkOptions
 ): Promise<string> {
     return new Promise((resolve, reject) => {
         const img = new Image();
@@ -112,39 +127,72 @@ export async function addWatermark(
                 return;
             }
 
-            // Dibujar la imagen original
+            // 1. Dibujar imagen original
             ctx.drawImage(img, 0, 0);
 
-            // Configurar el estilo de la marca de agua
-            const fontSize = Math.max(20, Math.floor(img.width / 25));
-            ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+            const w = img.width;
+            const h = img.height;
 
-            // Medir el texto para crear el fondo
-            const textMetrics = ctx.measureText(text);
-            const textWidth = textMetrics.width;
-            const textHeight = fontSize;
+            // Escalar tamaños de fuente relativos al ancho de imagen
+            const baseSize = w / 25; // Base scaling unit
+            const titleSize = baseSize * 1.5;
+            const subtitleSize = baseSize * 0.9;
+            const detailSize = baseSize * 0.7;
 
-            // Posición (esquina inferior derecha con margen)
-            const padding = 15;
-            const x = img.width - textWidth - padding * 2;
-            const y = img.height - padding * 2;
+            // 2. Gradients para mejorar legibilidad
+            // Top gradient
+            const topGrad = ctx.createLinearGradient(0, 0, 0, h * 0.15);
+            topGrad.addColorStop(0, "rgba(0,0,0,0.7)");
+            topGrad.addColorStop(1, "rgba(0,0,0,0)");
+            ctx.fillStyle = topGrad;
+            ctx.fillRect(0, 0, w, h * 0.15);
 
-            // Dibujar fondo semi-transparente
-            ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
-            ctx.fillRect(
-                x - padding,
-                y - textHeight - padding,
-                textWidth + padding * 2,
-                textHeight + padding * 2
-            );
+            // Bottom gradient
+            const bottomGrad = ctx.createLinearGradient(0, h * 0.75, 0, h);
+            bottomGrad.addColorStop(0, "rgba(0,0,0,0)");
+            bottomGrad.addColorStop(1, "rgba(0,0,0,0.8)");
+            ctx.fillStyle = bottomGrad;
+            ctx.fillRect(0, h * 0.75, w, h * 0.25);
 
-            // Dibujar el texto
-            ctx.fillStyle = "#ffffff";
+            // 3. Dibujar "Birracrucis" arriba centrado
+            ctx.font = `bold ${titleSize}px 'Arial', sans-serif`;
+            ctx.textAlign = "center";
             ctx.textBaseline = "top";
-            ctx.fillText(text, x, y - textHeight);
+            ctx.fillStyle = "#ffffff";
+
+            // Sombra suave
+            ctx.shadowColor = "rgba(0,0,0,0.5)";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            ctx.fillText((options.appName || "BIRRACRUCIS").toUpperCase(), w / 2, baseSize);
+
+            // 4. Dibujar información abajo
+            ctx.textAlign = "left";
+            ctx.textBaseline = "bottom";
+            const padding = baseSize;
+
+            // Nombre de la Ruta
+            ctx.font = `bold ${subtitleSize}px 'Arial', sans-serif`;
+            ctx.fillText(options.routeName, padding, h - padding * 1.8);
+
+            // Nombre del Bar (si existe)
+            if (options.stopName) {
+                ctx.font = `${detailSize}px 'Arial', sans-serif`;
+                ctx.fillStyle = "#e2e8f0"; // slate-200
+                // Icono de pin (simulado con texto unicode o simple)
+                ctx.fillText(`📍 ${options.stopName}`, padding, h - padding * 0.8);
+            }
+
+            // Hashtags generados (opcional, en esquina derecha)
+            ctx.textAlign = "right";
+            ctx.font = `italic ${detailSize}px 'Arial', sans-serif`;
+            ctx.fillStyle = "#fbbf24"; // amber-400
+            ctx.fillText("#Birracrucis", w - padding, h - padding);
 
             // Convertir a dataURL
-            const watermarkedDataUrl = canvas.toDataURL("image/jpeg", 0.9);
+            const watermarkedDataUrl = canvas.toDataURL("image/jpeg", 0.92);
             resolve(watermarkedDataUrl);
         };
 

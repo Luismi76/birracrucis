@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import PhotoCapture, { PhotoCaptureHandle } from "@/components/PhotoCapture";
@@ -25,6 +25,7 @@ import ParticipantPicker from "@/components/ParticipantPicker";
 import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
 import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell } from "lucide-react"; // Import icons for actions
+import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
 
 // Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
 const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
@@ -144,6 +145,19 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [rankingOpen, setRankingOpen] = useState(false);
   const [notificationPickerOpen, setNotificationPickerOpen] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<Participant | null>(null);
+
+  // Unplanned Stop Detector
+  const existingStopPlaceIds = useMemo(() => {
+    return new Set(stops.map(s => s.googlePlaceId).filter((id): id is string => !!id));
+  }, [stops]);
+
+  useUnplannedStopDetector({
+    routeId,
+    isCreator,
+    currentLocation: position,
+    isRouteActive: routeStatus !== "completed",
+    existingStopPlaceIds
+  });
 
   // Debug loop removed
 
@@ -746,7 +760,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         activeTab !== 'route' && (
           <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
             <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
-              {activeTab === 'photos' && <PhotoGallery routeId={routeId} refreshTrigger={photoRefresh} />}
+              {activeTab === 'photos' && <PhotoGallery routeId={routeId} stops={stops} refreshTrigger={photoRefresh} />}
               {activeTab === 'ratings' && activeStop && (
                 <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
               )}
@@ -779,7 +793,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     </button>
                   </div>
                   <div className="border-t border-slate-100 pt-4">
-                    <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={totalSpent} />
+                    <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={0} />
                   </div>
                 </div>
               )}
@@ -885,6 +899,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           });
         }}
       />
-    </div>
+    </div >
   );
 }

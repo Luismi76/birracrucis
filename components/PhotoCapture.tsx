@@ -69,7 +69,11 @@ const PhotoCapture = forwardRef<PhotoCaptureHandle, PhotoCaptureProps>(({
       }
 
       // 4. Añadir marca de agua
-      const watermarked = await addWatermark(compressed, hashtag);
+      const watermarked = await addWatermark(compressed, {
+        appName: "BIRRACRUCIS",
+        routeName: routeName,
+        stopName: stopName,
+      });
 
       // 5. Subir directamente
       const res = await fetch(`/api/routes/${routeId}/photos`, {

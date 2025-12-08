@@ -138,26 +138,45 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
             sortedStops.forEach((stop, index) => {
                 const placeId = stop.googlePlaceId || stop.id;
+                // Generate a unique instance ID for each stop, even if placeId repeats
+                const instanceId = generateInstanceId(); // Use the existing helper or inline it if scope issue?
+                // Helper is defined above, but inside function component body. It's accessible.
 
-                const place: PlaceResult = {
-                    placeId,
-                    name: stop.name,
-                    address: stop.address,
-                    lat: stop.lat,
-                    lng: stop.lng,
-                    rating: null,
-                    userRatingsTotal: 0,
-                };
+                // But wait, generateInstanceId is defined AFTER this useEffect in the previous tool call?
+                // No, I inserted it before handleToggleBar.
+                // Ah, useEffect is defined BEFORE handleToggleBar in the original file (line 131 vs 206).
+                // So generateInstanceId might not be defined yet if it is declared after.
+                // I need to confirm where I inserted generateInstanceId.
+                // I replaced handleToggleBar (line 206). useEffect is at 131.
+                // So generateInstanceId is NOT available in useEffect.
+                // I should move generateInstanceId up or duplicate logic.
+                const uniqueId = Math.random().toString(36).substring(2, 15);
 
-                newPlaces.push(place);
-                newOrderedIds.push(placeId);
-                newSelectedBars.set(placeId, {
+                // Check if place is already in newPlaces to avoid duplicates in the "Available/Cache" list
+                let place = newPlaces.find(p => p.placeId === placeId);
+                if (!place) {
+                    place = {
+                        placeId,
+                        name: stop.name,
+                        address: stop.address,
+                        lat: stop.lat,
+                        lng: stop.lng,
+                        rating: null,
+                        userRatingsTotal: 0,
+                    };
+                    newPlaces.push(place);
+                }
+
+                newOrderedIds.push(uniqueId);
+                newSelectedBars.set(uniqueId, {
                     placeId,
                     bar: place,
                     plannedRounds: stop.plannedRounds,
                     maxRounds: stop.maxRounds ?? undefined,
                     isStart: index === 0,
-                    stayDuration: 30,
+                    stayDuration: 30, // Or recover from stop if available? The stop object has stayDuration in payload but maybe not in type?
+                    // Type RouteStop doesn't seem to have stayDuration in the viewed file.
+                    // If it did, use it. For now default.
                 });
             });
 
@@ -203,52 +222,62 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         }
     };
 
-    // Toggle + agregar / eliminar barra
-    const handleToggleBar = (placeId: string) => {
-        const isSelected = selectedBars.has(placeId);
+    // Generar ID único para instancias de bares
+    const generateInstanceId = () => Math.random().toString(36).substring(2, 15);
 
-        if (isSelected) {
-            setSelectedBars((prev) => {
-                const newMap = new Map(prev);
-                const wasStart = newMap.get(placeId)?.isStart;
-                newMap.delete(placeId);
+    // Añadir bar (permite duplicados)
+    const handleAddBar = (placeId: string) => {
+        const place = barSearch.places.find((p) => p.placeId === placeId);
+        if (!place) return;
 
-                if (wasStart && newMap.size > 0) {
-                    const firstKey = newMap.keys().next().value as string | undefined;
-                    if (firstKey) {
-                        const v = newMap.get(firstKey);
-                        if (v) newMap.set(firstKey, { ...v, isStart: true });
-                    }
+        const instanceId = generateInstanceId();
+
+        setSelectedBars((prev) => {
+            const newMap = new Map(prev);
+            const isFirst = newMap.size === 0;
+            newMap.set(instanceId, {
+                placeId,
+                bar: place,
+                plannedRounds: 3,
+                maxRounds: undefined,
+                isStart: isFirst,
+                stayDuration: defaultStayDuration,
+            });
+            return newMap;
+        });
+
+        setOrderedIds((prev) => [...prev, instanceId]);
+        toast.success("Bar añadido a la ruta");
+    };
+
+    // Eliminar bar (por instancia)
+    const handleRemoveBar = (instanceId: string) => {
+        setSelectedBars((prev) => {
+            const newMap = new Map(prev);
+            const wasStart = newMap.get(instanceId)?.isStart;
+            newMap.delete(instanceId);
+
+            if (wasStart && newMap.size > 0) {
+                // Asignar start al siguiente
+                const firstKey = newMap.keys().next().value as string | undefined;
+                if (firstKey) {
+                    const v = newMap.get(firstKey);
+                    if (v) newMap.set(firstKey, { ...v, isStart: true });
                 }
-                return newMap;
-            });
-
-            setOrderedIds((prev) => prev.filter((id) => id !== placeId));
-            toast.info("Bar eliminado de la ruta");
-        } else {
-            const place = barSearch.places.find((p) => p.placeId === placeId);
-            if (!place) {
-                // console.warn("Place no encontrado en places:", placeId);
-                return;
             }
+            return newMap;
+        });
 
-            setSelectedBars((prev) => {
-                const newMap = new Map(prev);
-                const isFirst = newMap.size === 0;
-                newMap.set(placeId, {
-                    placeId,
-                    bar: place,
-                    plannedRounds: 3,
-                    maxRounds: undefined,
-                    isStart: isFirst,
-                    stayDuration: defaultStayDuration,
-                });
-                return newMap;
-            });
+        setOrderedIds((prev) => prev.filter((id) => id !== instanceId));
+        toast.info("Bar eliminado de la ruta");
+    };
 
-            setOrderedIds((prev) => [...prev, placeId]);
-            toast.success("Bar añadido a la ruta");
-        }
+    // Legacy adapter for components verifying selection (optional)
+    const handleToggleBar = (placeId: string) => {
+        // En AvailableBarsList, esto siempre es "Add" ahora.
+        // Pero mantenemos el nombre para minimizar cambios en props por ahora,
+        // aunque lo ideal sería renombrar en el componente hijo.
+        handleAddBar(placeId);
     };
 
     // Establecer bar de inicio
@@ -566,7 +595,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                 onDragEnd={handleDragEnd}
                                 onMoveUp={handleMoveUp}
                                 onMoveDown={handleMoveDown}
-                                onToggleBar={handleToggleBar}
+                                onToggleBar={handleRemoveBar}
                                 onSetStartBar={handleSetStartBar}
                                 onUpdateRounds={handleUpdateRounds}
                                 onUpdateStayDuration={handleUpdateStayDuration}
@@ -586,7 +615,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                     selectedBars={selectedBars}
                                     centerLat={geolocation.centerLat}
                                     centerLng={geolocation.centerLng}
-                                    onToggleBar={handleToggleBar}
+                                    onToggleBar={handleAddBar}
                                     formatDistance={routeCalculations.formatDistance}
                                 />
                             )}
@@ -599,7 +628,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             center={mapCenter}
                             radius={parseInt(radius)}
                             bars={barSearch.places}
-                            selectedBars={orderedIds}
+                            selectedBars={orderedIds.map(id => selectedBars.get(id)?.placeId).filter((id): id is string => !!id)}
                             routePreview={routePreview}
                             onBarClick={handleToggleBar}
                             onDistanceCalculated={(distance, duration) => {

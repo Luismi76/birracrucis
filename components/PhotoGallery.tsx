@@ -4,17 +4,53 @@ import { useState } from "react";
 import OptimizedImage from "@/components/ui/OptimizedImage";
 import { usePhotos, type Photo } from "@/hooks/usePhotos";
 
+type StopInfo = {
+  id: string;
+  name: string;
+  order?: number; // Optional as it might come from diff types
+};
+
 type PhotoGalleryProps = {
   routeId: string;
+  stops?: StopInfo[]; // Optional to allow usage without stops too
   refreshTrigger?: number;
 };
 
-export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
+export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps) {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
 
   const { data, isLoading } = usePhotos(routeId);
   const photos = data?.photos ?? [];
   const hashtag = data?.hashtag ?? "";
+
+  // Group photos by Stop
+  const groupedPhotos = photos.reduce((acc, photo) => {
+    const stopId = photo.stopId || "general";
+    if (!acc[stopId]) {
+      acc[stopId] = {
+        name: photo.stop?.name || "Fotos Generales",
+        photos: [],
+        stopId: stopId
+      };
+    }
+    acc[stopId].photos.push(photo);
+    return acc;
+  }, {} as Record<string, { name: string; photos: Photo[]; stopId: string }>);
+
+  // Sort groups based on Route Stops order
+  const sortedGroups = Object.values(groupedPhotos).sort((a, b) => {
+    if (a.stopId === "general") return 1; // General at the end (or beginning?)
+    if (b.stopId === "general") return -1;
+
+    const indexA = stops.findIndex(s => s.id === a.stopId);
+    const indexB = stops.findIndex(s => s.id === b.stopId);
+
+    // If not found in stops list (shouldn't happen), push to end
+    if (indexA === -1) return 1;
+    if (indexB === -1) return -1;
+
+    return indexA - indexB;
+  });
 
   const handleShare = async (photo: Photo) => {
     const text = photo.caption
@@ -74,23 +110,42 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
   }
 
   return (
-    <>
-      {/* Grid de fotos */}
-      <div className="grid grid-cols-3 gap-1">
-        {photos.map((photo, index) => (
-          <button
-            key={photo.id}
-            onClick={() => setSelectedPhoto(photo)}
-            className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity active-scale"
-          >
-            <OptimizedImage
-              src={photo.url}
-              alt={photo.caption || "Foto"}
-              className="w-full h-full"
-            />
-          </button>
-        ))}
-      </div>
+    <div className="space-y-6 pb-20">
+      {sortedGroups.map((group) => (
+        <div key={group.stopId} className="space-y-2">
+          {/* Header de Sección */}
+          <div className="px-1 flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">
+              {group.name}
+            </h3>
+            <span className="text-xs text-slate-400 font-normal">({group.photos.length})</span>
+          </div>
+
+          {/* Grid de fotos del grupo */}
+          <div className="grid grid-cols-3 gap-0.5">
+            {group.photos.map((photo) => (
+              <button
+                key={photo.id}
+                onClick={() => setSelectedPhoto(photo)}
+                className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity active-scale relative"
+              >
+                <OptimizedImage
+                  src={photo.url}
+                  alt={photo.caption || "Foto"}
+                  className="w-full h-full object-cover"
+                />
+                {/* Mini badge si tiene caption o usuario */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
+                  <p className="text-[10px] text-white truncate font-medium text-left px-1">
+                    {photo.user.name?.split(' ')[0]}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
 
       {/* Modal de foto ampliada */}
       {selectedPhoto && (
@@ -159,6 +214,6 @@ export default function PhotoGallery({ routeId }: PhotoGalleryProps) {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

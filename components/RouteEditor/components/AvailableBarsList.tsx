@@ -33,7 +33,7 @@ export default function AvailableBarsList({
         return R * c;
     };
 
-    const availablePlaces = places.filter((p) => !selectedBars.has(p.placeId));
+    const availablePlaces = places;
 
     if (availablePlaces.length === 0) {
         return null;
@@ -68,8 +68,8 @@ export default function AvailableBarsList({
                     <button
                         onClick={() => setSortBy("relevance")}
                         className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${sortBy === "relevance"
-                                ? "bg-white text-slate-800 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700"
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-700"
                             }`}
                     >
                         ⭐ Relevancia
@@ -77,8 +77,8 @@ export default function AvailableBarsList({
                     <button
                         onClick={() => setSortBy("distance")}
                         className={`px-2 py-1 text-xs font-medium rounded-md transition-colors ${sortBy === "distance"
-                                ? "bg-white text-slate-800 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700"
+                            ? "bg-white text-slate-800 shadow-sm"
+                            : "text-slate-500 hover:text-slate-700"
                             }`}
                     >
                         📍 Cercanía

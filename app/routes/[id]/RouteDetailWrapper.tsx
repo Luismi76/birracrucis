@@ -157,7 +157,7 @@ export default function RouteDetailWrapper({
   const isCompleted = routeStatus === "completed" || routeProgress.isComplete;
 
   return (
-    <div className="flex flex-col h-screen-safe w-full bg-slate-200 overflow-hidden">
+    <div className="flex flex-col w-full bg-slate-200 overflow-hidden" style={{ height: '100dvh' }}>
       {/* Header - Ahora estático en el flujo flex, sticky top */}
       <header className="shrink-0 z-50 bg-white/90 backdrop-blur-md shadow-sm safe-area-top transition-all relative">
         <div className="px-4 py-2">
