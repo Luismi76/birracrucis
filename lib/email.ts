@@ -132,6 +132,86 @@ export async function sendInvitationEmail({
   }
 }
 
+export async function sendWelcomeEmail(to: string, name: string) {
+  const client = getResendClient();
+
+  if (!client) {
+    console.warn("Resend API key not configured - welcome email not sent");
+    return { success: false, error: "Email service not configured" };
+  }
+
+  try {
+    const { data, error } = await client.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject: `¡Bienvenido a Birracrucis, ${name}! 🍻`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        </head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px;">
+          <div style="max-width: 480px; margin: 0 auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%); padding: 32px 24px; text-align: center;">
+              <div style="font-size: 48px; margin-bottom: 8px;">🍻</div>
+              <h1 style="color: white; margin: 0; font-size: 28px; text-shadow: 0 2px 4px rgba(0,0,0,0.1);">¡Bienvenido!</h1>
+            </div>
+
+            <!-- Content -->
+            <div style="padding: 32px 24px;">
+              <h2 style="color: #1e293b; margin: 0 0 16px 0; font-size: 20px;">
+                Hola ${name},
+              </h2>
+              <p style="color: #475569; margin: 0 0 24px 0; line-height: 1.6;">
+                Gracias por unirte a <strong>Birracrucis</strong>, la aplicación definitiva para organizar tus rutas de bares con amigos.
+              </p>
+
+              <div style="background: #fffbeb; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+                <p style="color: #92400e; margin: 0 0 8px 0; font-weight: bold;">¿Qué puedes hacer ahora?</p>
+                <ul style="color: #78350f; margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.6;">
+                  <li>📍 Crear tu primera ruta de bares</li>
+                  <li>👥 Invitar a tus amigos con un enlace</li>
+                  <li>📸 Subir fotos y valorar los bares</li>
+                  <li>💰 Controlar el bote común automáticamente</li>
+                </ul>
+              </div>
+
+              <!-- CTA Button -->
+              <a href="${APP_URL}" style="display: block; background: #1e293b; color: white; text-decoration: none; padding: 16px 24px; border-radius: 12px; text-align: center; font-weight: bold; font-size: 16px; transition: background 0.2s;">
+                Empezar una Ruta
+              </a>
+            </div>
+
+            <!-- Footer -->
+            <div style="background: #f8fafc; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+              <p style="color: #94a3b8; margin: 0; font-size: 12px;">
+                ¡Salud! 🍺<br>
+                El equipo de Birracrucis
+              </p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `
+    });
+
+    if (error) {
+      console.error("Error sending welcome email:", error);
+      return { success: false, error };
+    }
+
+    console.log("Welcome email sent:", data?.id);
+    return { success: true, id: data?.id };
+  } catch (error) {
+    console.error("Error sending welcome email:", error);
+    return { success: false, error };
+  }
+}
+
 type SendRouteSummaryEmailParams = {
   to: string;
   userName: string;
