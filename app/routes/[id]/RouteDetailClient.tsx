@@ -900,7 +900,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   }, [achievements.length]);
 
   return (
-    <div className="flex flex-col h-full pointer-events-auto bg-slate-50 dark:bg-slate-900">
+    <div className="flex flex-col h-screen max-h-screen overflow-hidden pointer-events-auto bg-slate-50 dark:bg-slate-900">
       {/* SYSTEM STATUS - Sprint 4 */}
       <SystemStatus
         isOnline={offlineQueue.isOnline}
@@ -975,7 +975,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 3. BOTTOM INFO SHEET */}
       {activeTab === 'route' && activeStop && (
-        <div className={`shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up overflow-y-auto ${routeStatus === "completed" ? "max-h-[30vh]" : "max-h-[40vh]"}`}>
+        <div className={`shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up overflow-y-auto ${routeStatus === "completed" ? "max-h-[25vh]" : "max-h-[35vh]"}`}>
           <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full mx-auto mt-3 mb-1" />
 
           {/* RUTA COMPLETADA: Mostrar resumen */}
