@@ -1005,7 +1005,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               </div>
 
               {/* ACHIEVEMENTS TOAST */}
-              <AchievementsToast achievements={achievements} />
+              <AchievementsToast routeId={routeId} enabled={routeStatus !== "completed"} />
 
               {/* BAR CHALLENGE */}
               {barChallenges.length > 0 && (
@@ -1031,16 +1031,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               )}
 
               {/* QUICK REACTIONS */}
-              {quickReactions.length > 0 && (
-                <QuickReactions
-                  barId={activeStop.id}
-                  reactions={quickReactions}
-                  onReact={(type) => {
-                    toast.success("¡Reacción añadida!");
-                    // TODO: Implementar lógica de reacciones
-                  }}
-                />
-              )}
+              <QuickReactions
+                routeId={routeId}
+                stopId={activeStop.id}
+                userId={currentUserId}
+              />
               {/* ACCIONES PRINCIPALES */}
               <div className="flex flex-col gap-3 mb-2">
                 {!canCheckIn ? (
