@@ -23,6 +23,7 @@ type PredictionsPanelProps = {
     routeId: string;
     userId: string;
     enabled?: boolean;
+    startTime?: string; // Format: "HH:mm"
 };
 
 // Preguntas predefinidas para cada tipo
@@ -57,6 +58,7 @@ export default function PredictionsPanel({
     routeId,
     userId,
     enabled = true,
+    startTime,
 }: PredictionsPanelProps) {
     const [predictions, setPredictions] = useState<Prediction[]>([]);
     const [submitting, setSubmitting] = useState(false);
@@ -122,6 +124,35 @@ export default function PredictionsPanel({
         }
     };
 
+    // Calculate dynamic finish time options based on start time
+    const getFinishTimeOptions = (): string[] => {
+        if (!startTime) {
+            // Fallback to generic times if no start time
+            return ["22:00", "23:00", "00:00", "01:00", "02:00+"];
+        }
+
+        try {
+            const [hours, minutes] = startTime.split(':').map(Number);
+            const startDate = new Date();
+            startDate.setHours(hours, minutes, 0, 0);
+
+            // Generate options: +3h, +4h, +5h, +6h, +7h
+            const options: string[] = [];
+            for (let i = 3; i <= 7; i++) {
+                const finishDate = new Date(startDate.getTime() + i * 60 * 60 * 1000);
+                const finishHours = finishDate.getHours();
+                const finishMinutes = finishDate.getMinutes();
+                const timeStr = `${finishHours.toString().padStart(2, '0')}:${finishMinutes.toString().padStart(2, '0')}`;
+                options.push(timeStr);
+            }
+
+            return options;
+        } catch (error) {
+            console.error("Error calculating finish times:", error);
+            return ["22:00", "23:00", "00:00", "01:00", "02:00+"];
+        }
+    };
+
     // Get user's predictions
     const userPredictions = predictions.filter(p => p.user.name === userId);
 
@@ -141,7 +172,7 @@ export default function PredictionsPanel({
     const getOptions = (): string[] => {
         switch (currentType) {
             case "finish_time":
-                return ["22:00", "23:00", "00:00", "01:00", "02:00+"];
+                return getFinishTimeOptions();
             case "total_beers":
                 return ["< 10", "10-20", "20-30", "30-40", "40+"];
             case "mvp":

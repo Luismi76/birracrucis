@@ -1019,6 +1019,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 routeId={routeId}
                 userId={currentUserId || ""}
                 enabled={routeStatus !== "completed"}
+                startTime={startTime}
               />
 
               {/* QUICK REACTIONS */}
