@@ -1193,16 +1193,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     </button>
 
                     {/* Grid 1x4 de Acciones Rápidas (más compacto) */}
-                    <div className="grid grid-cols-4 gap-2">
-                      {/* Foto del Bar */}
-                      <button
-                        onClick={() => photoCaptureRef.current?.trigger()}
-                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
-                      >
-                        <Camera className="w-5 h-5 text-slate-700 dark:text-slate-200" />
-                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Foto</div>
-                      </button>
-
+                    <div className="grid grid-cols-2 gap-2">
                       {/* Valorar */}
                       <button
                         onClick={() => setActiveTab('ratings')}
@@ -1210,15 +1201,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       >
                         <Star className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                         <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Valorar</div>
-                      </button>
-
-                      {/* Ranking */}
-                      <button
-                        onClick={() => setRankingOpen(true)}
-                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-slate-600"
-                      >
-                        <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Ranking</div>
                       </button>
 
                       {/* Grupo */}
@@ -1230,26 +1212,38 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                         <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Grupo</div>
                       </button>
                     </div>
-
-                    {/* Botón Extra: Avisar a Alguien */}
-                    <button
-                      onClick={() => setNotificationPickerOpen(true)}
-                      className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500"
-                    >
-                      <Bell className="w-5 h-5 text-amber-500 dark:text-amber-400" />
-                      <span>Avisar a alguien...</span>
-                    </button>
-
-                    {/* Botón Ranking - SIEMPRE VISIBLE */}
-                    <button
-                      onClick={() => setRankingOpen(true)}
-                      className="w-full p-3 bg-gradient-to-r from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 text-white rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all shadow-lg shadow-purple-200 dark:shadow-purple-900/20"
-                    >
-                      <Trophy className="w-5 h-5" />
-                      <span>Ver Ranking</span>
-                    </button>
                   </div>
                 )}
+
+                {/* BOTONES SIEMPRE VISIBLES */}
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {/* Foto */}
+                  <button
+                    onClick={() => photoCaptureRef.current?.trigger()}
+                    className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
+                  >
+                    <Camera className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Foto</div>
+                  </button>
+
+                  {/* Avisar */}
+                  <button
+                    onClick={() => setNotificationPickerOpen(true)}
+                    className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
+                  >
+                    <Bell className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Avisar</div>
+                  </button>
+
+                  {/* Ranking */}
+                  <button
+                    onClick={() => setRankingOpen(true)}
+                    className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-slate-600"
+                  >
+                    <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Ranking</div>
+                  </button>
+                </div>
               </div>
 
               {/* Google Place Info */}
