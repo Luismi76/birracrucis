@@ -94,7 +94,6 @@ export function useRouteStream({
         disconnect();
 
         setStatus("connecting");
-        console.log(`[useRouteStream] Connecting to ${routeId} (attempt ${reconnectAttempts.current})`);
 
         // Append lastNudgeId if we have one (for resumption)
         const url = new URL(`/api/routes/${routeId}/stream`, window.location.origin);
@@ -106,14 +105,13 @@ export function useRouteStream({
         eventSourceRef.current = eventSource;
 
         eventSource.onopen = () => {
-            console.log("[useRouteStream] Connection OPENED");
             setStatus("connected");
             reconnectAttempts.current = 0;
             if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
         };
 
         eventSource.addEventListener("connected", () => {
-            console.log("[useRouteStream] Received 'connected' event");
+            // Connection confirmed
         });
 
         eventSource.addEventListener("participants", (event) => {
