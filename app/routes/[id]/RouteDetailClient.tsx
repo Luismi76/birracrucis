@@ -714,7 +714,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       // Update pot spending
       try {
-        await fetch(`/api/routes/${routeId}/pot`, {
+        console.log('[POT] Updating pot spending:', { routeId, roundCost, peopleAtBar, beerPrice });
+        const potResponse = await fetch(`/api/routes/${routeId}/pot`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -722,10 +723,21 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             amount: roundCost,
           }),
         });
-        // Refresh pot data
-        fetchPotData();
+        const potData = await potResponse.json();
+        console.log('[POT] Pot API response:', potData);
+
+        if (!potResponse.ok) {
+          console.error('[POT] Failed to update pot:', potData);
+          toast.error(`Error actualizando bote: ${potData.error || 'Unknown'}`);
+        } else {
+          console.log('[POT] Pot updated successfully, refreshing data...');
+          // Refresh pot data
+          await fetchPotData();
+          console.log('[POT] Pot data refreshed');
+        }
       } catch (potError) {
-        console.error('Error updating pot:', potError);
+        console.error('[POT] Error updating pot:', potError);
+        toast.error('Error al actualizar el bote');
       }
 
       // GAMIFICATION: Registrar consumo en sistema de gamificación
