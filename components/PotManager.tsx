@@ -189,8 +189,8 @@ export default function PotManager({
   const hasContributed = currentUserId
     ? potData?.contributions.some(c => c.userId === currentUserId)
     : false;
-  // Cálculos de gamificación
-  const balanceAfterSpent = potData ? potData.totalCollected - totalSpent : 0;
+  // Cálculos de gamificación - usar totalSpent del servidor, no el prop local
+  const balanceAfterSpent = potData ? potData.totalCollected - potData.totalSpent : 0;
   const isNegativeBalance = balanceAfterSpent < 0;
 
   // Estimación de rondas restantes
