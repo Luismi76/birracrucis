@@ -485,6 +485,17 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   }, [activeTab]);
 
+  // Auto-refresh pot data every 10 seconds to catch new contributions
+  useEffect(() => {
+    if (!routeId) return;
+
+    const interval = setInterval(() => {
+      fetchPotData();
+    }, 10000); // 10 seconds
+
+    return () => clearInterval(interval);
+  }, [routeId]);
+
   useEffect(() => {
     if (!routeId || !onParticipantsChange) return;
     const fetchParticipants = async () => {
