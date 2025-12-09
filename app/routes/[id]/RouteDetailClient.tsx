@@ -1192,8 +1192,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       </div>
                     </button>
 
-                    {/* Grid 1x3 de Acciones Rápidas (más compacto) */}
-                    <div className="grid grid-cols-3 gap-2">
+                    {/* Grid 1x4 de Acciones Rápidas (más compacto) */}
+                    <div className="grid grid-cols-4 gap-2">
                       {/* Foto del Bar */}
                       <button
                         onClick={() => photoCaptureRef.current?.trigger()}
@@ -1205,11 +1205,20 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
                       {/* Valorar */}
                       <button
-                        onClick={() => setRankingOpen(true)}
+                        onClick={() => setActiveTab('ratings')}
                         className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
                       >
                         <Star className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                         <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Valorar</div>
+                      </button>
+
+                      {/* Ranking */}
+                      <button
+                        onClick={() => setRankingOpen(true)}
+                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-slate-600"
+                      >
+                        <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Ranking</div>
                       </button>
 
                       {/* Grupo */}
