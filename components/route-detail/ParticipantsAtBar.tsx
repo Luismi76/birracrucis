@@ -15,6 +15,24 @@ type ParticipantsAtBarProps = {
     barName: string;
 };
 
+// Función para abreviar nombres
+function getAbbreviatedName(name: string | null): string {
+    if (!name) return "?";
+
+    const parts = name.trim().split(/\s+/);
+
+    if (parts.length === 1) {
+        // Un solo nombre: tomar primeras 3 letras
+        return parts[0].substring(0, 3).toUpperCase();
+    } else if (parts.length === 2) {
+        // Dos nombres: iniciales
+        return (parts[0].charAt(0) + parts[1].charAt(0)).toUpperCase();
+    } else {
+        // Más de dos nombres: primera inicial + inicial del apellido
+        return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
+    }
+}
+
 export default function ParticipantsAtBar({
     participants,
     barName,
@@ -23,14 +41,14 @@ export default function ParticipantsAtBar({
     const onTheWay = participants.filter((p) => !p.isAtBar);
 
     return (
-        <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3">
+        <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 space-y-3">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <h3 className="font-bold text-slate-800 flex items-center gap-2">
+                <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
                     <MapPin className="w-4 h-4 text-amber-500" />
                     En {barName}
                 </h3>
-                <span className="text-sm font-bold text-slate-600">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400">
                     {atBar.length}/{participants.length}
                 </span>
             </div>
@@ -38,29 +56,32 @@ export default function ParticipantsAtBar({
             {/* Participantes en el bar */}
             {atBar.length > 0 && (
                 <div className="space-y-2">
-                    <p className="text-xs font-bold text-green-700 uppercase tracking-wide">
+                    <p className="text-[10px] font-bold text-green-700 dark:text-green-400 uppercase tracking-wide">
                         🟢 Aquí ({atBar.length})
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                         {atBar.map((p) => (
                             <div
                                 key={p.id}
-                                className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-full px-3 py-1"
+                                className="relative group"
+                                title={p.name || "Invitado"}
                             >
+                                {/* Avatar */}
                                 {p.image ? (
                                     <img
                                         src={p.image}
                                         alt={p.name || "Usuario"}
-                                        className="w-5 h-5 rounded-full object-cover"
+                                        className="w-10 h-10 rounded-full object-cover border-2 border-green-500 dark:border-green-400"
                                     />
                                 ) : (
-                                    <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 flex items-center justify-center text-white text-sm font-bold border-2 border-green-400 dark:border-green-500">
                                         {p.name?.charAt(0).toUpperCase() || "?"}
                                     </div>
                                 )}
-                                <span className="text-xs font-semibold text-green-800">
-                                    {p.name || "Invitado"}
-                                </span>
+                                {/* Badge con nombre abreviado */}
+                                <div className="absolute -bottom-1 -right-1 bg-green-600 dark:bg-green-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white dark:border-slate-800 shadow-sm">
+                                    {getAbbreviatedName(p.name)}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -70,34 +91,36 @@ export default function ParticipantsAtBar({
             {/* Participantes de camino */}
             {onTheWay.length > 0 && (
                 <div className="space-y-2">
-                    <p className="text-xs font-bold text-orange-700 uppercase tracking-wide">
+                    <p className="text-[10px] font-bold text-orange-700 dark:text-orange-400 uppercase tracking-wide">
                         🔴 De camino ({onTheWay.length})
                     </p>
-                    <div className="space-y-1">
+                    <div className="flex flex-wrap gap-1.5">
                         {onTheWay.map((p) => (
                             <div
                                 key={p.id}
-                                className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-lg px-3 py-2"
+                                className="relative group"
+                                title={`${p.name || "Invitado"} - ${p.distance}m`}
                             >
-                                <div className="flex items-center gap-2">
-                                    {p.image ? (
-                                        <img
-                                            src={p.image}
-                                            alt={p.name || "Usuario"}
-                                            className="w-5 h-5 rounded-full object-cover"
-                                        />
-                                    ) : (
-                                        <div className="w-5 h-5 rounded-full bg-orange-500 flex items-center justify-center text-white text-xs font-bold">
-                                            {p.name?.charAt(0).toUpperCase() || "?"}
-                                        </div>
-                                    )}
-                                    <span className="text-xs font-semibold text-orange-800">
-                                        {p.name || "Invitado"}
-                                    </span>
+                                {/* Avatar */}
+                                {p.image ? (
+                                    <img
+                                        src={p.image}
+                                        alt={p.name || "Usuario"}
+                                        className="w-10 h-10 rounded-full object-cover border-2 border-orange-500 dark:border-orange-400"
+                                    />
+                                ) : (
+                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 dark:from-orange-600 dark:to-orange-700 flex items-center justify-center text-white text-sm font-bold border-2 border-orange-400 dark:border-orange-500">
+                                        {p.name?.charAt(0).toUpperCase() || "?"}
+                                    </div>
+                                )}
+                                {/* Badge con nombre abreviado */}
+                                <div className="absolute -bottom-1 -right-1 bg-orange-600 dark:bg-orange-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full border border-white dark:border-slate-800 shadow-sm">
+                                    {getAbbreviatedName(p.name)}
                                 </div>
-                                <div className="flex items-center gap-1 text-xs text-orange-600">
-                                    <Navigation className="w-3 h-3" />
-                                    <span>{p.distance}m</span>
+                                {/* Badge de distancia */}
+                                <div className="absolute -top-1 -right-1 bg-slate-800 dark:bg-slate-700 text-white text-[8px] font-bold px-1 py-0.5 rounded-full border border-white dark:border-slate-800 shadow-sm flex items-center gap-0.5">
+                                    <Navigation className="w-2 h-2" />
+                                    {p.distance > 999 ? `${(p.distance / 1000).toFixed(1)}k` : p.distance}
                                 </div>
                             </div>
                         ))}
