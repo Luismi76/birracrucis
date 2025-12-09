@@ -488,8 +488,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       const data = await res.json();
       if (data.ok && data.pot) {
         const pot = data.pot;
+        const availableBalance = (pot.totalCollected || 0) - (pot.totalSpent || 0);
         setPotData({
-          currentAmount: pot.totalCollected || 0,
+          currentAmount: availableBalance,
           targetAmount: (pot.amountPerPerson || 0) * (pot.participantCount || 0),
           participantsCount: pot.participantCount || 0,
           paidCount: pot.contributions?.length || 0,
