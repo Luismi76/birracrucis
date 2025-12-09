@@ -42,7 +42,7 @@ export default function PotWidget({
                             Bote Común
                         </p>
                         <p className="text-lg font-black text-green-800 dark:text-green-300">
-                            {currentAmount.toFixed(2)}€
+                            {currentAmount.toFixed(0)}€
                         </p>
                     </div>
                 </div>
