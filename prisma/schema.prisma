@@ -109,6 +109,7 @@ model Route {
   participants       Participant[]
   photos             Photo[]
   potContributions   PotContribution[]
+  potTransactions    PotTransaction[]
   creator            User?             @relation("RouteCreator", fields: [creatorId], references: [id])
   originalRoute      Route?            @relation("RouteClones", fields: [originalRouteId], references: [id])
   clones             Route[]           @relation("RouteClones")
@@ -359,6 +360,17 @@ model PotContribution {
   route    Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
   @@unique([routeId, userId])
+}
+
+model PotTransaction {
+  id          String   @id @default(cuid())
+  routeId     String
+  amount      Float
+  description String?
+  createdAt   DateTime @default(now())
+  route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, createdAt(sort: Desc)])
 }
 
 // ========== GAMIFICATION MODELS ==========

@@ -728,12 +728,18 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       // Update pot spending
       try {
         console.log('[POT] Updating pot spending:', { routeId, roundCost, peopleAtBar, beerPrice });
+
+        // Get current stop name for description
+        const currentStop = stops.find(s => s.id === stopId);
+        const description = `Ronda en ${currentStop?.name || 'bar'} (${peopleAtBar} ${peopleAtBar === 1 ? 'persona' : 'personas'})`;
+
         const potResponse = await fetch(`/api/routes/${routeId}/pot`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             action: 'spend',
             amount: roundCost,
+            description,
           }),
         });
         const potData = await potResponse.json();

@@ -19,6 +19,12 @@ type PotData = {
   balance: number;
   contributions: PotContribution[];
   participantCount: number;
+  transactions?: Array<{
+    id: string;
+    amount: number;
+    description: string | null;
+    createdAt: string;
+  }>;
 };
 
 type PotManagerProps = {
@@ -380,6 +386,33 @@ export default function PotManager({
                         For now, just showing paid users is safer to avoid logic errors without full participant list. 
                         In future, pass 'participants' to this component to show who hasn't paid. */}
             </div>
+
+            {/* Spending History */}
+            {potData.transactions && potData.transactions.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest text-center">
+                  📋 Historial de Gastos
+                </h4>
+                <div className="bg-white rounded-xl border border-slate-100 divide-y divide-slate-50 max-h-40 overflow-y-auto">
+                  {potData.transactions.map(t => (
+                    <div key={t.id} className="p-2 text-xs">
+                      <div className="flex justify-between items-start">
+                        <span className="font-medium text-slate-700 flex-1">{t.description || 'Gasto'}</span>
+                        <span className="text-orange-600 font-bold ml-2">{t.amount.toFixed(2)}€</span>
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {new Date(t.createdAt).toLocaleString('es-ES', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* External Add (Creator Only) */}
             {isCreator && (

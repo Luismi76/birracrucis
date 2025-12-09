@@ -40,6 +40,13 @@ export async function GET(
 
     const potBalance = route.potTotalCollected - route.potTotalSpent;
 
+    // Get transactions
+    const transactions = await prisma.potTransaction.findMany({
+      where: { routeId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 50, // Limit to last 50 transactions
+    });
+
     return NextResponse.json({
       ok: true,
       pot: {
@@ -50,6 +57,7 @@ export async function GET(
         balance: potBalance,
         contributions: route.potContributions,
         participantCount: route._count.participants,
+        transactions,
       },
     });
   } catch (error) {
@@ -259,18 +267,29 @@ export async function POST(
     // Accion: Gastar del bote
     if (action === "spend") {
       const amount = parseFloat(body.amount);
+      const description = body.description || "Gasto";
+
       if (isNaN(amount) || amount <= 0) {
         return NextResponse.json({ ok: false, error: "Cantidad invalida" }, { status: 400 });
       }
 
-      await prisma.route.update({
-        where: { id },
-        data: {
-          potTotalSpent: {
-            increment: amount,
+      await prisma.$transaction([
+        prisma.route.update({
+          where: { id },
+          data: {
+            potTotalSpent: {
+              increment: amount,
+            },
           },
-        },
-      });
+        }),
+        prisma.potTransaction.create({
+          data: {
+            routeId: id,
+            amount,
+            description,
+          },
+        }),
+      ]);
 
       return NextResponse.json({ ok: true, message: "Gasto registrado" });
     }
