@@ -104,17 +104,17 @@ export function useSmartNotifications({
 }): SmartNotification[] {
     const notifications: SmartNotification[] = [];
 
-    // Notificación: Participante cerca
-    participants.forEach((p) => {
-        if (!p.isAtBar && p.distance < 50 && p.distance > 0) {
-            notifications.push({
-                type: "participant_nearby",
-                message: `${p.name || "Alguien"} está a ${p.distance}m del bar`,
-                participantName: p.name || undefined,
-                distance: p.distance,
-            });
-        }
-    });
+    // Notificación: Participante cerca (DESACTIVADO - muy molesto)
+    // participants.forEach((p) => {
+    //     if (!p.isAtBar && p.distance < 50 && p.distance > 0) {
+    //         notifications.push({
+    //             type: "participant_nearby",
+    //             message: `${p.name || "Alguien"} está a ${p.distance}m del bar`,
+    //             participantName: p.name || undefined,
+    //             distance: p.distance,
+    //         });
+    //     }
+    // });
 
     // Notificación: Tiempo excedido
     if (timeInBar > plannedDuration && plannedDuration > 0) {
