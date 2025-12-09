@@ -64,6 +64,8 @@ export default function PotManager({
       }
       const data = await res.json();
       if (data.ok) {
+        console.log('[POT MANAGER] Fetched pot data:', data.pot);
+        console.log('[POT MANAGER] Transactions:', data.pot.transactions);
         setPotData(data.pot);
       }
     } catch (err) {
