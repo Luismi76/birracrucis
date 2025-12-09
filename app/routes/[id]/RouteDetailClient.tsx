@@ -885,11 +885,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           completionPercent={completionPercent}
           estimatedFinishTime={calculateEstimatedFinish()}
           timeRemaining={calculateTimeRemaining()}
-          userImage={session?.user?.image}
-          userName={session?.user?.name}
-          unreadMessages={messages.length}
-          onChatClick={() => setActiveTab('group')}
-          onAccessibilityClick={() => setAccessibilityPanelOpen(true)}
         />
       )}
 

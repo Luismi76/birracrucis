@@ -6,7 +6,8 @@ import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import ShareModal from "@/components/ShareModal";
 import { MapSkeleton, BarCardSkeleton } from "@/components/ui/Skeleton";
-import { Share2 } from "lucide-react";
+import { Share2, MessageCircle, Settings, Moon, Sun, Accessibility } from "lucide-react";
+import { useTheme } from "next-themes";
 
 // Lazy loading de componentes pesados
 
@@ -112,6 +113,9 @@ export default function RouteDetailWrapper({
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   // Estado del progreso de la ruta (recibido del RouteDetailClient)
   const [routeProgress, setRouteProgress] = useState<RouteProgress>({
@@ -173,15 +177,82 @@ export default function RouteDetailWrapper({
                 </svg>
               </Link>
 
-              {/* User Avatar */}
+              {/* User Avatar with Dropdown */}
               {session?.user && (
-                <div className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-sm">
-                  {session.user.image ? (
-                    <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
-                      {(session.user.name || "?").charAt(0).toUpperCase()}
-                    </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowUserDropdown(!showUserDropdown)}
+                    className="w-9 h-9 rounded-full overflow-hidden border-2 border-white shadow-sm hover:border-amber-400 transition-colors active:scale-95"
+                    aria-label="Menú de usuario"
+                  >
+                    {session.user.image ? (
+                      <img src={session.user.image} alt={session.user.name || "User"} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-sm">
+                        {(session.user.name || "?").charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                  </button>
+
+                  {/* User Dropdown Menu */}
+                  {showUserDropdown && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowUserDropdown(false)} />
+                      <div className="absolute left-0 top-12 z-50 w-56 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                        {/* User Info */}
+                        <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+                          <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                            {session.user.name || "Usuario"}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Participante
+                          </p>
+                        </div>
+
+                        {/* Menu Items */}
+                        <div className="py-1">
+                          {/* Theme Toggle */}
+                          <button
+                            onClick={() => {
+                              setTheme(theme === 'dark' ? 'light' : 'dark');
+                              setShowUserDropdown(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                          >
+                            {theme === 'dark' ? (
+                              <Sun className="w-4 h-4" />
+                            ) : (
+                              <Moon className="w-4 h-4" />
+                            )}
+                            <span>{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>
+                          </button>
+
+                          {/* Accessibility */}
+                          <button
+                            onClick={() => {
+                              // TODO: Open accessibility panel
+                              setShowUserDropdown(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                          >
+                            <Accessibility className="w-4 h-4" />
+                            <span>Accesibilidad</span>
+                          </button>
+
+                          {/* Settings */}
+                          <button
+                            onClick={() => {
+                              // TODO: Open settings modal
+                              setShowUserDropdown(false);
+                            }}
+                            className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
+                          >
+                            <Settings className="w-4 h-4" />
+                            <span>Configuración</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   )}
                 </div>
               )}
@@ -213,6 +284,16 @@ export default function RouteDetailWrapper({
 
             {/* Botones Derecha */}
             <div className="flex items-center gap-2 pointer-events-auto">
+              {/* Chat Button */}
+              <button
+                onClick={() => setShowChat(!showChat)}
+                className="relative flex items-center justify-center w-10 h-10 rounded-full bg-white text-slate-700 hover:bg-slate-50 shadow-sm active:scale-95 transition-all"
+                aria-label="Chat"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {/* TODO: Add unread message indicator */}
+              </button>
+
               {/* Botón Compartir */}
               {inviteCode && (
                 <button
