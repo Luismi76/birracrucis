@@ -27,13 +27,19 @@ export async function GET(
             const challengeData = generateChallengesForStop(routeId, stopId, 2);
 
             // Create challenges in database
-            challenges = await Promise.all(
-                challengeData.map(data =>
-                    prisma.barChallenge.create({
-                        data,
-                    })
-                )
-            );
+            for (const data of challengeData) {
+                const challenge = await prisma.barChallenge.create({
+                    data: {
+                        routeId: data.routeId,
+                        stopId: data.stopId,
+                        type: data.type,
+                        title: data.title,
+                        description: data.description,
+                        points: data.points,
+                    },
+                });
+                challenges.push(challenge);
+            }
         }
 
         return NextResponse.json({

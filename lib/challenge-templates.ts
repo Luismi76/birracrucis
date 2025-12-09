@@ -135,7 +135,7 @@ export function generateChallengesForStop(
     routeId: string,
     stopId: string,
     count: number = 2
-): Omit<any, 'id' | 'createdAt'>[] {
+) {
     // Shuffle templates
     const shuffled = [...CHALLENGE_TEMPLATES].sort(() => Math.random() - 0.5);
 
@@ -153,17 +153,13 @@ export function generateChallengesForStop(
         }
     }
 
-    // Map to database format
+    // Map to database format with proper typing
     return selected.map(template => ({
         routeId,
         stopId,
-        userId: null, // Challenge for everyone
         type: template.type,
         title: template.title,
         description: template.description,
         points: template.points,
-        completed: false,
-        completedAt: null,
-        completedBy: null,
     }));
 }
