@@ -696,6 +696,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     const peopleAtBar = getParticipantsAtBar(stopId);
     setRounds(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
     setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + peopleAtBar }));
+
+    // Calculate round cost for pot
+    const beerPrice = barPrices[stopId]?.beer || DEFAULT_BEER_PRICE;
+    const roundCost = beerPrice * peopleAtBar;
+
     try {
       const res = await fetch(`/api/stops/${stopId}/checkin`, { method: 'POST' });
       if (!res.ok) throw new Error('Failed to check in');
@@ -705,6 +710,22 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ stopId, type: 'beer' }),
         }).catch(console.error);
+      }
+
+      // Update pot spending
+      try {
+        await fetch(`/api/routes/${routeId}/pot`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'spend',
+            amount: roundCost,
+          }),
+        });
+        // Refresh pot data
+        fetchPotData();
+      } catch (potError) {
+        console.error('Error updating pot:', potError);
       }
 
       // GAMIFICATION: Registrar consumo en sistema de gamificación
