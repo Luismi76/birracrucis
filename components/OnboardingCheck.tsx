@@ -3,6 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useEffect, useState } from "react";
 import OnboardingModal from "./OnboardingModal";
+import BeerLoader from "@/components/ui/BeerLoader";
 
 export default function OnboardingCheck() {
     const { data: session, status } = useSession();
@@ -35,10 +36,11 @@ export default function OnboardingCheck() {
     // Mostrar loader bloqueante mientras verificamos sesión o perfil
     if (status === "loading" || (status === "authenticated" && isChecking)) {
         return (
-            <div className="fixed inset-0 z-[9999] bg-white flex flex-col items-center justify-center gap-4">
-                <div className="w-16 h-16 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin"></div>
-                <p className="text-slate-400 font-medium animate-pulse">Cargando...</p>
+        return (
+            <div className="fixed inset-0 z-[9999] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center">
+                <BeerLoader />
             </div>
+        );
         );
     }
 
