@@ -8,6 +8,7 @@ export type Photo = {
     caption: string | null;
     stopId?: string | null;
     userId?: string;
+    challengeId?: string | null;
     createdAt: string;
     user: {
         name: string | null;
