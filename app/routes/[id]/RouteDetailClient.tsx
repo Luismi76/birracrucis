@@ -1077,7 +1077,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               <div className="flex flex-col gap-3 mb-2">
                 {!canCheckIn ? (
                   /* ESTADO: EN CAMINO */
-                  <div className="space-y-2">
+                  <div className="space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     {/* Indicador de distancia */}
                     {position && activeStop && (() => {
                       const distMeters = distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng);
@@ -1114,7 +1114,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   </div>
                 ) : (
                   /* ESTADO: EN EL BAR */
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
                     {/* Indicador de llegada */}
                     <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-2 text-center">
                       <p className="text-xs text-green-600 dark:text-green-400 font-semibold">
@@ -1181,34 +1181,27 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
               </div>
 
-              {/* Price Controls */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
-                  className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
-                >
-                  <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">🍺</div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Caña</p>
-                    <p className="text-lg font-black text-slate-800 dark:text-slate-100">
-                      {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
-                    </p>
-                  </div>
-                </button>
-
-                <button
-                  onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
-                  className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
-                >
-                  <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xl">🍢</div>
-                  <div>
-                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tapa</p>
-                    <p className="text-lg font-black text-slate-800 dark:text-slate-100">
-                      {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
-                    </p>
-                  </div>
-                </button>
-              </div>
+              {/* Compact Price Display - Only when at bar */}
+              {canCheckIn && (
+                <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
+                  <button
+                    onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all"
+                  >
+                    <div className="flex items-center justify-center gap-3 text-xs">
+                      <span className="font-semibold text-slate-600 dark:text-slate-400">💰 Precios:</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100">
+                        🍺 {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
+                      </span>
+                      <span className="text-slate-400 dark:text-slate-500">|</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-100">
+                        🍴 {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
+                      </span>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px]">(tap para editar)</span>
+                    </div>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
