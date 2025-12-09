@@ -140,8 +140,6 @@ type RouteDetailClientProps = {
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel }: RouteDetailClientProps) {
   // ... state ...
-  console.log('[RouteDetailClient] Component MOUNTED/RE-RENDERED', routeId);
-
   const { data: session } = useSession();
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
