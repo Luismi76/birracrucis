@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy, Beer, MapPin, Star, X, TrendingUp } from "lucide-react";
+import { Trophy, Beer, MapPin, Star, X, TrendingUp, Info } from "lucide-react";
+import PointsInfo from "./PointsInfo";
 
 type RankingData = {
     userId: string;
@@ -11,6 +12,7 @@ type RankingData = {
     spent: number;
     barsVisited: number;
     avgRating: number;
+    totalPoints: number;
 };
 
 type RankingViewProps = {
@@ -19,9 +21,10 @@ type RankingViewProps = {
 };
 
 export default function RankingView({ routeId, onClose }: RankingViewProps) {
-    const [activeTab, setActiveTab] = useState<"rounds" | "spent" | "bars" | "ratings">("rounds");
+    const [activeTab, setActiveTab] = useState<"points" | "rounds" | "spent" | "bars" | "ratings">("points");
     const [rankings, setRankings] = useState<RankingData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [showPointsInfo, setShowPointsInfo] = useState(false);
 
     useEffect(() => {
         const fetchRankings = async () => {
@@ -47,6 +50,8 @@ export default function RankingView({ routeId, onClose }: RankingViewProps) {
     const getSortedRankings = () => {
         const sorted = [...rankings];
         switch (activeTab) {
+            case "points":
+                return sorted.sort((a, b) => b.totalPoints - a.totalPoints);
             case "rounds":
                 return sorted.sort((a, b) => b.rounds - a.rounds);
             case "spent":
@@ -62,6 +67,8 @@ export default function RankingView({ routeId, onClose }: RankingViewProps) {
 
     const getTabConfig = () => {
         switch (activeTab) {
+            case "points":
+                return { icon: Trophy, label: "Más Puntos", color: "amber", getValue: (r: RankingData) => `${r.totalPoints} pts` };
             case "rounds":
                 return { icon: Beer, label: "Más Rondas", color: "amber", getValue: (r: RankingData) => `${r.rounds} rondas` };
             case "spent":
@@ -83,12 +90,21 @@ export default function RankingView({ routeId, onClose }: RankingViewProps) {
 
                 {/* Header */}
                 <div className="relative bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-white">
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 right-4 p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+                    <div className="absolute top-4 right-4 flex gap-2">
+                        <button
+                            onClick={() => setShowPointsInfo(true)}
+                            className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                            title="¿Cómo se ganan puntos?"
+                        >
+                            <Info className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={onClose}
+                            className="p-2 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
 
                     <div className="flex items-center gap-3 mb-4">
                         <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center">
@@ -103,6 +119,7 @@ export default function RankingView({ routeId, onClose }: RankingViewProps) {
                     {/* Tabs */}
                     <div className="flex gap-2 overflow-x-auto pb-2 -mb-2 scrollbar-hide">
                         {[
+                            { id: "points", icon: Trophy, label: "Puntos" },
                             { id: "rounds", icon: Beer, label: "Rondas" },
                             { id: "spent", icon: TrendingUp, label: "Gastado" },
                             { id: "bars", icon: MapPin, label: "Bares" },
@@ -114,8 +131,8 @@ export default function RankingView({ routeId, onClose }: RankingViewProps) {
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id as any)}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-xl font-bold text-sm whitespace-nowrap transition-all ${activeTab === tab.id
-                                            ? "bg-white text-amber-600 shadow-lg"
-                                            : "bg-white/10 text-white hover:bg-white/20"
+                                        ? "bg-white text-amber-600 shadow-lg"
+                                        : "bg-white/10 text-white hover:bg-white/20"
                                         }`}
                                 >
                                     <TabIcon className="w-4 h-4" />
@@ -147,13 +164,13 @@ export default function RankingView({ routeId, onClose }: RankingViewProps) {
                                 <div
                                     key={ranking.userId}
                                     className={`flex items-center gap-4 p-4 rounded-2xl transition-all ${isPodium
-                                            ? `bg-gradient-to-r ${index === 0
-                                                ? "from-amber-50 to-amber-100 border-2 border-amber-300"
-                                                : index === 1
-                                                    ? "from-slate-50 to-slate-100 border-2 border-slate-300"
-                                                    : "from-orange-50 to-orange-100 border-2 border-orange-300"
-                                            }`
-                                            : "bg-slate-50 border border-slate-200"
+                                        ? `bg-gradient-to-r ${index === 0
+                                            ? "from-amber-50 to-amber-100 border-2 border-amber-300"
+                                            : index === 1
+                                                ? "from-slate-50 to-slate-100 border-2 border-slate-300"
+                                                : "from-orange-50 to-orange-100 border-2 border-orange-300"
+                                        }`
+                                        : "bg-slate-50 border border-slate-200"
                                         }`}
                                 >
                                     {/* Position */}
@@ -191,6 +208,9 @@ export default function RankingView({ routeId, onClose }: RankingViewProps) {
                     )}
                 </div>
             </div>
+
+            {/* Points Info Modal */}
+            {showPointsInfo && <PointsInfo onClose={() => setShowPointsInfo(false)} />}
         </div>
     );
 }

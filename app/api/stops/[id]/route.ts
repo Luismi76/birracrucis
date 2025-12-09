@@ -3,7 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 type PatchBody = {
-  delta: number; // +1 o -1 (o cualquier delta)
+  delta?: number; // +1 o -1 (o cualquier delta) para actualizar rondas
+  arrivedAt?: string; // ISO string para actualizar tiempo de llegada
 };
 
 export async function PATCH(
@@ -17,35 +18,50 @@ export async function PATCH(
     }
 
     const body = (await req.json()) as PatchBody;
-    if (typeof body.delta !== "number" || !Number.isInteger(body.delta)) {
-      return NextResponse.json({ ok: false, error: "El body debe contener 'delta' entero" }, { status: 400 });
+
+    // Si viene arrivedAt, solo actualizamos ese campo
+    if (body.arrivedAt !== undefined) {
+      const updated = await prisma.routeStop.update({
+        where: { id },
+        data: { arrivedAt: new Date(body.arrivedAt) },
+      });
+      return NextResponse.json({ ok: true, stop: updated });
     }
 
-    // Obtenemos el stop actual
-    const stop = await prisma.routeStop.findUnique({
-      where: { id },
-    });
+    // Si viene delta, actualizamos rondas
+    if (body.delta !== undefined) {
+      if (typeof body.delta !== "number" || !Number.isInteger(body.delta)) {
+        return NextResponse.json({ ok: false, error: "El 'delta' debe ser un entero" }, { status: 400 });
+      }
 
-    if (!stop) {
-      return NextResponse.json({ ok: false, error: "Stop no encontrado" }, { status: 404 });
+      // Obtenemos el stop actual
+      const stop = await prisma.routeStop.findUnique({
+        where: { id },
+      });
+
+      if (!stop) {
+        return NextResponse.json({ ok: false, error: "Stop no encontrado" }, { status: 404 });
+      }
+
+      const newRounds = stop.actualRounds + body.delta;
+
+      if (newRounds < 0) {
+        return NextResponse.json({ ok: false, error: "Las rondas no pueden ser negativas" }, { status: 400 });
+      }
+
+      if (stop.maxRounds != null && newRounds > stop.maxRounds) {
+        return NextResponse.json({ ok: false, error: `No se puede superar el máximo de rondas (${stop.maxRounds})` }, { status: 400 });
+      }
+
+      const updated = await prisma.routeStop.update({
+        where: { id },
+        data: { actualRounds: newRounds },
+      });
+
+      return NextResponse.json({ ok: true, stop: updated });
     }
 
-    const newRounds = stop.actualRounds + body.delta;
-
-    if (newRounds < 0) {
-      return NextResponse.json({ ok: false, error: "Las rondas no pueden ser negativas" }, { status: 400 });
-    }
-
-    if (stop.maxRounds != null && newRounds > stop.maxRounds) {
-      return NextResponse.json({ ok: false, error: `No se puede superar el máximo de rondas (${stop.maxRounds})` }, { status: 400 });
-    }
-
-    const updated = await prisma.routeStop.update({
-      where: { id },
-      data: { actualRounds: newRounds },
-    });
-
-    return NextResponse.json({ ok: true, stop: updated });
+    return NextResponse.json({ ok: false, error: "Debe proporcionar 'delta' o 'arrivedAt'" }, { status: 400 });
   } catch (error) {
     console.error("Error en PATCH /api/stops/[id]:", error);
     return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 500 });

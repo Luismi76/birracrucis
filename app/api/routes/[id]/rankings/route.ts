@@ -25,7 +25,7 @@ export async function GET(
             where: { routeId },
             include: {
                 user: {
-                    select: { id: true, name: true, image: true }
+                    select: { id: true, name: true, image: true, totalPoints: true }
                 }
             }
         });
@@ -66,6 +66,9 @@ export async function GET(
             // Bars visited - simplified for now
             const barsVisited = 0;
 
+            // Total points from user (includes challenge points)
+            const totalPoints = p.user?.totalPoints || 0;
+
             return {
                 userId,
                 name: p.user?.name || p.name || 'Invitado',
@@ -73,7 +76,8 @@ export async function GET(
                 rounds: roundsCount,
                 spent,
                 barsVisited,
-                avgRating: Number(avgRating.toFixed(1))
+                avgRating: Number(avgRating.toFixed(1)),
+                totalPoints
             };
         });
 
