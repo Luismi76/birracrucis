@@ -7,7 +7,6 @@ import PhotoCapture, { PhotoCaptureHandle } from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
 
 import NudgeButton from "@/components/NudgeButton";
-import RouteChat from "@/components/RouteChat";
 import SkipVoteButton from "@/components/SkipVoteButton";
 import BarTimer from "@/components/BarTimer";
 import BarRating from "@/components/BarRating";
@@ -1282,18 +1281,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         )
       }
 
-      <RouteChat
-        routeId={routeId}
-        currentUserId={currentUserId}
-        messages={messages}
-        onSendMessage={async (content) => {
-          await fetch(`/api/routes/${routeId}/chat`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ content }),
-          });
-        }}
-      />
     </div >
   );
 }
