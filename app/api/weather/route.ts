@@ -76,7 +76,9 @@ export async function GET(request: Request) {
         // Clean old cache entries (simple cleanup)
         if (weatherCache.size > 100) {
             const oldestKey = weatherCache.keys().next().value;
-            weatherCache.delete(oldestKey);
+            if (oldestKey) {
+                weatherCache.delete(oldestKey);
+            }
         }
 
         return NextResponse.json(weatherData);
