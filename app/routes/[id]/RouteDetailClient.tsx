@@ -1006,7 +1006,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             /* RUTA ACTIVA: Mostrar acciones y controles */
             <div className="p-4 pt-1 space-y-4">
               {/* WIDGETS EN GRID 2 COLUMNAS */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-start">
                 {/* POT WIDGET */}
                 <PotWidget
                   currentAmount={potData.currentAmount}
@@ -1044,7 +1044,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               )}
 
               {/* DRINK COMPARISON & WEATHER - Grid 2 columnas */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 items-start">
                 {/* DRINK COMPARISON */}
                 <DrinkComparison
                   participants={participantsWithBeers}
