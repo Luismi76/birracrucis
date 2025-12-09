@@ -252,6 +252,14 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     return initial;
   });
 
+  // Estado del bote
+  const [potData, setPotData] = useState({
+    currentAmount: 0,
+    targetAmount: 0,
+    participantsCount: 0,
+    paidCount: 0,
+  });
+
   // Indice del bar actual (manual, no automatico)
   const [currentBarIndex, setCurrentBarIndex] = useState(() => {
     // Inicializar en el primer bar que no ha completado sus rondas
@@ -431,6 +439,40 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       body: JSON.stringify({ lat: position.lat, lng: position.lng }),
     }).catch(err => console.warn("Error enviando ubicación:", err));
   }, [position, routeId]);
+
+  // Fetch pot data
+  const fetchPotData = async () => {
+    if (!routeId) return;
+    try {
+      const res = await fetch(`/api/routes/${routeId}/pot`);
+      if (!res.ok) return; // Silently fail if pot not configured
+      const data = await res.json();
+      if (data.ok && data.pot) {
+        const pot = data.pot;
+        setPotData({
+          currentAmount: pot.totalCollected || 0,
+          targetAmount: (pot.amountPerPerson || 0) * participants.length,
+          participantsCount: participants.length,
+          paidCount: pot.contributions?.length || 0,
+        });
+      }
+    } catch (error) {
+      // Silently fail - pot might not be configured
+      console.debug("Pot not configured or error fetching:", error);
+    }
+  };
+
+  // Fetch pot data on mount and when participants change
+  useEffect(() => {
+    fetchPotData();
+  }, [routeId, participants.length]);
+
+  // Refresh pot data when switching to group tab
+  useEffect(() => {
+    if (activeTab === 'group') {
+      fetchPotData();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     if (!routeId || !onParticipantsChange) return;
@@ -683,14 +725,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       isAtBar: distanceInMeters(p.lat, p.lng, activeStop.lat, activeStop.lng) <= RADIUS_METERS,
     }));
   }, [participants, activeStop]);
-
-  // Calcular datos del bote (pot)
-  const potData = {
-    currentAmount: totalSpent,
-    targetAmount: totalSpent * 1.1, // Ejemplo: 10% más como objetivo
-    participantsCount: participants.length,
-    paidCount: participants.length, // TODO: Implementar tracking real de pagos
-  };
 
   // Generar notificaciones inteligentes
   const smartNotifications = useSmartNotifications({
