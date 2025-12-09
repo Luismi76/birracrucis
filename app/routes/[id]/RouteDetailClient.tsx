@@ -845,28 +845,35 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   // ========== DATOS PARA SPRINT 3 ==========
 
-  // Datos de desafíos (placeholder)
-  const barChallenges = useMemo(() => {
-    if (!activeStop) return [];
-    return [
-      {
-        id: "photo-1",
-        type: "photo" as const,
-        title: "Foto con el camarero",
-        description: "Hazte una foto con el camarero o camarera del bar",
-        points: 50,
-        completed: false,
-      },
-      {
-        id: "specialty-1",
-        type: "specialty" as const,
-        title: "Prueba la especialidad",
-        description: "Pide la cerveza o tapa especial de la casa",
-        points: 30,
-        completed: false,
-      },
-    ];
-  }, [activeStop]);
+  // Datos de desafíos - Fetch dinámico desde API
+  const [barChallenges, setBarChallenges] = useState<any[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(false);
+
+  useEffect(() => {
+    async function fetchChallenges() {
+      if (!activeStop) {
+        setBarChallenges([]);
+        return;
+      }
+
+      setChallengesLoading(true);
+      try {
+        const res = await fetch(`/api/routes/${routeId}/stops/${activeStop.id}/challenges`);
+        const data = await res.json();
+
+        if (data.ok) {
+          setBarChallenges(data.challenges);
+        }
+      } catch (error) {
+        console.error('Error fetching challenges:', error);
+      } finally {
+        setChallengesLoading(false);
+      }
+    }
+
+    fetchChallenges();
+  }, [routeId, activeStop?.id]);
+
 
   // Datos de predicciones (placeholder)
   const predictions = useMemo(() => [
@@ -1098,9 +1105,29 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   <BarChallenge
                     barName={activeStop.name}
                     challenges={barChallenges}
-                    onCompleteChallenge={(id) => {
-                      toast.success("¡Desafío completado! +50 puntos");
-                      // TODO: Implementar lógica de completar desafío
+                    onCompleteChallenge={async (id) => {
+                      try {
+                        const res = await fetch(
+                          `/api/routes/${routeId}/challenges/${id}/complete`,
+                          { method: 'POST' }
+                        );
+                        const data = await res.json();
+
+                        if (data.ok) {
+                          toast.success(`¡Desafío completado! +${data.pointsEarned} puntos`);
+                          // Refresh challenges to show updated state
+                          const refreshRes = await fetch(`/api/routes/${routeId}/stops/${activeStop.id}/challenges`);
+                          const refreshData = await refreshRes.json();
+                          if (refreshData.ok) {
+                            setBarChallenges(refreshData.challenges);
+                          }
+                        } else {
+                          toast.error(data.error || 'Error al completar desafío');
+                        }
+                      } catch (error) {
+                        console.error('Error completing challenge:', error);
+                        toast.error('Error al completar desafío');
+                      }
                     }}
                   />
                 )}

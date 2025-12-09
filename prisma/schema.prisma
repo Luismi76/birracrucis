@@ -66,6 +66,7 @@ model User {
   beerConsumptions     BeerConsumption[]
   predictions          Prediction[]
   barReactions         BarReaction[]
+  barChallenges        BarChallenge[]
 }
 
 model VerificationToken {
@@ -121,6 +122,7 @@ model Route {
   beerConsumptions   BeerConsumption[]
   predictions        Prediction[]
   barReactions       BarReaction[]
+  challenges         BarChallenge[]
 
   @@index([creatorId])
   @@index([status, date(sort: Desc)])
@@ -151,6 +153,7 @@ model RouteStop {
   skipVotes        SkipVote[]
   beerConsumptions BeerConsumption[]
   barReactions     BarReaction[]
+  challenges       BarChallenge[]
 
   @@index([routeId, order])
 }
@@ -429,4 +432,27 @@ model BarReaction {
   @@unique([userId, routeId, stopId, type])
   @@index([routeId, stopId])
   @@index([stopId])
+}
+
+model BarChallenge {
+  id          String    @id @default(cuid())
+  routeId     String
+  stopId      String
+  userId      String?   // Null = challenge for everyone
+  type        String    // 'photo', 'speed', 'specialty', 'social', 'hidden'
+  title       String
+  description String
+  points      Int       @default(50)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  completedBy String?   // User ID who completed it
+  createdAt   DateTime  @default(now())
+
+  route Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop  RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  user  User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, stopId])
+  @@index([userId, completed])
+  @@index([stopId, completed])
 }
