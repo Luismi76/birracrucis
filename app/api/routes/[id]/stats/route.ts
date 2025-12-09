@@ -8,18 +8,16 @@ export async function GET(
     try {
         const { id: routeId } = await params;
 
-        // Get all rounds for this route
-        const rounds = await prisma.round.findMany({
+        // Get all beer consumptions for this route
+        const beerConsumptions = await prisma.beerConsumption.findMany({
             where: {
                 stop: {
                     routeId,
                 },
-                type: "beer",
             },
             select: {
                 id: true,
                 userId: true,
-                guestId: true,
             },
         });
 
@@ -40,8 +38,8 @@ export async function GET(
         // Count beers per participant
         const stats = participants.map((p) => {
             const userId = p.user?.id || p.guestId;
-            const beersCount = rounds.filter(
-                (r) => r.userId === userId || r.guestId === p.guestId
+            const beersCount = beerConsumptions.filter(
+                (bc) => bc.userId === userId
             ).length;
 
             return {
