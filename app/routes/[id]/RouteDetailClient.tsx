@@ -193,8 +193,19 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // SSE Global Connection
   const [messages, setMessages] = useState<any[]>([]); // Should be Message type
 
-  // Track shown nudges to avoid duplicates
-  const shownNudgesRef = useRef<Set<string>>(new Set());
+  // Track shown nudges to avoid duplicates (persists across remounts)
+  const getShownNudges = (): Set<string> => {
+    if (typeof window === 'undefined') return new Set();
+    const stored = sessionStorage.getItem(`shownNudges_${routeId}`);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  };
+
+  const addShownNudge = (id: string) => {
+    if (typeof window === 'undefined') return;
+    const shown = getShownNudges();
+    shown.add(id);
+    sessionStorage.setItem(`shownNudges_${routeId}`, JSON.stringify([...shown]));
+  };
 
   // Stabilize callbacks to prevent re-renders
   const handleParticipantsUpdate = useCallback((data: Participant[]) => {
@@ -212,16 +223,18 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   const handleNudgesUpdate = useCallback((nudges: any[]) => {
     console.log('[RouteDetailClient] Received nudges:', nudges.length, nudges.map(n => n.id));
+    const shownNudges = getShownNudges();
+
     nudges.forEach(n => {
       // Skip if already shown
-      if (shownNudgesRef.current.has(n.id)) {
+      if (shownNudges.has(n.id)) {
         console.log('[RouteDetailClient] Skipping duplicate nudge:', n.id);
         return;
       }
 
       console.log('[RouteDetailClient] Showing new nudge:', n.id);
       // Mark as shown
-      shownNudgesRef.current.add(n.id);
+      addShownNudge(n.id);
 
       toast(`🔔 ${n.sender.name || 'Alguien'} dice:`, {
         description: n.message,
@@ -233,7 +246,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       });
       vibrate([200, 100, 200]);
     });
-  }, []);
+  }, [routeId]);
 
   const { participants: streamParticipants } = useRouteStream({
     routeId,
