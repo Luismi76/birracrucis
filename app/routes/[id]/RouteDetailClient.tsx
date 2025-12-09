@@ -188,47 +188,51 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Track shown nudges to avoid duplicates
   const shownNudgesRef = useRef<Set<string>>(new Set());
 
+  // Stabilize callbacks to prevent re-renders
+  const handleParticipantsUpdate = useCallback((data: Participant[]) => {
+    setParticipants(data);
+    onParticipantsChange?.(data);
+  }, [onParticipantsChange]);
+
+  const handleMessagesUpdate = useCallback((newMessages: any[]) => {
+    setMessages(prev => {
+      const existingIds = new Set(prev.map((m) => m.id));
+      const uniqueNew = newMessages.filter((m: any) => !existingIds.has(m.id));
+      return [...prev, ...uniqueNew];
+    });
+  }, []);
+
+  const handleNudgesUpdate = useCallback((nudges: any[]) => {
+    console.log('[RouteDetailClient] Received nudges:', nudges.length, nudges.map(n => n.id));
+    nudges.forEach(n => {
+      // Skip if already shown
+      if (shownNudgesRef.current.has(n.id)) {
+        console.log('[RouteDetailClient] Skipping duplicate nudge:', n.id);
+        return;
+      }
+
+      console.log('[RouteDetailClient] Showing new nudge:', n.id);
+      // Mark as shown
+      shownNudgesRef.current.add(n.id);
+
+      toast(`🔔 ${n.sender.name || 'Alguien'} dice:`, {
+        description: n.message,
+        duration: 5000,
+        action: {
+          label: "Ver",
+          onClick: () => console.log("Nudge clicked"),
+        },
+      });
+      vibrate([200, 100, 200]);
+    });
+  }, []);
+
   const { participants: streamParticipants } = useRouteStream({
     routeId,
     enabled: true,
-    onParticipants: (data) => {
-      setParticipants(data);
-      onParticipantsChange?.(data);
-    },
-    onMessages: (newMessages) => {
-      // Simple merge or replace? 
-      // Hook typically gives ALL messages or NEW calls?
-      // Our hook implementation sends parsed new messages.
-      setMessages(prev => {
-        const existingIds = new Set(prev.map((m) => m.id));
-        const uniqueNew = newMessages.filter((m: any) => !existingIds.has(m.id));
-        return [...prev, ...uniqueNew];
-      });
-    },
-    onNudges: (nudges) => {
-      console.log('[RouteDetailClient] Received nudges:', nudges.length, nudges.map(n => n.id));
-      nudges.forEach(n => {
-        // Skip if already shown
-        if (shownNudgesRef.current.has(n.id)) {
-          console.log('[RouteDetailClient] Skipping duplicate nudge:', n.id);
-          return;
-        }
-
-        console.log('[RouteDetailClient] Showing new nudge:', n.id);
-        // Mark as shown
-        shownNudgesRef.current.add(n.id);
-
-        toast(`🔔 ${n.sender.name || 'Alguien'} dice:`, {
-          description: n.message,
-          duration: 5000,
-          action: {
-            label: "Ver",
-            onClick: () => console.log("Nudge clicked"),
-          },
-        });
-        vibrate([200, 100, 200]);
-      });
-    }
+    onParticipants: handleParticipantsUpdate,
+    onMessages: handleMessagesUpdate,
+    onNudges: handleNudgesUpdate,
   });
   const AUTOCHECKIN_RADIUS = 30; // metros
 

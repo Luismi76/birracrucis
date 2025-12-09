@@ -157,6 +157,10 @@ export default function RouteDetailWrapper({
     setIsShareModalOpen(true);
   }, []);
 
+  const closeAccessibilityPanel = useCallback(() => {
+    setShowAccessibilityPanel(false);
+  }, []);
+
   // Determinar el estado de la ruta para el header adaptativo
   const isScheduled = !countdown.isPast && routeStatus !== "completed" && routeStatus !== "active";
   const isActive = countdown.isPast && routeStatus !== "completed" && !routeProgress.isComplete;
@@ -369,7 +373,7 @@ export default function RouteDetailWrapper({
           isCreator={isCreator}
           onOpenShare={openShareModal}
           showAccessibilityPanel={showAccessibilityPanel}
-          onCloseAccessibilityPanel={() => setShowAccessibilityPanel(false)}
+          onCloseAccessibilityPanel={closeAccessibilityPanel}
         />
       </main>
 
