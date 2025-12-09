@@ -1014,18 +1014,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     predictions={predictions}
                     onMakePrediction={(predId, option) => {
                       toast.success(`Predicción registrada: ${option}`);
-                      // TODO: Implementar lógica de predicciones
-                    }}
-                  />
-                )}
-
-                {/* QUICK REACTIONS */}
-                {quickReactions.length > 0 && (
-                  <QuickReactions
-                    barId={activeStop.id}
-                    reactions={quickReactions}
-                    onReact={(type) => {
-                      toast.success("¡Reacción añadida!");
                       // TODO: Implementar lógica de reacciones
                     }}
                   />
