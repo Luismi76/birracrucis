@@ -146,6 +146,19 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     })
     : "12:00";
 
+  // Asegurar que la ruta tiene inviteCode
+  let inviteCode = route.inviteCode;
+  if (!inviteCode) {
+    // Generar código de invitación si no existe
+    inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // Actualizar en la base de datos
+    await prisma.route.update({
+      where: { id: route.id },
+      data: { inviteCode },
+    });
+  }
+
   return (
     <RouteDetailWrapper
       routeId={route.id}
