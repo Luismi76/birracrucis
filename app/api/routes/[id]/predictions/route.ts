@@ -3,16 +3,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-type RouteParams = {
-    params: {
-        id: string;
-    };
+type RouteContext = {
+    params: Promise<{ id: string }>;
 };
 
 // GET - Get all predictions for route
 export async function GET(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -20,7 +18,7 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
 
         const predictions = await prisma.prediction.findMany({
             where: { routeId },
@@ -66,7 +64,7 @@ export async function GET(
 // POST - Create prediction
 export async function POST(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -74,7 +72,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
         const body = await request.json();
         const { userId, type, prediction } = body;
 

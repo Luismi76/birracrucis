@@ -3,10 +3,8 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-type RouteParams = {
-    params: {
-        id: string;
-    };
+type RouteContext = {
+    params: Promise<{ id: string }>;
 };
 
 // Achievement types and their point values
@@ -23,7 +21,7 @@ const ACHIEVEMENT_TYPES = {
 // GET - Get all achievements for a route
 export async function GET(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -31,7 +29,7 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
 
         const achievements = await prisma.achievement.findMany({
             where: { routeId },
@@ -75,7 +73,7 @@ export async function GET(
 // POST - Award achievement to user
 export async function POST(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -83,7 +81,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
         const body = await request.json();
         const { userId, type, metadata } = body;
 

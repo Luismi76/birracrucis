@@ -3,16 +3,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-type RouteParams = {
-    params: {
-        id: string;
-    };
+type RouteContext = {
+    params: Promise<{ id: string }>;
 };
 
 // GET - Get all reactions for route
 export async function GET(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -20,7 +18,7 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
 
         const reactions = await prisma.barReaction.findMany({
             where: { routeId },
@@ -41,7 +39,7 @@ export async function GET(
         });
 
         // Group by stop and type
-        const reactionsByStop = reactions.reduce((acc, reaction) => {
+        const reactionsByStop = reactions.reduce((acc: Record<string, Record<string, number>>, reaction) => {
             const stopId = reaction.stopId;
 
             if (!acc[stopId]) {
@@ -55,7 +53,7 @@ export async function GET(
             acc[stopId][reaction.type]++;
 
             return acc;
-        }, {} as Record<string, Record<string, number>>);
+        }, {});
 
         return NextResponse.json({ reactions: reactionsByStop });
 
@@ -71,7 +69,7 @@ export async function GET(
 // POST - Add reaction to stop
 export async function POST(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -79,7 +77,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
         const body = await request.json();
         const { userId, stopId, type } = body;
 
