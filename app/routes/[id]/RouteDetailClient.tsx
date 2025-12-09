@@ -1019,15 +1019,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               )}
 
               {/* PREDICTIONS PANEL */}
-              {predictions.length > 0 && (
-                <PredictionsPanel
-                  predictions={predictions}
-                  onMakePrediction={(predId, option) => {
-                    toast.success(`Predicción registrada: ${option}`);
-                    // TODO: Implementar lógica de predicciones
-                  }}
-                />
-              )}
+              <PredictionsPanel
+                routeId={routeId}
+                userId={currentUserId || ""}
+                enabled={routeStatus !== "completed"}
+              />
 
               {/* QUICK REACTIONS */}
               <QuickReactions
