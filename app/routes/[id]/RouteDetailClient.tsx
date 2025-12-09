@@ -996,286 +996,268 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                 <DrinkComparison
                   participants={participantsWithBeers}
                   currentUserId={currentUserId}
-                />
+                  onClick={() => {
+                    if (activeStop) {
+                      const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
+                      window.open(url, '_blank');
+                    }
+                  }}
+                  className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
+                >
+                  <MapPin className="w-6 h-6" />
+                  <span className="text-xs font-bold">Cómo llegar</span>
+                </button>
 
-                {/* WEATHER WIDGET */}
-                {activeStop && (
-                  <WeatherWidget lat={activeStop.lat} lng={activeStop.lng} />
-                )}
-                onMakePrediction={(predId, option) => {
-                  toast.success(`Predicción registrada: ${option}`);
-                  // TODO: Implementar lógica de reacciones
-                }}
-                />
-              )}
-                {/* ACCIONES PRINCIPALES */}
-                <div className="flex flex-col gap-3 mb-2">
-                  {!canCheckIn ? (
-                    /* ESTADO: EN CAMINO */
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          if (activeStop) {
-                            const url = `https://www.google.com/maps/dir/?api=1&destination=${activeStop.lat},${activeStop.lng}&travelmode=walking`;
-                            window.open(url, '_blank');
-                          }
-                        }}
-                        className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
-                      >
-                        <MapPin className="w-6 h-6" />
-                        <span className="text-xs font-bold">Cómo llegar</span>
-                      </button>
+                <button
+                  onClick={() => {
+                    if (activeStop) {
+                      setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                      handleAddRound(activeStop.id);
+                    }
+                  }}
+                  className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
+                >
+                  <Crown className="w-6 h-6 text-amber-500" />
+                  <span className="text-lg font-bold">Ya llegué</span>
+                </button>
+              </div>
+              ) : (
+              /* ESTADO: EN EL BAR */
+              <div className="flex flex-col gap-3">
+                {/* Botón Principal: PEDIR RONDA */}
+                <button
+                  onClick={() => activeStop && handleAddRound(activeStop.id)}
+                  className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 dark:shadow-amber-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                >
+                  <Beer className="w-5 h-5" />
+                  <div className="flex flex-col items-start">
+                    <span className="text-base">Añadir Ronda</span>
+                    <span className="text-xs text-amber-100">Registra tu consumición</span>
+                  </div>
+                </button>
 
-                      <button
-                        onClick={() => {
-                          if (activeStop) {
-                            setManualArrivals(prev => new Set(prev).add(activeStop.id));
-                            handleAddRound(activeStop.id);
-                          }
-                        }}
-                        className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
-                      >
-                        <Crown className="w-6 h-6 text-amber-500" />
-                        <span className="text-lg font-bold">Ya llegué</span>
-                      </button>
+                {/* Grid 2x2 de Acciones Rápidas */}
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Foto del Bar */}
+                  <button
+                    onClick={() => photoCaptureRef.current?.trigger()}
+                    className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
+                  >
+                    <Camera className="w-6 h-6 text-slate-700 dark:text-slate-200" />
+                    <div className="text-center">
+                      <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Foto</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">del Bar</div>
                     </div>
-                  ) : (
-                    /* ESTADO: EN EL BAR */
-                    <div className="flex flex-col gap-3">
-                      {/* Botón Principal: PEDIR RONDA */}
-                      <button
-                        onClick={() => activeStop && handleAddRound(activeStop.id)}
-                        className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 dark:shadow-amber-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Beer className="w-5 h-5" />
-                        <div className="flex flex-col items-start">
-                          <span className="text-base">Añadir Ronda</span>
-                          <span className="text-xs text-amber-100">Registra tu consumición</span>
-                        </div>
-                      </button>
+                  </button>
 
-                      {/* Grid 2x2 de Acciones Rápidas */}
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Foto del Bar */}
-                        <button
-                          onClick={() => photoCaptureRef.current?.trigger()}
-                          className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
-                        >
-                          <Camera className="w-6 h-6 text-slate-700 dark:text-slate-200" />
-                          <div className="text-center">
-                            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Foto</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">del Bar</div>
-                          </div>
-                        </button>
-
-                        {/* Ranking */}
-                        <button
-                          onClick={() => setRankingOpen(true)}
-                          className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
-                        >
-                          <Trophy className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                          <div className="text-center">
-                            <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Ranking</div>
-                            <div className="text-xs text-slate-500 dark:text-slate-400">Ver stats</div>
-                          </div>
-                        </button>
-                      </div>
-
-                      {/* Botón Extra: Avisar a Alguien */}
-                      <button
-                        onClick={() => setNotificationPickerOpen(true)}
-                        className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500"
-                      >
-                        <Bell className="w-5 h-5 text-amber-500 dark:text-amber-400" />
-                        <span>Avisar a alguien...</span>
-                      </button>
+                  {/* Ranking */}
+                  <button
+                    onClick={() => setRankingOpen(true)}
+                    className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
+                  >
+                    <Trophy className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                    <div className="text-center">
+                      <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Ranking</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">Ver stats</div>
                     </div>
-                  )}
+                  </button>
                 </div>
+
+                {/* Botón Extra: Avisar a Alguien */}
+                <button
+                  onClick={() => setNotificationPickerOpen(true)}
+                  className="w-full p-3 bg-slate-50 dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 border-dashed rounded-2xl flex items-center justify-center gap-2 text-slate-600 dark:text-slate-300 font-bold active:scale-95 transition-all hover:bg-slate-100 dark:hover:bg-slate-600 hover:border-slate-300 dark:hover:border-slate-500"
+                >
+                  <Bell className="w-5 h-5 text-amber-500 dark:text-amber-400" />
+                  <span>Avisar a alguien...</span>
+                </button>
+              </div>
+                  )}
+            </div>
 
                 {/* Google Place Info */}
-                <div className="mb-2">
-                  <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
-                </div>
-
-                {/* Price Controls */}
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
-                    className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">🍺</div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Caña</p>
-                      <p className="text-lg font-black text-slate-800 dark:text-slate-100">
-                        {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
-                      </p>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
-                    className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xl">🍢</div>
-                    <div>
-                      <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tapa</p>
-                      <p className="text-lg font-black text-slate-800 dark:text-slate-100">
-                        {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
-                      </p>
-                    </div>
-                  </button>
-                </div>
-              </div>
-          )}
-            </div>
-          )
-          }
-
-          {/* 3. CONTENIDO DE TABS */}
-          {
-            activeTab !== 'route' && (
-              <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
-                <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
-                  {activeTab === 'photos' && <PhotoGallery routeId={routeId} stops={stops} refreshTrigger={photoRefresh} />}
-                  {activeTab === 'ratings' && activeStop && (
-                    <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
-                  )}
-                  {activeTab === 'group' && (
-                    <div className="space-y-4 pt-4">
-                      <ParticipantsList
-                        routeId={routeId}
-                        currentUserId={currentUserId}
-                        currentStop={activeStop}
-                        userPosition={position}
-                        participants={participants}
-                      />
-                      <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
-                        <div>
-                          <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
-                          <p className="text-sm text-slate-500">Comparte el código o enlace</p>
-                        </div>
-                        <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
-                          <UserPlus className="w-5 h-5" /> Invitar
-                        </button>
-                      </div>
-
-                      <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
-                        <div>
-                          <h3 className="font-bold text-slate-800">Enviar Avisos</h3>
-                          <p className="text-sm text-slate-500">Notifica a los participantes</p>
-                        </div>
-                        <button onClick={() => setNotificationPickerOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-amber-500 text-amber-600 rounded-lg font-bold shadow-sm active:scale-95 transition-all hover:bg-amber-50">
-                          <Bell className="w-5 h-5" /> Avisar
-                        </button>
-                      </div>
-                      <div className="border-t border-slate-100 pt-4">
-                        <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={0} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )
-          }
-
-          {/* 4. BOTTOM NAVIGATION */}
-          <div className="shrink-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2 z-50">
-            <div className="flex justify-around items-center">
-              {[
-                { id: 'route', icon: '🍻', label: 'Bar' },
-                { id: 'photos', icon: '📸', label: 'Fotos' },
-                { id: 'ratings', icon: '⭐', label: 'Valorar' },
-                { id: 'group', icon: '👥', label: 'Grupo' }
-              ].map(tab => (
-                <button
-                  key={tab.id}
-                  onClick={() => { vibrate(30); setActiveTab(tab.id as any); }}
-                  className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16 ${activeTab === tab.id ? 'bg-amber-50 text-amber-600' : 'text-slate-400 hover:bg-slate-50'
-                    }`}
-                >
-                  <span className="text-xl">{tab.icon}</span>
-                  <span className="text-[10px] font-bold">{tab.label}</span>
-                </button>
-              ))}
-            </div>
+          <div className="mb-2">
+            <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
           </div>
 
-          {/* MODAL CÁMARA */}
-          {/* Photo Capture (Hidden Input) */}
-          <PhotoCapture
-            ref={photoCaptureRef}
-            routeId={routeId}
-            routeName={routeName}
-            stopId={activeStop?.id}
-            stopName={activeStop?.name}
-            onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
-            compact={false}
-          />
+          {/* Price Controls */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
+              className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center text-xl">🍺</div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Caña</p>
+                <p className="text-lg font-black text-slate-800 dark:text-slate-100">
+                  {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
+                </p>
+              </div>
+            </button>
 
-          {/* Price Picker Modal & Chat */}
-          {
-            pricePickerOpen && (
-              <PricePicker
-                isOpen={true}
-                onClose={() => setPricePickerOpen(null)}
-                onSelect={(price) => {
-                  setBarPrices(prev => ({ ...prev, [pricePickerOpen.stopId]: { ...prev[pricePickerOpen.stopId], [pricePickerOpen.type]: price } }));
-                }}
-                currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
-                title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
-                icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
-              />
-            )
-          }
+            <button
+              onClick={() => setPricePickerOpen({ type: 'tapa', stopId: activeStop.id })}
+              className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-700 border border-slate-100 dark:border-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-xl">🍢</div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Tapa</p>
+                <p className="text-lg font-black text-slate-800 dark:text-slate-100">
+                  {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
+                </p>
+              </div>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
-          {/* RANKING MODAL */}
-          {
-            rankingOpen && (
-              <RankingView
-                routeId={routeId}
-                onClose={() => setRankingOpen(false)}
-              />
-            )
-          }
+{/* 3. CONTENIDO DE TABS */ }
+{
+  activeTab !== 'route' && (
+    <div className="absolute inset-x-0 bottom-[64px] top-[100px] z-40 bg-white rounded-t-3xl shadow-xl flex flex-col animate-slide-up">
+      <div className="flex-1 overflow-y-auto px-4 custom-scrollbar">
+        {activeTab === 'photos' && <PhotoGallery routeId={routeId} stops={stops} refreshTrigger={photoRefresh} />}
+        {activeTab === 'ratings' && activeStop && (
+          <BarRating routeId={routeId} stopId={activeStop.id} stopName={activeStop.name} currentUserId={currentUserId} />
+        )}
+        {activeTab === 'group' && (
+          <div className="space-y-4 pt-4">
+            <ParticipantsList
+              routeId={routeId}
+              currentUserId={currentUserId}
+              currentStop={activeStop}
+              userPosition={position}
+              participants={participants}
+            />
+            <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-800">Invitar Amigos</h3>
+                <p className="text-sm text-slate-500">Comparte el código o enlace</p>
+              </div>
+              <button onClick={onOpenShare} className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold shadow-sm active:scale-95 transition-all">
+                <UserPlus className="w-5 h-5" /> Invitar
+              </button>
+            </div>
 
-          {/* NOTIFICATION PICKER MODAL */}
-          {
-            notificationPickerOpen && (
-              <ParticipantPicker
-                participants={participants}
-                onClose={() => setNotificationPickerOpen(false)}
-                onSelect={(participant) => {
-                  setNotificationTarget(participant as any); // 2 steps flow
-                  setNotificationPickerOpen(false);
-                }}
-              />
-            )
-          }
+            <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-slate-800">Enviar Avisos</h3>
+                <p className="text-sm text-slate-500">Notifica a los participantes</p>
+              </div>
+              <button onClick={() => setNotificationPickerOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-amber-500 text-amber-600 rounded-lg font-bold shadow-sm active:scale-95 transition-all hover:bg-amber-50">
+                <Bell className="w-5 h-5" /> Avisar
+              </button>
+            </div>
+            <div className="border-t border-slate-100 pt-4">
+              <PotManager routeId={routeId} isCreator={isCreator} currentUserId={currentUserId} totalSpent={0} />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
-          {/* NOTIFICATION ACTIONS MODAL */}
-          {
-            notificationTarget && (
-              <NotificationActions
-                targetName={notificationTarget.name || "Invitado"}
-                onClose={() => setNotificationTarget(null)}
-                onSend={(msg) => handleSendNudge(notificationTarget, msg)}
-              />
-            )
-          }
+{/* 4. BOTTOM NAVIGATION */ }
+<div className="shrink-0 bg-white border-t border-slate-100 pb-safe pt-2 px-2 z-50">
+  <div className="flex justify-around items-center">
+    {[
+      { id: 'route', icon: '🍻', label: 'Bar' },
+      { id: 'photos', icon: '📸', label: 'Fotos' },
+      { id: 'ratings', icon: '⭐', label: 'Valorar' },
+      { id: 'group', icon: '👥', label: 'Grupo' }
+    ].map(tab => (
+      <button
+        key={tab.id}
+        onClick={() => { vibrate(30); setActiveTab(tab.id as any); }}
+        className={`flex flex-col items-center gap-1 p-2 rounded-xl transition-all w-16 ${activeTab === tab.id ? 'bg-amber-50 text-amber-600' : 'text-slate-400 hover:bg-slate-50'
+          }`}
+      >
+        <span className="text-xl">{tab.icon}</span>
+        <span className="text-[10px] font-bold">{tab.label}</span>
+      </button>
+    ))}
+  </div>
+</div>
 
-          <RouteChat
-            routeId={routeId}
-            currentUserId={currentUserId}
-            messages={messages}
-            onSendMessage={async (content) => {
-              await fetch(`/api/routes/${routeId}/chat`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ content }),
-              });
-            }}
-          />
+{/* MODAL CÁMARA */ }
+{/* Photo Capture (Hidden Input) */ }
+<PhotoCapture
+  ref={photoCaptureRef}
+  routeId={routeId}
+  routeName={routeName}
+  stopId={activeStop?.id}
+  stopName={activeStop?.name}
+  onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
+  compact={false}
+/>
+
+{/* Price Picker Modal & Chat */ }
+{
+  pricePickerOpen && (
+    <PricePicker
+      isOpen={true}
+      onClose={() => setPricePickerOpen(null)}
+      onSelect={(price) => {
+        setBarPrices(prev => ({ ...prev, [pricePickerOpen.stopId]: { ...prev[pricePickerOpen.stopId], [pricePickerOpen.type]: price } }));
+      }}
+      currentPrice={pricePickerOpen.type === 'beer' ? (barPrices[pricePickerOpen.stopId]?.beer || DEFAULT_BEER_PRICE) : (barPrices[pricePickerOpen.stopId]?.tapa || DEFAULT_TAPA_PRICE)}
+      title={pricePickerOpen.type === 'beer' ? 'Precio Cerveza' : 'Precio Tapeo'}
+      icon={pricePickerOpen.type === 'beer' ? '🍺' : '🍢'}
+    />
+  )
+}
+
+{/* RANKING MODAL */ }
+{
+  rankingOpen && (
+    <RankingView
+      routeId={routeId}
+      onClose={() => setRankingOpen(false)}
+    />
+  )
+}
+
+{/* NOTIFICATION PICKER MODAL */ }
+{
+  notificationPickerOpen && (
+    <ParticipantPicker
+      participants={participants}
+      onClose={() => setNotificationPickerOpen(false)}
+      onSelect={(participant) => {
+        setNotificationTarget(participant as any); // 2 steps flow
+        setNotificationPickerOpen(false);
+      }}
+    />
+  )
+}
+
+{/* NOTIFICATION ACTIONS MODAL */ }
+{
+  notificationTarget && (
+    <NotificationActions
+      targetName={notificationTarget.name || "Invitado"}
+      onClose={() => setNotificationTarget(null)}
+      onSend={(msg) => handleSendNudge(notificationTarget, msg)}
+    />
+  )
+}
+
+<RouteChat
+  routeId={routeId}
+  currentUserId={currentUserId}
+  messages={messages}
+  onSendMessage={async (content) => {
+    await fetch(`/api/routes/${routeId}/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+  }}
+/>
         </div >
       );
 }
