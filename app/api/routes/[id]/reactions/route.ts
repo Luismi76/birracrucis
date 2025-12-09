@@ -20,23 +20,34 @@ export async function GET(
 
         const { id: routeId } = await context.params;
 
-        const reactions = await prisma.barReaction.findMany({
-            where: { routeId },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
+        // Check if BarReaction table exists (graceful degradation)
+        let reactions;
+        try {
+            reactions = await prisma.barReaction.findMany({
+                where: { routeId },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
+                    },
+                    stop: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
                     },
                 },
-                stop: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-            },
-        });
+            });
+        } catch (dbError: any) {
+            // If table doesn't exist, return empty reactions
+            if (dbError.code === 'P2021' || dbError.message?.includes('does not exist')) {
+                console.warn('BarReaction table does not exist yet, returning empty reactions');
+                return NextResponse.json({ reactions: {} });
+            }
+            throw dbError;
+        }
 
         // Group by stop and type
         const reactionsByStop = reactions.reduce((acc: Record<string, Record<string, number>>, reaction) => {
@@ -59,8 +70,16 @@ export async function GET(
 
     } catch (error) {
         console.error('Error fetching reactions:', error);
+        console.error('Error details:', {
+            message: (error as Error).message,
+            stack: (error as Error).stack,
+            name: (error as Error).name,
+        });
         return NextResponse.json(
-            { error: 'Failed to fetch reactions' },
+            {
+                error: 'Failed to fetch reactions',
+                details: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+            },
             { status: 500 }
         );
     }
