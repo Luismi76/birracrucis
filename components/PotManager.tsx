@@ -66,6 +66,8 @@ export default function PotManager({
       if (data.ok) {
         console.log('[POT MANAGER] Fetched pot data:', data.pot);
         console.log('[POT MANAGER] Transactions:', data.pot.transactions);
+        console.log('[POT MANAGER] Total Spent from API:', data.pot.totalSpent);
+        console.log('[POT MANAGER] Total Collected from API:', data.pot.totalCollected);
         setPotData(data.pot);
       }
     } catch (err) {
