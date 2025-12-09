@@ -1002,6 +1002,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   targetAmount={potData.targetAmount}
                   participantsCount={potData.participantsCount}
                   paidCount={potData.paidCount}
+                  roundsRemaining={Math.max(0, Math.ceil((potData.targetAmount - potData.currentAmount) / (barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE)))}
+                  defaultersCount={potData.participantsCount - potData.paidCount}
                   onClick={() => setActiveTab('group')}
                 />
 
