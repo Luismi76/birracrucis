@@ -24,7 +24,7 @@ import RankingView from "@/components/RankingView";
 import ParticipantPicker from "@/components/ParticipantPicker";
 import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
-import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell } from "lucide-react"; // Import icons for actions
+import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell, Star } from "lucide-react"; // Import icons for actions
 import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
 import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, AchievementsToast, DrinkComparison, WeatherWidget, BarChallenge, PredictionsPanel, QuickReactions } from "@/components/route-detail";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
@@ -1066,7 +1066,21 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               <div className="flex flex-col gap-3 mb-2">
                 {!canCheckIn ? (
                   /* ESTADO: EN CAMINO */
-                  <div className="flex gap-2">
+                  <div className="space-y-2">
+                    {/* Indicador de distancia */}
+                    {position && activeStop && (() => {
+                      const distMeters = distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng);
+                      const timeMinutes = Math.ceil(distMeters / 80); // ~80m/min walking speed
+                      return (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 text-center">
+                          <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
+                            📍 A {Math.round(distMeters)}m · {timeMinutes} min caminando
+                          </p>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Botón de navegación */}
                     <button
                       onClick={() => {
                         if (activeStop) {
@@ -1074,29 +1088,30 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                           window.open(url, '_blank');
                         }
                       }}
-                      className="p-4 bg-blue-50 text-blue-600 rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-1"
+                      className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                      <MapPin className="w-6 h-6" />
-                      <span className="text-xs font-bold">Cómo llegar</span>
+                      <MapPin className="w-5 h-5" />
+                      <span>Navegar al Bar</span>
                     </button>
 
-                    <button
-                      onClick={() => {
-                        if (activeStop) {
-                          setManualArrivals(prev => new Set(prev).add(activeStop.id));
-                          handleAddRound(activeStop.id);
-                        }
-                      }}
-                      className="p-4 bg-slate-900 text-white rounded-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-1 flex-[2] shadow-lg shadow-slate-200"
-                    >
-                      <Crown className="w-6 h-6 text-amber-500" />
-                      <span className="text-lg font-bold">Ya llegué</span>
-                    </button>
+                    {/* Indicador de auto check-in */}
+                    <div className="text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        ⚡ Check-in automático activado
+                      </p>
+                    </div>
                   </div>
                 ) : (
                   /* ESTADO: EN EL BAR */
                   <div className="flex flex-col gap-3">
-                    {/* Botón Principal: PEDIR RONDA */}
+                    {/* Indicador de llegada */}
+                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-2 text-center">
+                      <p className="text-xs text-green-600 dark:text-green-400 font-semibold">
+                        ✅ En {activeStop.name}
+                      </p>
+                    </div>
+
+                    {/* Botón Principal: AÑADIR RONDA */}
                     <button
                       onClick={() => activeStop && handleAddRound(activeStop.id)}
                       className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 dark:shadow-amber-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
@@ -1108,30 +1123,33 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       </div>
                     </button>
 
-                    {/* Grid 2x2 de Acciones Rápidas */}
-                    <div className="grid grid-cols-2 gap-2">
+                    {/* Grid 1x3 de Acciones Rápidas (más compacto) */}
+                    <div className="grid grid-cols-3 gap-2">
                       {/* Foto del Bar */}
                       <button
                         onClick={() => photoCaptureRef.current?.trigger()}
-                        className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
+                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
                       >
-                        <Camera className="w-6 h-6 text-slate-700 dark:text-slate-200" />
-                        <div className="text-center">
-                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Foto</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">del Bar</div>
-                        </div>
+                        <Camera className="w-5 h-5 text-slate-700 dark:text-slate-200" />
+                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Foto</div>
                       </button>
 
-                      {/* Ranking */}
+                      {/* Valorar */}
                       <button
                         onClick={() => setRankingOpen(true)}
-                        className="p-4 bg-white dark:bg-slate-700 border-2 border-slate-200 dark:border-slate-600 rounded-2xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
+                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
                       >
-                        <Trophy className="w-6 h-6 text-amber-600 dark:text-amber-400" />
-                        <div className="text-center">
-                          <div className="text-sm font-bold text-slate-800 dark:text-slate-100">Ranking</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">Ver stats</div>
-                        </div>
+                        <Star className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Valorar</div>
+                      </button>
+
+                      {/* Grupo */}
+                      <button
+                        onClick={() => setActiveTab('group')}
+                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
+                      >
+                        <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Grupo</div>
                       </button>
                     </div>
 
