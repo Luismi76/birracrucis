@@ -710,9 +710,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     setRounds(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + 1 }));
     setBeers(prev => ({ ...prev, [stopId]: (prev[stopId] || 0) + peopleAtBar }));
 
-    // Calculate round cost for pot
+    // Calculate round cost for pot using Decimal for precision
     const beerPrice = barPrices[stopId]?.beer || DEFAULT_BEER_PRICE;
-    const roundCost = beerPrice * peopleAtBar;
+    const Decimal = (await import('decimal.js')).default;
+    const roundCost = new Decimal(beerPrice).times(peopleAtBar).toNumber();
 
     try {
       const res = await fetch(`/api/stops/${stopId}/checkin`, { method: 'POST' });
