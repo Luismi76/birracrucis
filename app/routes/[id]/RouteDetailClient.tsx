@@ -133,10 +133,12 @@ type RouteDetailClientProps = {
   onProgressChange?: (progress: RouteProgress) => void;
   isCreator?: boolean;
   onOpenShare?: () => void;
+  showAccessibilityPanel?: boolean;
+  onCloseAccessibilityPanel?: () => void;
 
 };
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel }: RouteDetailClientProps) {
   // ... state ...
   const { data: session } = useSession();
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -863,10 +865,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       />
 
       {/* ACCESSIBILITY PANEL - Sprint 4 (Controlled from header) */}
-      {accessibilityPanelOpen && (
+      {showAccessibilityPanel && (
         <AccessibilityPanel
           settings={accessibilitySettings}
           onSettingsChange={setAccessibilitySettings}
+          onClose={onCloseAccessibilityPanel}
         />
       )}
 

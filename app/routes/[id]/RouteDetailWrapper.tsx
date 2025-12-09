@@ -117,6 +117,7 @@ export default function RouteDetailWrapper({
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  const [showAccessibilityPanel, setShowAccessibilityPanel] = useState(false);
   const { theme, setTheme } = useTheme();
 
   // Estado del progreso de la ruta (recibido del RouteDetailClient)
@@ -232,7 +233,7 @@ export default function RouteDetailWrapper({
                           {/* Accessibility */}
                           <button
                             onClick={() => {
-                              // TODO: Open accessibility panel
+                              setShowAccessibilityPanel(true);
                               setShowUserDropdown(false);
                             }}
                             className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
@@ -367,6 +368,8 @@ export default function RouteDetailWrapper({
           onProgressChange={handleProgressChange}
           isCreator={isCreator}
           onOpenShare={openShareModal}
+          showAccessibilityPanel={showAccessibilityPanel}
+          onCloseAccessibilityPanel={() => setShowAccessibilityPanel(false)}
         />
       </main>
 
