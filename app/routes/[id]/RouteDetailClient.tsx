@@ -1239,6 +1239,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                       <Bell className="w-5 h-5 text-amber-500 dark:text-amber-400" />
                       <span>Avisar a alguien...</span>
                     </button>
+
+                    {/* Botón Ranking - SIEMPRE VISIBLE */}
+                    <button
+                      onClick={() => setRankingOpen(true)}
+                      className="w-full p-3 bg-gradient-to-r from-purple-500 to-purple-600 dark:from-purple-600 dark:to-purple-700 text-white rounded-2xl flex items-center justify-center gap-2 font-bold active:scale-95 transition-all shadow-lg shadow-purple-200 dark:shadow-purple-900/20"
+                    >
+                      <Trophy className="w-5 h-5" />
+                      <span>Ver Ranking</span>
+                    </button>
                   </div>
                 )}
               </div>
