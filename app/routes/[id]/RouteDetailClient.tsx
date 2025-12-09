@@ -140,6 +140,8 @@ type RouteDetailClientProps = {
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel }: RouteDetailClientProps) {
   // ... state ...
+  console.log('[RouteDetailClient] Component MOUNTED/RE-RENDERED', routeId);
+
   const { data: session } = useSession();
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
@@ -204,10 +206,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       });
     },
     onNudges: (nudges) => {
+      console.log('[RouteDetailClient] Received nudges:', nudges.length, nudges.map(n => n.id));
       nudges.forEach(n => {
         // Skip if already shown
-        if (shownNudgesRef.current.has(n.id)) return;
+        if (shownNudgesRef.current.has(n.id)) {
+          console.log('[RouteDetailClient] Skipping duplicate nudge:', n.id);
+          return;
+        }
 
+        console.log('[RouteDetailClient] Showing new nudge:', n.id);
         // Mark as shown
         shownNudgesRef.current.add(n.id);
 
