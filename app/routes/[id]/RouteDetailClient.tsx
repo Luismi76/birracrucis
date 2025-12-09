@@ -183,6 +183,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // SSE Global Connection
   const [messages, setMessages] = useState<any[]>([]); // Should be Message type
 
+  // Track shown nudges to avoid duplicates
+  const shownNudgesRef = useRef<Set<string>>(new Set());
+
   const { participants: streamParticipants } = useRouteStream({
     routeId,
     enabled: true,
@@ -202,6 +205,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     },
     onNudges: (nudges) => {
       nudges.forEach(n => {
+        // Skip if already shown
+        if (shownNudgesRef.current.has(n.id)) return;
+
+        // Mark as shown
+        shownNudgesRef.current.add(n.id);
+
         toast(`🔔 ${n.sender.name || 'Alguien'} dice:`, {
           description: n.message,
           duration: 5000,
