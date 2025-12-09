@@ -869,7 +869,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         <AccessibilityPanel
           settings={accessibilitySettings}
           onSettingsChange={setAccessibilitySettings}
-          onClose={onCloseAccessibilityPanel}
         />
       )}
 
