@@ -190,18 +190,21 @@ model Round {
 }
 
 model Photo {
-  id        String     @id @default(cuid())
-  routeId   String
-  stopId    String?
-  userId    String
-  url       String
-  caption   String?
-  createdAt DateTime   @default(now())
-  route     Route      @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  stop      RouteStop? @relation(fields: [stopId], references: [id])
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String        @id @default(cuid())
+  routeId     String
+  stopId      String?
+  userId      String
+  url         String
+  caption     String?
+  challengeId String?       // Link to completed challenge
+  createdAt   DateTime      @default(now())
+  route       Route         @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop        RouteStop?    @relation(fields: [stopId], references: [id])
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   BarChallenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
 
   @@index([routeId, createdAt(sort: Desc)])
+  @@index([challengeId])
 }
 
 model Nudge {
@@ -446,11 +449,13 @@ model BarChallenge {
   completed   Boolean   @default(false)
   completedAt DateTime?
   completedBy String?   // User ID who completed it
+  photoUrl    String?   // Photo proof URL
   createdAt   DateTime  @default(now())
 
-  route Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  stop  RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
-  user  User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  route  Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop   RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  user   User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  photos Photo[]   // Photos linked to this challenge
 
   @@index([routeId, stopId])
   @@index([userId, completed])

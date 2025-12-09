@@ -11,6 +11,8 @@ export async function POST(
     try {
         const session = await getServerSession(authOptions);
         const { id: routeId, challengeId } = await params;
+        const body = await req.json();
+        const { photoUrl } = body;
 
         // Get user ID
         let userId: string | undefined;
@@ -54,8 +56,23 @@ export async function POST(
                 completed: true,
                 completedAt: new Date(),
                 completedBy: userId,
+                photoUrl: photoUrl || null,
             },
         });
+
+        // If photo provided, create Photo record linked to challenge
+        if (photoUrl) {
+            await prisma.photo.create({
+                data: {
+                    routeId,
+                    stopId: challenge.stopId,
+                    userId,
+                    url: photoUrl,
+                    caption: `Desafío: ${challenge.title}`,
+                    challengeId: challengeId,
+                },
+            });
+        }
 
         // Award points to user
         const updatedUser = await prisma.user.update({

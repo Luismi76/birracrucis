@@ -1106,28 +1106,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     barName={activeStop.name}
                     challenges={barChallenges}
                     onCompleteChallenge={async (id) => {
-                      try {
-                        const res = await fetch(
-                          `/api/routes/${routeId}/challenges/${id}/complete`,
-                          { method: 'POST' }
-                        );
-                        const data = await res.json();
+                      // Open camera to capture proof photo
+                      photoCaptureRef.current?.trigger();
 
-                        if (data.ok) {
-                          toast.success(`¡Desafío completado! +${data.pointsEarned} puntos`);
-                          // Refresh challenges to show updated state
-                          const refreshRes = await fetch(`/api/routes/${routeId}/stops/${activeStop.id}/challenges`);
-                          const refreshData = await refreshRes.json();
-                          if (refreshData.ok) {
-                            setBarChallenges(refreshData.challenges);
-                          }
-                        } else {
-                          toast.error(data.error || 'Error al completar desafío');
-                        }
-                      } catch (error) {
-                        console.error('Error completing challenge:', error);
-                        toast.error('Error al completar desafío');
-                      }
+                      // Store challenge ID to complete after photo is taken
+                      (window as any).__pendingChallengeId = id;
                     }}
                   />
                 )}
@@ -1360,7 +1343,51 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         routeName={routeName}
         stopId={activeStop?.id}
         stopName={activeStop?.name}
-        onPhotoUploaded={() => setPhotoRefresh(prev => prev + 1)}
+        onPhotoUploaded={async () => {
+          setPhotoRefresh(prev => prev + 1);
+
+          // Check if there's a pending challenge to complete
+          const pendingChallengeId = (window as any).__pendingChallengeId;
+          if (pendingChallengeId) {
+            try {
+              // Get the last uploaded photo URL
+              const photosRes = await fetch(`/api/routes/${routeId}/photos`);
+              const photosData = await photosRes.json();
+              const lastPhoto = photosData.photos?.[0]; // Most recent
+
+              // Complete challenge with photo
+              const res = await fetch(
+                `/api/routes/${routeId}/challenges/${pendingChallengeId}/complete`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ photoUrl: lastPhoto?.url })
+                }
+              );
+              const data = await res.json();
+
+              if (data.ok) {
+                toast.success(`¡Desafío completado! +${data.pointsEarned} puntos 🎉`);
+                // Refresh challenges
+                if (activeStop) {
+                  const refreshRes = await fetch(`/api/routes/${routeId}/stops/${activeStop.id}/challenges`);
+                  const refreshData = await refreshRes.json();
+                  if (refreshData.ok) {
+                    setBarChallenges(refreshData.challenges);
+                  }
+                }
+              } else {
+                toast.error(data.error || 'Error al completar desafío');
+              }
+            } catch (error) {
+              console.error('Error completing challenge:', error);
+              toast.error('Error al completar desafío');
+            } finally {
+              // Clear pending challenge
+              delete (window as any).__pendingChallengeId;
+            }
+          }
+        }}
         compact={false}
       />
 
