@@ -34,11 +34,13 @@ export default function OnboardingCheck() {
     }, [status, session]);
 
     // Mostrar loader bloqueante mientras verificamos sesión o perfil
-    return (
-        <div className="fixed inset-0 z-[9999] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center">
-            <BeerLoader />
-        </div>
-    );
+    if (status === "loading" || (status === "authenticated" && isChecking)) {
+        return (
+            <div className="fixed inset-0 z-[9999] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-center">
+                <BeerLoader />
+            </div>
+        );
+    }
 
     if (needsOnboarding) {
         return <OnboardingModal />;
