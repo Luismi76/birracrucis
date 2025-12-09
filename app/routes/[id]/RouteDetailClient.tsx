@@ -1091,25 +1091,29 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               {/* ACHIEVEMENTS TOAST */}
               <AchievementsToast routeId={routeId} enabled={routeStatus !== "completed"} />
 
-              {/* BAR CHALLENGE */}
-              {barChallenges.length > 0 && (
-                <BarChallenge
-                  barName={activeStop.name}
-                  challenges={barChallenges}
-                  onCompleteChallenge={(id) => {
-                    toast.success("¡Desafío completado! +50 puntos");
-                    // TODO: Implementar lógica de completar desafío
-                  }}
-                />
-              )}
+              {/* BAR CHALLENGE & PREDICTIONS - Grid 2 columnas */}
+              <div className="grid grid-cols-2 gap-3 items-start">
+                {/* BAR CHALLENGE */}
+                {barChallenges.length > 0 && (
+                  <BarChallenge
+                    barName={activeStop.name}
+                    challenges={barChallenges}
+                    onCompleteChallenge={(id) => {
+                      toast.success("¡Desafío completado! +50 puntos");
+                      // TODO: Implementar lógica de completar desafío
+                    }}
+                  />
+                )}
 
-              {/* PREDICTIONS PANEL */}
-              <PredictionsPanel
-                routeId={routeId}
-                userId={currentUserId || ""}
-                enabled={routeStatus !== "completed"}
-                startTime={startTime}
-              />
+                {/* PREDICTIONS PANEL */}
+                <PredictionsPanel
+                  routeId={routeId}
+                  userId={currentUserId || ""}
+                  enabled={routeStatus !== "completed"}
+                  startTime={startTime}
+                />
+              </div>
+
 
               {/* QUICK REACTIONS */}
               <QuickReactions
