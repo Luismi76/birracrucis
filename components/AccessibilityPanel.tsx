@@ -32,7 +32,7 @@ export default function AccessibilityPanel({
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-20 right-4 z-50 w-12 h-12 bg-slate-800 dark:bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 transition-all"
+                className="fixed bottom-20 right-4 z-[100] w-12 h-12 bg-slate-800 dark:bg-slate-700 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 transition-all"
                 aria-label="Abrir opciones de accesibilidad"
             >
                 <Settings className="w-5 h-5" />
@@ -41,7 +41,7 @@ export default function AccessibilityPanel({
     }
 
     return (
-        <div className="fixed bottom-20 right-4 z-50 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-xl shadow-2xl p-4 w-72">
+        <div className="fixed bottom-20 right-4 z-[100] bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-600 rounded-xl shadow-2xl p-4 w-72">
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
