@@ -798,11 +798,42 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const achievements: any[] = [];
 
   // Preparar datos para comparativa de bebidas
+  const [drinkStats, setDrinkStats] = useState<Record<string, number>>({});
+
+  // Fetch drink statistics
+  useEffect(() => {
+    async function fetchDrinkStats() {
+      try {
+        const res = await fetch(`/api/routes/${routeId}/drinks`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (data.ok && data.stats?.byUser) {
+          // Convert array of stats to a map of userId -> count
+          const statsMap: Record<string, number> = {};
+          data.stats.byUser.forEach((stat: { userId: string; _count: { id: number } }) => {
+            if (stat.userId) {
+              statsMap[stat.userId] = stat._count.id;
+            }
+          });
+          setDrinkStats(statsMap);
+        }
+      } catch (error) {
+        console.error('Error fetching drink stats:', error);
+      }
+    }
+
+    fetchDrinkStats();
+
+    // Refresh stats every 10 seconds
+    const interval = setInterval(fetchDrinkStats, 10000);
+    return () => clearInterval(interval);
+  }, [routeId]);
+
   const participantsWithBeers = useMemo(() => {
     return participants.map(p => {
-      // Calcular total de cervezas por participante
-      // TODO: Implementar tracking real por participante
-      const participantBeers = Math.floor(Math.random() * 10); // Placeholder
+      // Get real drink count from stats, default to 0
+      const participantBeers = drinkStats[p.id] || 0;
       return {
         id: p.id,
         name: p.name,
@@ -810,7 +841,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         beersCount: participantBeers,
       };
     });
-  }, [participants]);
+  }, [participants, drinkStats]);
 
   // ========== DATOS PARA SPRINT 3 ==========
 
