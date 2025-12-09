@@ -27,7 +27,7 @@ import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
 import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell } from "lucide-react"; // Import icons for actions
 import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
-import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, AchievementsToast, useAchievements, DrinkComparison, WeatherWidget, BarChallenge, PredictionsPanel, QuickReactions } from "@/components/route-detail";
+import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, AchievementsToast, DrinkComparison, WeatherWidget, BarChallenge, PredictionsPanel, QuickReactions } from "@/components/route-detail";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useBatterySaver } from "@/hooks/useBatterySaver";
 import AccessibilityPanel from "@/components/AccessibilityPanel";
@@ -1034,7 +1034,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               <QuickReactions
                 routeId={routeId}
                 stopId={activeStop.id}
-                userId={currentUserId}
+                userId={currentUserId || ""}
               />
               {/* ACCIONES PRINCIPALES */}
               <div className="flex flex-col gap-3 mb-2">
