@@ -338,7 +338,7 @@ export default function PotManager({
             </div>
             <div className="bg-white p-2 rounded-lg border border-slate-100">
               <span className="block text-xs text-slate-400 font-bold uppercase">Gastado</span>
-              <span className="text-xl font-bold text-orange-500">{totalSpent.toFixed(0)}€</span>
+              <span className="text-xl font-bold text-orange-500">{potData.totalSpent.toFixed(0)}€</span>
             </div>
           </div>
 
