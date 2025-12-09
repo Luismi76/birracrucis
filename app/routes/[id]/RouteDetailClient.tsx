@@ -281,6 +281,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     reducedMotion: false,
     screenReaderMode: false,
   });
+  const [accessibilityPanelOpen, setAccessibilityPanelOpen] = useState(false);
 
   // Cargar settings de accesibilidad del localStorage
   useEffect(() => {
@@ -862,14 +863,13 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         batterySaverMode={batterySaver.mode}
       />
 
-      {/* ACCESSIBILITY PANEL - Sprint 4 */}
-      <AccessibilityPanel
-        settings={accessibilitySettings}
-        onSettingsChange={setAccessibilitySettings}
-      />
-
-      {/* THEME TOGGLE - Sprint 5 */}
-      <ThemeToggle />
+      {/* ACCESSIBILITY PANEL - Sprint 4 (Controlled from header) */}
+      {accessibilityPanelOpen && (
+        <AccessibilityPanel
+          settings={accessibilitySettings}
+          onSettingsChange={setAccessibilitySettings}
+        />
+      )}
 
       {/* CONFETTI TRIGGERS - Sprint 5 */}
       <ConfettiTrigger trigger={showAchievementConfetti} type="achievement" />
@@ -885,6 +885,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           completionPercent={completionPercent}
           estimatedFinishTime={calculateEstimatedFinish()}
           timeRemaining={calculateTimeRemaining()}
+          userImage={session?.user?.image}
+          userName={session?.user?.name}
+          unreadMessages={messages.length}
+          onChatClick={() => setActiveTab('group')}
+          onAccessibilityClick={() => setAccessibilityPanelOpen(true)}
         />
       )}
 
