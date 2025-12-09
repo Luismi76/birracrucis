@@ -122,8 +122,8 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
         <button
           onClick={() => setFilter('all')}
           className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all ${filter === 'all'
-              ? 'bg-purple-600 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+            ? 'bg-purple-600 text-white shadow-md'
+            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
             }`}
         >
           Todas ({photos.length})
@@ -131,8 +131,8 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
         <button
           onClick={() => setFilter('challenges')}
           className={`flex-1 py-2 px-4 rounded-lg font-semibold text-sm transition-all flex items-center justify-center gap-1.5 ${filter === 'challenges'
-              ? 'bg-amber-500 text-white shadow-md'
-              : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+            ? 'bg-amber-500 text-white shadow-md'
+            : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
             }`}
         >
           <span>🏆</span>
@@ -147,127 +147,125 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
           <p className="text-xs mt-1">Completa desafíos para capturar momentos especiales!</p>
         </div>
       ) : (
-        {
-          sortedGroups.map((group) => (
-            <div key={group.stopId} className="space-y-2">
-              {/* Header de Sección */}
-              <div className="px-1 flex items-center gap-2">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                <h3 className="font-bold text-slate-700 text-sm uppercase tracking-wide">
-                  {group.name}
-                </h3>
-                <span className="text-xs text-slate-400 font-normal">({group.photos.length})</span>
-              </div>
-
-              {/* Grid de fotos del grupo */}
-              <div className="grid grid-cols-3 gap-0.5">
-                {group.photos.map((photo) => (
-                  <button
-                    key={photo.id}
-                    onClick={() => setSelectedPhoto(photo)}
-                    className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity active-scale relative rounded-xl shadow-sm border border-slate-100"
-                  >
-                    <OptimizedImage
-                      src={photo.url}
-                      alt={photo.caption || "Foto"}
-                      className="w-full h-full object-cover"
-                    />
-
-                    {/* Trophy badge for challenge photos */}
-                    {photo.challengeId && (
-                      <div className="absolute top-1 right-1 bg-amber-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md flex items-center gap-0.5">
-                        <span>🏆</span>
-                      </div>
-                    )}
-
-                    {/* Mini badge si tiene caption o usuario */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
-                      <p className="text-[10px] text-white truncate font-medium text-left px-1">
-                        {photo.user.name?.split(' ')[0]}
-                      </p>
-                    </div>
-                  </button>
-                ))}
-              </div>
+        sortedGroups.map((group) => (
+          <div key={group.stopId} className="space-y-2">
+            {/* Header de Sección */}
+            <div className="px-1 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+              <h3 className="font-bold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">
+                {group.name}
+              </h3>
+              <span className="text-xs text-slate-400 font-normal">({group.photos.length})</span>
             </div>
-          ))
-        }
-    </div>
 
-      {/* Modal de foto ampliada */ }
-  {
-    selectedPhoto && (
-      <div
-        className="fixed inset-0 bg-black/90 z-[100] flex flex-col"
-        onClick={() => setSelectedPhoto(null)}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 text-white" onClick={(e) => e.stopPropagation()}>
-          <div className="flex items-center gap-3">
-            {selectedPhoto.user.image ? (
-              <img
-                src={selectedPhoto.user.image}
-                alt={selectedPhoto.user.name || "Usuario"}
-                className="w-10 h-10 rounded-full border-2 border-purple-500"
-              />
-            ) : (
-              <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold border-2 border-white">
-                {selectedPhoto.user.name?.charAt(0) || "?"}
-              </div>
-            )}
-            <div>
-              <p className="font-bold text-sm">{selectedPhoto.user.name || "Anonimo"}</p>
-              {selectedPhoto.challengeId && (
-                <p className="text-xs text-amber-300 flex items-center gap-1">
-                  <span>🏆</span> Desafío completado
-                </p>
-              )}
-              {selectedPhoto.stop && (
-                <p className="text-xs text-white/70 flex items-center gap-1">
-                  <span>📍</span> {selectedPhoto.stop.name}
-                </p>
-              )}
+            {/* Grid de fotos del grupo */}
+            <div className="grid grid-cols-3 gap-0.5">
+              {group.photos.map((photo) => (
+                <button
+                  key={photo.id}
+                  onClick={() => setSelectedPhoto(photo)}
+                  className="aspect-square bg-slate-100 overflow-hidden hover:opacity-90 transition-opacity active-scale relative rounded-xl shadow-sm border border-slate-100"
+                >
+                  <OptimizedImage
+                    src={photo.url}
+                    alt={photo.caption || "Foto"}
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* Trophy badge for challenge photos */}
+                  {photo.challengeId && (
+                    <div className="absolute top-1 right-1 bg-amber-500 text-white px-1.5 py-0.5 rounded-full text-[10px] font-bold shadow-md flex items-center gap-0.5">
+                      <span>🏆</span>
+                    </div>
+                  )}
+
+                  {/* Mini badge si tiene caption o usuario */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-1">
+                    <p className="text-[10px] text-white truncate font-medium text-left px-1">
+                      {photo.user.name?.split(' ')[0]}
+                    </p>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
-          <button
+        ))
+      )}
+
+      {/* Modal de foto ampliada */}
+      {
+        selectedPhoto && (
+          <div
+            className="fixed inset-0 bg-black/90 z-[100] flex flex-col"
             onClick={() => setSelectedPhoto(null)}
-            className="p-2 hover:bg-white/10 rounded-full transition-colors"
           >
-            <svg className="w-8 h-8 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 text-white" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                {selectedPhoto.user.image ? (
+                  <img
+                    src={selectedPhoto.user.image}
+                    alt={selectedPhoto.user.name || "Usuario"}
+                    className="w-10 h-10 rounded-full border-2 border-purple-500"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold border-2 border-white">
+                    {selectedPhoto.user.name?.charAt(0) || "?"}
+                  </div>
+                )}
+                <div>
+                  <p className="font-bold text-sm">{selectedPhoto.user.name || "Anonimo"}</p>
+                  {selectedPhoto.challengeId && (
+                    <p className="text-xs text-amber-300 flex items-center gap-1">
+                      <span>🏆</span> Desafío completado
+                    </p>
+                  )}
+                  {selectedPhoto.stop && (
+                    <p className="text-xs text-white/70 flex items-center gap-1">
+                      <span>📍</span> {selectedPhoto.stop.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedPhoto(null)}
+                className="p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <svg className="w-8 h-8 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-        {/* Imagen */}
-        <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-          <img
-            src={selectedPhoto.url}
-            alt={selectedPhoto.caption || "Foto"}
-            className="max-w-full max-h-full object-contain shadow-2xl"
-          />
-        </div>
+            {/* Imagen */}
+            <div className="flex-1 flex items-center justify-center p-4 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+              <img
+                src={selectedPhoto.url}
+                alt={selectedPhoto.caption || "Foto"}
+                className="max-w-full max-h-full object-contain shadow-2xl"
+              />
+            </div>
 
-        {/* Footer con caption y compartir */}
-        <div className="p-4 bg-gradient-to-t from-black/80 to-transparent" onClick={(e) => e.stopPropagation()}>
-          {selectedPhoto.caption && (
-            <p className="text-white text-lg font-medium mb-2">{selectedPhoto.caption}</p>
-          )}
-          <p className="text-purple-300 text-sm mb-4 font-mono">{hashtag}</p>
+            {/* Footer con caption y compartir */}
+            <div className="p-4 bg-gradient-to-t from-black/80 to-transparent" onClick={(e) => e.stopPropagation()}>
+              {selectedPhoto.caption && (
+                <p className="text-white text-lg font-medium mb-2">{selectedPhoto.caption}</p>
+              )}
+              <p className="text-purple-300 text-sm mb-4 font-mono">{hashtag}</p>
 
-          <button
-            onClick={() => handleShare(selectedPhoto)}
-            className="w-full bg-white text-black py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 active:scale-95 transition-all mb-3"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-            </svg>
-            Compartir Foto
-          </button>
-        </div>
-      </div>
-    )
-  }
+              <button
+                onClick={() => handleShare(selectedPhoto)}
+                className="w-full bg-white text-black py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-slate-100 active:scale-95 transition-all mb-3"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Compartir Foto
+              </button>
+            </div>
+          </div>
+        )
+      }
     </div >
   );
 }
