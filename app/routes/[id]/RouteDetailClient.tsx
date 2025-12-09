@@ -490,8 +490,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         const pot = data.pot;
         setPotData({
           currentAmount: pot.totalCollected || 0,
-          targetAmount: (pot.amountPerPerson || 0) * participants.length,
-          participantsCount: participants.length,
+          targetAmount: (pot.amountPerPerson || 0) * (pot.participantCount || 0),
+          participantsCount: pot.participantCount || 0,
           paidCount: pot.contributions?.length || 0,
         });
       }
