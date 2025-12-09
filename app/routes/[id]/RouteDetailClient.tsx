@@ -414,12 +414,23 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
     if (distToBar <= AUTOCHECKIN_RADIUS) {
       autoCheckinStopsRef.current.add(activeStop.id);
-      // handleAddRound(activeStop.id); // DISABLED: Manual control requested
-      setAutoCheckinNotification(`Llegaste a ${activeStop.name}`);
-      setTimeout(() => setAutoCheckinNotification(null), 3000);
+
+      // Toast notification with better UX
+      toast.success(`✅ Has llegado a ${activeStop.name}`, {
+        description: "Check-in automático realizado",
+        duration: 4000,
+        action: {
+          label: "Ver",
+          onClick: () => console.log("Arrived at bar"),
+        },
+      });
+
+      // Haptic feedback
       if ("vibrate" in navigator) {
         navigator.vibrate([200, 100, 200]);
       }
+
+      // Update arrival time
       fetch(`/api/stops/${activeStop.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
