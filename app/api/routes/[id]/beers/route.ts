@@ -3,16 +3,14 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
-type RouteParams = {
-    params: {
-        id: string;
-    };
+type RouteContext = {
+    params: Promise<{ id: string }>;
 };
 
 // GET - Get beer consumption stats for route
 export async function GET(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -20,7 +18,7 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
 
         // Get all beer consumptions for this route
         const consumptions = await prisma.beerConsumption.findMany({
@@ -96,7 +94,7 @@ export async function GET(
 // POST - Record beer consumption
 export async function POST(
     request: Request,
-    { params }: RouteParams
+    context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
@@ -104,7 +102,7 @@ export async function POST(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = params;
+        const { id: routeId } = await context.params;
         const body = await request.json();
         const { userId, stopId, count = 1 } = body;
 
