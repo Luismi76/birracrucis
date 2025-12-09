@@ -736,14 +736,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const currentUserBeers = activeStop ? (beers[activeStop.id] || 0) : 0;
   const totalUserBeers = Object.values(beers).reduce((sum, b) => sum + b, 0);
 
-  const achievements = useAchievements({
-    rounds: activeStop ? (rounds[activeStop.id] || 0) : 0,
-    photos: 0, // TODO: Obtener número real de fotos
-    beersCount: totalUserBeers,
-    completedBars: completedStops,
-    totalBars: stops.length,
-    userName: session?.user?.name || "Usuario",
-  });
+  // Achievements are now fetched directly by AchievementsToast component
+  const achievements: any[] = [];
 
   // Preparar datos para comparativa de bebidas
   const participantsWithBeers = useMemo(() => {
