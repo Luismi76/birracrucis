@@ -483,22 +483,35 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const fetchPotData = async () => {
     if (!routeId) return;
     try {
+      console.log('[POT] Fetching pot data for route:', routeId);
       const res = await fetch(`/api/routes/${routeId}/pot`);
-      if (!res.ok) return; // Silently fail if pot not configured
+      console.log('[POT] Fetch response status:', res.status, res.ok);
+
+      if (!res.ok) {
+        console.error('[POT] Failed to fetch pot data, status:', res.status);
+        return;
+      }
+
       const data = await res.json();
+      console.log('[POT] Fetched pot data:', data);
+
       if (data.ok && data.pot) {
         const pot = data.pot;
         const availableBalance = (pot.totalCollected || 0) - (pot.totalSpent || 0);
+        console.log('[POT] Calculated balance:', { totalCollected: pot.totalCollected, totalSpent: pot.totalSpent, availableBalance });
+
         setPotData({
           currentAmount: availableBalance,
           targetAmount: (pot.amountPerPerson || 0) * (pot.participantCount || 0),
           participantsCount: pot.participantCount || 0,
           paidCount: pot.contributions?.length || 0,
         });
+        console.log('[POT] State updated');
+      } else {
+        console.warn('[POT] Invalid pot data structure:', data);
       }
     } catch (error) {
-      // Silently fail - pot might not be configured
-      console.debug("Pot not configured or error fetching:", error);
+      console.error('[POT] Error fetching pot data:', error);
     }
   };
 
