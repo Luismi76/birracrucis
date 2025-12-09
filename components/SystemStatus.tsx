@@ -1,6 +1,8 @@
 "use client";
 
-import { Wifi, WifiOff, Battery, BatteryLow } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { Wifi, WifiOff } from "lucide-react";
+import { toast } from "sonner";
 
 type SystemStatusProps = {
     isOnline: boolean;
@@ -15,8 +17,25 @@ export default function SystemStatus({
     batteryLevel,
     batterySaverMode,
 }: SystemStatusProps) {
-    if (isOnline && queueSize === 0 && batterySaverMode === "off") {
-        return null; // No mostrar nada si todo está bien
+    const lastBatterySaverMode = useRef(batterySaverMode);
+
+    // Show toast when battery saver mode changes
+    useEffect(() => {
+        if (batterySaverMode !== "off" && batterySaverMode !== lastBatterySaverMode.current) {
+            const batteryText = batteryLevel !== null ? ` (${Math.round(batteryLevel)}%)` : "";
+            const modeText = batterySaverMode === "aggressive" ? "agresivo" : "activo";
+
+            toast.info(`🔋 Modo ahorro ${modeText}${batteryText}`, {
+                description: "Algunas funciones pueden estar limitadas",
+                duration: 5000,
+            });
+        }
+        lastBatterySaverMode.current = batterySaverMode;
+    }, [batterySaverMode, batteryLevel]);
+
+    // Only show connection status if offline or syncing
+    if (isOnline && queueSize === 0) {
+        return null;
     }
 
     return (
@@ -39,23 +58,6 @@ export default function SystemStatus({
                 <div className="bg-blue-500 dark:bg-blue-600 text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-semibold animate-pulse">
                     <Wifi className="w-4 h-4" />
                     <span>Sincronizando {queueSize}...</span>
-                </div>
-            )}
-
-            {/* Modo ahorro de batería */}
-            {batterySaverMode !== "off" && (
-                <div className="bg-amber-500 dark:bg-amber-600 text-white px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-semibold">
-                    {batteryLevel !== null && batteryLevel < 20 ? (
-                        <BatteryLow className="w-4 h-4" />
-                    ) : (
-                        <Battery className="w-4 h-4" />
-                    )}
-                    <span>
-                        Ahorro {batterySaverMode === "aggressive" ? "agresivo" : "activo"}
-                    </span>
-                    {batteryLevel !== null && (
-                        <span className="text-xs">({Math.round(batteryLevel)}%)</span>
-                    )}
                 </div>
             )}
         </div>
