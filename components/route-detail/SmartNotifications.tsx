@@ -133,14 +133,14 @@ export function useSmartNotifications({
         });
     }
 
-    // Notificación: Recordatorio de bote
-    const potDifference = potTotal - potPaid;
-    if (potDifference > 5 && potTotal > 0) {
-        notifications.push({
-            type: "pot_reminder",
-            message: `Falta recoger ${potDifference.toFixed(2)}€ del bote común`,
-        });
-    }
+    // Notificación: Recordatorio de bote (DESACTIVADO - muy molesto)
+    // const potDifference = potTotal - potPaid;
+    // if (potDifference > 5 && potTotal > 0) {
+    //     notifications.push({
+    //         type: "pot_reminder",
+    //         message: `Falta recoger ${potDifference.toFixed(2)}€ del bote común`,
+    //     });
+    // }
 
     return notifications;
 }
