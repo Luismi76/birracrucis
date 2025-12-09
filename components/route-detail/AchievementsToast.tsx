@@ -1,176 +1,111 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Trophy, Camera, Target, Zap, Award } from "lucide-react";
-
-type AchievementType =
-    | "first_round"
-    | "punctual"
-    | "photographer"
-    | "beer_expert"
-    | "completionist"
-    | "speed_demon"
-    | "social_butterfly";
+import { Trophy } from "lucide-react";
 
 type Achievement = {
-    type: AchievementType;
+    id: string;
+    userId: string;
+    userName: string;
+    userImage: string | null;
+    type: string;
     title: string;
     description: string;
-    userName: string;
-    icon: string;
+    points: number;
+    earnedAt: string;
 };
 
 type AchievementsToastProps = {
-    achievements: Achievement[];
-    onDismiss?: (index: number) => void;
+    routeId: string;
+    enabled?: boolean;
 };
 
 export default function AchievementsToast({
-    achievements,
-    onDismiss,
+    routeId,
+    enabled = true,
 }: AchievementsToastProps) {
+    const [achievements, setAchievements] = useState<Achievement[]>([]);
     const shownAchievementsRef = useRef<Set<string>>(new Set());
+    const lastCheckRef = useRef<string | null>(null);
 
     useEffect(() => {
-        achievements.forEach((achievement, index) => {
-            // Crear ID único para el logro
-            const achievementId = `${achievement.type}-${achievement.userName}`;
+        if (!enabled) return;
 
-            // Solo mostrar si no se ha mostrado antes
-            if (!shownAchievementsRef.current.has(achievementId)) {
-                shownAchievementsRef.current.add(achievementId);
+        async function fetchAchievements() {
+            try {
+                const response = await fetch(`/api/routes/${routeId}/achievements`);
 
-                toast.success(
-                    <div className="flex items-start gap-3">
-                        <div className="text-3xl">{achievement.icon}</div>
-                        <div className="flex-1">
-                            <p className="font-bold text-amber-800">{achievement.title}</p>
-                            <p className="text-sm text-amber-600">{achievement.userName}</p>
-                            <p className="text-xs text-slate-600 mt-1">
-                                {achievement.description}
-                            </p>
-                        </div>
-                    </div>,
-                    {
-                        duration: 5000,
-                        className: "bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300",
-                        action: onDismiss
-                            ? {
-                                label: "OK",
-                                onClick: () => onDismiss(index),
-                            }
-                            : undefined,
-                    }
+                if (!response.ok) {
+                    throw new Error('Failed to fetch achievements');
+                }
+
+                const data = await response.json();
+                const newAchievements = data.achievements || [];
+
+                // Filtrar solo logros nuevos (no mostrados antes)
+                const unseenAchievements = newAchievements.filter(
+                    (achievement: Achievement) => !shownAchievementsRef.current.has(achievement.id)
                 );
+
+                // Mostrar toasts para logros nuevos
+                unseenAchievements.forEach((achievement: Achievement) => {
+                    shownAchievementsRef.current.add(achievement.id);
+
+                    toast.success(
+                        <div className="flex items-start gap-3">
+                            <div className="text-3xl">{getAchievementIcon(achievement.type)}</div>
+                            <div className="flex-1">
+                                <p className="font-bold text-amber-800">{achievement.title}</p>
+                                <p className="text-sm text-amber-600">{achievement.userName}</p>
+                                <p className="text-xs text-slate-600 mt-1">
+                                    {achievement.description}
+                                </p>
+                                <p className="text-xs font-bold text-amber-700 mt-1">
+                                    +{achievement.points} puntos
+                                </p>
+                            </div>
+                        </div>,
+                        {
+                            duration: 5000,
+                            className: "bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-300 dark:border-amber-700",
+                        }
+                    );
+                });
+
+                setAchievements(newAchievements);
+
+                // Actualizar último check
+                if (newAchievements.length > 0) {
+                    lastCheckRef.current = newAchievements[0].id;
+                }
+            } catch (error) {
+                console.error('Error fetching achievements:', error);
             }
-        });
-    }, [achievements]); // Removido onDismiss para evitar re-renders
+        }
+
+        // Fetch inicial
+        fetchAchievements();
+
+        // Polling cada 10 segundos
+        const interval = setInterval(fetchAchievements, 10000);
+
+        return () => clearInterval(interval);
+    }, [routeId, enabled]);
 
     return null;
 }
 
-function getIconComponent(type: AchievementType) {
-    switch (type) {
-        case "first_round":
-            return Trophy;
-        case "punctual":
-            return Target;
-        case "photographer":
-            return Camera;
-        case "beer_expert":
-            return Award;
-        case "completionist":
-            return Trophy;
-        case "speed_demon":
-            return Zap;
-        case "social_butterfly":
-            return Award;
-        default:
-            return Trophy;
-    }
-}
+function getAchievementIcon(type: string): string {
+    const icons: Record<string, string> = {
+        first_beer: "🍺",
+        speed_demon: "⚡",
+        social_butterfly: "🦋",
+        night_owl: "🦉",
+        early_bird: "🐦",
+        marathon_runner: "🏃",
+        bar_hopper: "🍻",
+    };
 
-// Hook para detectar logros
-export function useAchievements({
-    rounds,
-    photos,
-    arrivalTime,
-    plannedTime,
-    beersCount,
-    completedBars,
-    totalBars,
-    userName,
-}: {
-    rounds: number;
-    photos: number;
-    arrivalTime?: Date;
-    plannedTime?: Date;
-    beersCount: number;
-    completedBars: number;
-    totalBars: number;
-    userName: string;
-}): Achievement[] {
-    const achievements: Achievement[] = [];
-
-    // Primera ronda
-    if (rounds === 1) {
-        achievements.push({
-            type: "first_round",
-            title: "🏆 Primera Ronda",
-            description: "¡Ha pedido la primera ronda!",
-            userName,
-            icon: "🍺",
-        });
-    }
-
-    // Puntual (llegó exactamente a la hora)
-    if (arrivalTime && plannedTime) {
-        const diff = Math.abs(arrivalTime.getTime() - plannedTime.getTime());
-        if (diff < 5 * 60 * 1000) {
-            // 5 minutos
-            achievements.push({
-                type: "punctual",
-                title: "🎯 Puntual",
-                description: "Llegó exactamente a la hora planificada",
-                userName,
-                icon: "⏰",
-            });
-        }
-    }
-
-    // Fotógrafo (5 fotos)
-    if (photos >= 5) {
-        achievements.push({
-            type: "photographer",
-            title: "📸 Fotógrafo Oficial",
-            description: "Ha tomado 5 fotos en la ruta",
-            userName,
-            icon: "📷",
-        });
-    }
-
-    // Cervecero experto (10 cervezas)
-    if (beersCount >= 10) {
-        achievements.push({
-            type: "beer_expert",
-            title: "🍺 Cervecero Experto",
-            description: "¡10 cervezas y contando!",
-            userName,
-            icon: "🍻",
-        });
-    }
-
-    // Completista (terminó todos los bares)
-    if (completedBars === totalBars && totalBars > 0) {
-        achievements.push({
-            type: "completionist",
-            title: "🏁 Completista",
-            description: "¡Completó toda la ruta!",
-            userName,
-            icon: "🎉",
-        });
-    }
-
-    return achievements;
+    return icons[type] || "🏆";
 }
