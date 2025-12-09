@@ -26,8 +26,21 @@ export default function AchievementsToast({
     enabled = true,
 }: AchievementsToastProps) {
     const [achievements, setAchievements] = useState<Achievement[]>([]);
-    const shownAchievementsRef = useRef<Set<string>>(new Set());
     const lastCheckRef = useRef<string | null>(null);
+
+    // Get shown achievements from sessionStorage (persists across tab switches)
+    const getShownAchievements = (): Set<string> => {
+        if (typeof window === 'undefined') return new Set();
+        const stored = sessionStorage.getItem(`shownAchievements_${routeId}`);
+        return stored ? new Set(JSON.parse(stored)) : new Set();
+    };
+
+    const addShownAchievement = (id: string) => {
+        if (typeof window === 'undefined') return;
+        const shown = getShownAchievements();
+        shown.add(id);
+        sessionStorage.setItem(`shownAchievements_${routeId}`, JSON.stringify([...shown]));
+    };
 
     useEffect(() => {
         if (!enabled) return;
@@ -43,14 +56,15 @@ export default function AchievementsToast({
                 const data = await response.json();
                 const newAchievements = data.achievements || [];
 
-                // Filtrar solo logros nuevos (no mostrados antes)
+                // Filter only new achievements (not shown before)
+                const shownAchievements = getShownAchievements();
                 const unseenAchievements = newAchievements.filter(
-                    (achievement: Achievement) => !shownAchievementsRef.current.has(achievement.id)
+                    (achievement: Achievement) => !shownAchievements.has(achievement.id)
                 );
 
-                // Mostrar toasts para logros nuevos
+                // Show toasts for new achievements
                 unseenAchievements.forEach((achievement: Achievement) => {
-                    shownAchievementsRef.current.add(achievement.id);
+                    addShownAchievement(achievement.id);
 
                     toast.success(
                         <div className="flex items-start gap-3">
@@ -75,7 +89,7 @@ export default function AchievementsToast({
 
                 setAchievements(newAchievements);
 
-                // Actualizar último check
+                // Update last check
                 if (newAchievements.length > 0) {
                     lastCheckRef.current = newAchievements[0].id;
                 }
@@ -84,10 +98,10 @@ export default function AchievementsToast({
             }
         }
 
-        // Fetch inicial
+        // Initial fetch
         fetchAchievements();
 
-        // Polling cada 10 segundos
+        // Polling every 10 seconds
         const interval = setInterval(fetchAchievements, 10000);
 
         return () => clearInterval(interval);
