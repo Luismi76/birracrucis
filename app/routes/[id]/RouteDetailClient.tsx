@@ -157,6 +157,14 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const [notificationPickerOpen, setNotificationPickerOpen] = useState(false);
   const [notificationTarget, setNotificationTarget] = useState<Participant | null>(null);
 
+  // Track component mounts (not renders)
+  useEffect(() => {
+    console.log('[RouteDetailClient] ✅ Component MOUNTED', routeId);
+    return () => {
+      console.log('[RouteDetailClient] ❌ Component UNMOUNTED', routeId);
+    };
+  }, [routeId]);
+
   // Unplanned Stop Detector
   const existingStopPlaceIds = useMemo(() => {
     return new Set(stops.map(s => s.googlePlaceId).filter((id): id is string => !!id));
