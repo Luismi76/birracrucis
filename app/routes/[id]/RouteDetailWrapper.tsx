@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import ShareModal from "@/components/ShareModal";
+import RouteChat from "@/components/RouteChat";
 import { MapSkeleton, BarCardSkeleton } from "@/components/ui/Skeleton";
 import { Share2, MessageCircle, Settings, Moon, Sun, Accessibility } from "lucide-react";
 import { useTheme } from "next-themes";
@@ -115,6 +116,7 @@ export default function RouteDetailWrapper({
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const { theme, setTheme } = useTheme();
 
   // Estado del progreso de la ruta (recibido del RouteDetailClient)
@@ -291,7 +293,11 @@ export default function RouteDetailWrapper({
                 aria-label="Chat"
               >
                 <MessageCircle className="w-5 h-5" />
-                {/* TODO: Add unread message indicator */}
+                {unreadMessages > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {unreadMessages > 9 ? '9+' : unreadMessages}
+                  </span>
+                )}
               </button>
 
               {/* Botón Compartir */}
@@ -372,6 +378,16 @@ export default function RouteDetailWrapper({
           onClose={() => setIsShareModalOpen(false)}
           inviteCode={inviteCode}
           routeName={routeName}
+        />
+      )}
+
+      {/* Chat Modal */}
+      {showChat && currentUserId && (
+        <RouteChat
+          routeId={routeId}
+          currentUserId={currentUserId}
+          onClose={() => setShowChat(false)}
+          onUnreadCountChange={setUnreadMessages}
         />
       )}
     </div>
