@@ -344,11 +344,11 @@ export default function PotManager({
           <div className="grid grid-cols-2 gap-2 text-center">
             <div className="bg-white p-2 rounded-lg border border-slate-100">
               <span className="block text-xs text-slate-400 font-bold uppercase">Recaudado</span>
-              <span className="text-xl font-bold text-emerald-600">{potData.totalCollected.toFixed(0)}€</span>
+              <span className="text-xl font-bold text-emerald-600">{potData.totalCollected.toFixed(2)}€</span>
             </div>
             <div className="bg-white p-2 rounded-lg border border-slate-100">
               <span className="block text-xs text-slate-400 font-bold uppercase">Gastado</span>
-              <span className="text-xl font-bold text-orange-500">{potData.totalSpent.toFixed(0)}€</span>
+              <span className="text-xl font-bold text-orange-500">{potData.totalSpent.toFixed(2)}€</span>
             </div>
           </div>
 
@@ -360,7 +360,7 @@ export default function PotManager({
               className="w-full py-4 bg-emerald-500 text-white rounded-xl text-lg font-black shadow-xl shadow-emerald-200 hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-2"
             >
               <span>💸</span>
-              ¡Poner mis {potData.amountPerPerson?.toFixed(0)}€!
+              ¡Poner mis {potData.amountPerPerson?.toFixed(2)}€!
             </button>
           )}
 
