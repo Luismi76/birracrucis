@@ -28,24 +28,15 @@ type UpdateRouteBody = {
     description?: string | null;
 };
 
-// Verifica si el usuario es creador o participante de la ruta
+// Verifica si el usuario es el creador de la ruta (solo el creador puede modificar/eliminar)
 async function canModifyRoute(routeId: string, userId: string): Promise<boolean> {
     const route = await prisma.route.findUnique({
         where: { id: routeId },
         select: { creatorId: true },
     });
 
-    // Si es el creador, puede modificar
-    if (route?.creatorId === userId) {
-        return true;
-    }
-
-    // Si es participante, también puede modificar
-    const participant = await prisma.participant.findUnique({
-        where: { routeId_userId: { routeId, userId } },
-    });
-
-    return !!participant;
+    // Solo el creador puede modificar la ruta
+    return route?.creatorId === userId;
 }
 
 export async function GET(
@@ -135,15 +126,20 @@ export async function DELETE(
             userId = user?.id || null;
         }
 
-        // Verificar permisos
-        if (userId) {
-            const canModify = await canModifyRoute(id, userId);
-            if (!canModify) {
-                return NextResponse.json(
-                    { ok: false, error: "No tienes permiso para eliminar esta ruta" },
-                    { status: 403 }
-                );
-            }
+        // Verificar permisos - requiere autenticación y ser el creador
+        if (!userId) {
+            return NextResponse.json(
+                { ok: false, error: "Debes iniciar sesión para eliminar una ruta" },
+                { status: 401 }
+            );
+        }
+
+        const canModify = await canModifyRoute(id, userId);
+        if (!canModify) {
+            return NextResponse.json(
+                { ok: false, error: "No tienes permiso para eliminar esta ruta" },
+                { status: 403 }
+            );
         }
 
         // Borrar participantes

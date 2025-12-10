@@ -35,7 +35,7 @@ Abre la URL `https://xxxxx.ngrok.io` en tu móvil.
 
 ## 🛠️ Stack Tecnológico
 
-- **Framework**: Next.js 16
+- **Framework**: Next.js 15
 - **Base de Datos**: PostgreSQL + Prisma
 - **Mapas**: Google Maps API
 - **Estilos**: Tailwind CSS 4

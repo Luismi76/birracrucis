@@ -63,7 +63,6 @@ model User {
   skipVotes            SkipVote[]
   badges               UserBadge[]
   achievements         Achievement[]
-  beerConsumptions     BeerConsumption[]
   predictions          Prediction[]
   barReactions         BarReaction[]
   barChallenges        BarChallenge[]
@@ -121,7 +120,6 @@ model Route {
   skipVotes          SkipVote[]
   earnedBadges       UserBadge[]
   achievements       Achievement[]
-  beerConsumptions   BeerConsumption[]
   predictions        Prediction[]
   barReactions       BarReaction[]
   challenges         BarChallenge[]
@@ -153,7 +151,6 @@ model RouteStop {
   rounds           Round[]
   route            Route             @relation(fields: [routeId], references: [id], onDelete: Cascade)
   skipVotes        SkipVote[]
-  beerConsumptions BeerConsumption[]
   barReactions     BarReaction[]
   challenges       BarChallenge[]
 
@@ -395,24 +392,6 @@ model Achievement {
   @@index([userId])
   @@index([routeId])
   @@index([earnedAt])
-}
-
-model BeerConsumption {
-  id        String   @id @default(cuid())
-  userId    String
-  routeId   String
-  stopId    String
-  count     Int      @default(1)
-  timestamp DateTime @default(now())
-
-  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  route Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  stop  RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
-
-  @@index([userId, routeId])
-  @@index([routeId])
-  @@index([stopId])
-  @@index([timestamp])
 }
 
 model Prediction {

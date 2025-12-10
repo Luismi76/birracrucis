@@ -7,7 +7,7 @@ type RouteContext = {
     params: Promise<{ id: string }>;
 };
 
-// GET - Get beer consumption stats for route
+// GET - Get beer consumption stats for route (usando modelo Drink)
 export async function GET(
     request: Request,
     context: RouteContext
@@ -20,8 +20,8 @@ export async function GET(
 
         const { id: routeId } = await context.params;
 
-        // Get all beer consumptions for this route
-        const consumptions = await prisma.beerConsumption.findMany({
+        // Get all drinks for this route (consolidado desde BeerConsumption)
+        const drinks = await prisma.drink.findMany({
             where: { routeId },
             include: {
                 user: {
@@ -39,46 +39,58 @@ export async function GET(
                 },
             },
             orderBy: {
-                timestamp: 'desc',
+                createdAt: 'desc',
             },
         });
 
-        // Aggregate by user
-        const userStats = consumptions.reduce((acc, consumption) => {
-            const userId = consumption.userId;
+        // Aggregate by user (usuarios registrados)
+        const userStats: Record<string, {
+            odId: string;
+            odType: 'user' | 'guest';
+            userName: string;
+            userImage: string | null;
+            totalBeers: number;
+            beersByStop: Record<string, { stopId: string; stopName: string; count: number }>;
+        }> = {};
 
-            if (!acc[userId]) {
-                acc[userId] = {
-                    userId,
-                    userName: consumption.user.name || 'Usuario',
-                    userImage: consumption.user.image,
+        for (const drink of drinks) {
+            // Identificador único: odId (owner ID) puede ser odId o guestId
+            const odId = drink.userId || drink.guestId || 'unknown';
+            const odType = drink.userId ? 'user' : 'guest';
+
+            if (!userStats[odId]) {
+                userStats[odId] = {
+                    odId,
+                    odType,
+                    userName: drink.user?.name || `Invitado ${odId.slice(0, 4)}`,
+                    userImage: drink.user?.image || null,
                     totalBeers: 0,
                     beersByStop: {},
                 };
             }
 
-            acc[userId].totalBeers += consumption.count;
+            userStats[odId].totalBeers += 1;
 
-            if (!acc[userId].beersByStop[consumption.stopId]) {
-                acc[userId].beersByStop[consumption.stopId] = {
-                    stopId: consumption.stopId,
-                    stopName: consumption.stop.name,
+            if (!userStats[odId].beersByStop[drink.stopId]) {
+                userStats[odId].beersByStop[drink.stopId] = {
+                    stopId: drink.stopId,
+                    stopName: drink.stop.name,
                     count: 0,
                 };
             }
 
-            acc[userId].beersByStop[consumption.stopId].count += consumption.count;
-
-            return acc;
-        }, {} as Record<string, any>);
+            userStats[odId].beersByStop[drink.stopId].count += 1;
+        }
 
         // Convert to array and sort by total beers
         const participants = Object.values(userStats)
-            .map((stat: any) => ({
+            .map((stat) => ({
                 ...stat,
+                // Mantener compatibilidad con el frontend que espera odId
+                userId: stat.odId,
                 beersByStop: Object.values(stat.beersByStop),
             }))
-            .sort((a: any, b: any) => b.totalBeers - a.totalBeers);
+            .sort((a, b) => b.totalBeers - a.totalBeers);
 
         return NextResponse.json({ participants });
 
@@ -91,75 +103,102 @@ export async function GET(
     }
 }
 
-// POST - Record beer consumption
+// POST - Record beer consumption (usando modelo Drink)
 export async function POST(
     request: Request,
     context: RouteContext
 ) {
     try {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
+
+        // Obtener userId o guestId
+        let userId: string | undefined;
+        let guestId: string | undefined;
+
+        if (session?.user?.email) {
+            const user = await prisma.user.findUnique({
+                where: { email: session.user.email },
+                select: { id: true }
+            });
+            userId = user?.id;
+        }
+
+        // Para requests del cliente que envían userId explícitamente
+        const { id: routeId } = await context.params;
+        const body = await request.json();
+        const { userId: bodyUserId, stopId, count = 1 } = body;
+
+        // Usar el userId del body si viene (para gamificación desde el cliente)
+        // o el de la sesión si no
+        const effectiveUserId = bodyUserId || userId;
+
+        if (!effectiveUserId) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { id: routeId } = await context.params;
-        const body = await request.json();
-        const { userId, stopId, count = 1 } = body;
-
-        if (!userId || !stopId) {
+        if (!stopId) {
             return NextResponse.json(
-                { error: 'Missing userId or stopId' },
+                { error: 'Missing stopId' },
                 { status: 400 }
             );
         }
 
-        // Verify route exists and user is participant
-        const route = await prisma.route.findUnique({
-            where: { id: routeId },
-            include: {
-                participants: {
-                    where: { userId },
-                },
-            },
+        // Verificar que el stop pertenece a la ruta
+        const stop = await prisma.routeStop.findFirst({
+            where: { id: stopId, routeId },
         });
 
-        if (!route) {
-            return NextResponse.json({ error: 'Route not found' }, { status: 404 });
+        if (!stop) {
+            return NextResponse.json({ error: 'Stop not found in route' }, { status: 404 });
         }
 
-        if (route.participants.length === 0) {
+        // Verificar que el usuario es participante
+        const participant = await prisma.participant.findFirst({
+            where: { routeId, userId: effectiveUserId },
+        });
+
+        if (!participant) {
             return NextResponse.json(
                 { error: 'User is not a participant' },
                 { status: 403 }
             );
         }
 
-        // Create beer consumption record
-        const consumption = await prisma.beerConsumption.create({
-            data: {
-                userId,
-                routeId,
-                stopId,
-                count,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        name: true,
-                        image: true,
+        // Crear registros de bebida (uno por cada count)
+        // Esto mantiene compatibilidad con el modelo Drink que no tiene campo count
+        const drinks = [];
+        for (let i = 0; i < count; i++) {
+            const drink = await prisma.drink.create({
+                data: {
+                    routeId,
+                    stopId,
+                    userId: effectiveUserId,
+                    type: 'beer',
+                },
+                include: {
+                    user: {
+                        select: {
+                            id: true,
+                            name: true,
+                            image: true,
+                        },
+                    },
+                    stop: {
+                        select: {
+                            id: true,
+                            name: true,
+                        },
                     },
                 },
-                stop: {
-                    select: {
-                        id: true,
-                        name: true,
-                    },
-                },
-            },
-        });
+            });
+            drinks.push(drink);
+        }
 
-        return NextResponse.json({ consumption }, { status: 201 });
+        // Devolver el último drink creado para compatibilidad
+        return NextResponse.json({
+            consumption: drinks[drinks.length - 1],
+            count: drinks.length
+        }, { status: 201 });
 
     } catch (error) {
         console.error('Error recording beer consumption:', error);

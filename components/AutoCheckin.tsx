@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { distanceInMeters, CHECKIN_RADIUS_METERS } from "@/lib/geo-utils";
 
 type Stop = {
   id: string;
@@ -18,22 +19,7 @@ type AutoCheckinProps = {
   enabled?: boolean;
 };
 
-const CHECKIN_RADIUS_METERS = 30; // Radio para check-in automático
 const CHECKIN_COOLDOWN_MS = 60000; // 1 minuto entre check-ins automáticos
-
-function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return Infinity;
-  const R = 6371000;
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 export default function AutoCheckin({
   routeId,

@@ -8,16 +8,13 @@ export async function GET(
     try {
         const { id: routeId } = await params;
 
-        // Get all beer consumptions for this route
-        const beerConsumptions = await prisma.beerConsumption.findMany({
-            where: {
-                stop: {
-                    routeId,
-                },
-            },
+        // Get all drinks for this route (consolidado desde BeerConsumption)
+        const drinks = await prisma.drink.findMany({
+            where: { routeId },
             select: {
                 id: true,
                 userId: true,
+                guestId: true,
             },
         });
 
@@ -37,13 +34,14 @@ export async function GET(
 
         // Count beers per participant
         const stats = participants.map((p) => {
-            const userId = p.user?.id || p.guestId;
-            const beersCount = beerConsumptions.filter(
-                (bc) => bc.userId === userId
+            const odId = p.user?.id || p.guestId;
+            // Contar bebidas que coincidan con odId o guestId del participante
+            const beersCount = drinks.filter(
+                (d) => d.userId === odId || d.guestId === p.guestId
             ).length;
 
             return {
-                id: userId || p.id,
+                id: odId || p.id,
                 name: p.user?.name || p.name,
                 image: p.user?.image || null,
                 beersCount,

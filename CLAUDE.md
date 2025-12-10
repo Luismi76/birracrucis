@@ -13,6 +13,8 @@ Birracrucis is a Spanish-language app for organizing bar crawls ("rutas de cerve
 npm run dev          # Start dev server (port 3000)
 npm run build        # Build for production (includes prisma generate)
 npm run lint         # Run ESLint
+npm run test         # Run Vitest tests
+npx vitest run path/to/file.test.ts  # Run single test file
 
 # Database
 npx prisma db push   # Push schema changes to database
@@ -60,9 +62,13 @@ const currentUser = await prisma.user.findUnique({
 });
 ```
 
+**Guest User Support**: Many models (Participant, Drink, Photo, Message) support both `userId` and `guestId` fields. Guests can participate in routes without an account using a client-generated guestId.
+
 **Geolocation**: Uses Haversine formula for distance calculations. Auto check-in radius is 50m, proximity detection is 75m. Geolocation requires HTTPS on mobile.
 
 **API Route Pattern**: All API routes use `{ params }: { params: Promise<{ id: string }> }` pattern (Next.js 15 async params).
+
+**Rate Limiting**: API routes use custom rate limiting via `lib/rate-limit.ts`. Use `rateLimit()` and `getClientIdentifier()` for protected endpoints.
 
 ### Main Components
 - `RouteEditor.tsx` - Create/edit routes with bar search and map

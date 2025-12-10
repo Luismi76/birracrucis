@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import dynamic from "next/dynamic";
 import PhotoCapture, { PhotoCaptureHandle } from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
+import { distanceInMeters, CHECKIN_RADIUS_METERS } from "@/lib/geo-utils";
 
 import NudgeButton from "@/components/NudgeButton";
 import SkipVoteButton from "@/components/SkipVoteButton";
@@ -93,24 +94,7 @@ type RouteProgress = {
   isComplete: boolean;
 };
 
-const RADIUS_METERS = 30;
 const ACCURACY_THRESHOLD = 150;
-
-function distanceInMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) return Infinity;
-  if ((lat1 === 0 && lon1 === 0) || (lat2 === 0 && lon2 === 0)) return Infinity;
-
-  const R = 6371000;
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
 
 const LOCATION_UPDATE_INTERVAL = 10000;
 const PARTICIPANTS_FETCH_INTERVAL = 5000;
@@ -374,10 +358,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     const distToNextBar = distanceInMeters(position.lat, position.lng, nextStop.lat, nextStop.lng);
 
     // Condicion 1: Estamos dentro del radio del siguiente bar
-    const isAtNextBar = distToNextBar <= RADIUS_METERS;
+    const isAtNextBar = distToNextBar <= CHECKIN_RADIUS_METERS;
 
     // Condicion 2: Estamos mas cerca del siguiente bar que del actual Y lejos del actual
-    const isCloserToNextBar = distToNextBar < distToCurrentBar && distToCurrentBar > RADIUS_METERS * 2;
+    const isCloserToNextBar = distToNextBar < distToCurrentBar && distToCurrentBar > CHECKIN_RADIUS_METERS * 2;
 
     // Avanzar automaticamente si estamos en el siguiente bar o claramente yendo hacia el
     if (isAtNextBar || (isCloserToNextBar && isOverPlannedRounds)) {
@@ -597,7 +581,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // 1. GPS says close enough (< RADIUS) OR
   // 2. User manually clicked "Llegué" (manualArrivals has ID)
   // 3. User manually added a round (implies arrival) -> implicit in rounds count? No, better explicit.
-  const isGeographicallyAtBar = distToActive != null && distToActive <= RADIUS_METERS && isPositionReliable();
+  const isGeographicallyAtBar = distToActive != null && distToActive <= CHECKIN_RADIUS_METERS && isPositionReliable();
   const canCheckIn = isGeographicallyAtBar || (activeStop && manualArrivals.has(activeStop.id));
 
   useEffect(() => {
@@ -622,7 +606,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       if (currentUserId && (p.id === currentUserId || (p as any).userId === currentUserId)) return false;
       if (p.lat === 0 && p.lng === 0) return false;
       const dist = distanceInMeters(p.lat, p.lng, stop.lat, stop.lng);
-      return dist <= RADIUS_METERS;
+      return dist <= CHECKIN_RADIUS_METERS;
     });
     const userAtBar = canCheckIn ? 1 : 0;
     return Math.max(1, atBar.length + userAtBar);
@@ -827,7 +811,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       name: p.name,
       image: p.image,
       distance: Math.round(distanceInMeters(p.lat, p.lng, activeStop.lat, activeStop.lng)),
-      isAtBar: distanceInMeters(p.lat, p.lng, activeStop.lat, activeStop.lng) <= RADIUS_METERS,
+      isAtBar: distanceInMeters(p.lat, p.lng, activeStop.lat, activeStop.lng) <= CHECKIN_RADIUS_METERS,
     }));
   }, [participants, activeStop]);
 

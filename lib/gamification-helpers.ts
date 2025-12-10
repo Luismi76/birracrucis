@@ -1,4 +1,4 @@
-// Helper function to record beer consumption
+// Helper function to record beer/drink consumption (usa modelo Drink internamente)
 export async function recordBeerConsumption(
     routeId: string,
     userId: string,
