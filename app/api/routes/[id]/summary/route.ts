@@ -159,13 +159,14 @@ export async function GET(
 
     // Most photos
     const photosByUser = photos.reduce((acc, photo) => {
+      if (!photo.user) return acc;
       const userId = photo.user.id;
       if (!acc[userId]) {
         acc[userId] = { user: photo.user, count: 0 };
       }
       acc[userId].count++;
       return acc;
-    }, {} as Record<string, { user: typeof photos[0]["user"]; count: number }>);
+    }, {} as Record<string, { user: NonNullable<typeof photos[0]["user"]>; count: number }>);
     const photoRanking = Object.values(photosByUser).sort((a, b) => b.count - a.count);
     if (photoRanking.length > 0 && photoRanking[0].count > 0) {
       awards.push({
