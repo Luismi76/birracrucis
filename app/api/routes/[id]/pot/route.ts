@@ -39,11 +39,21 @@ export async function GET(
 
     const potBalance = route.potTotalCollected - route.potTotalSpent;
 
-    // Get transactions
+    // Get transactions with who registered them
     const transactions = await prisma.potTransaction.findMany({
       where: { routeId: id },
       orderBy: { createdAt: 'desc' },
-      take: 50, // Limit to last 50 transactions
+      take: 50,
+      select: {
+        id: true,
+        amount: true,
+        description: true,
+        createdAt: true,
+        registeredByName: true,
+        registeredBy: {
+          select: { id: true, name: true, image: true }
+        }
+      }
     });
 
     return NextResponse.json({
@@ -236,13 +246,53 @@ export async function POST(
       return NextResponse.json({ ok: true, message: "Contribucion registrada" });
     }
 
-    // Accion: Gastar del bote
+    // Accion: Gastar del bote (solo participantes)
     if (action === "spend") {
+      if (!route.potEnabled) {
+        return NextResponse.json({ ok: false, error: "El bote no está activado" }, { status: 400 });
+      }
+
+      // Verificar que es participante de la ruta
+      let isParticipant = false;
+      if (userId) {
+        const participant = await prisma.participant.findUnique({
+          where: { routeId_userId: { routeId: id, userId } }
+        });
+        isParticipant = !!participant;
+      } else if (guestId) {
+        const participant = await prisma.participant.findUnique({
+          where: { routeId_guestId: { routeId: id, guestId } }
+        });
+        isParticipant = !!participant;
+      }
+
+      if (!isParticipant) {
+        return NextResponse.json({ ok: false, error: "Solo los participantes pueden registrar gastos" }, { status: 403 });
+      }
+
       const amount = parseFloat(body.amount);
       const description = body.description || "Gasto";
 
       if (isNaN(amount) || amount <= 0) {
         return NextResponse.json({ ok: false, error: "Cantidad invalida" }, { status: 400 });
+      }
+
+      // Verificar que hay saldo suficiente
+      const currentRoute = await prisma.route.findUnique({
+        where: { id },
+        select: { potTotalCollected: true, potTotalSpent: true }
+      });
+
+      if (!currentRoute) {
+        return NextResponse.json({ ok: false, error: "Ruta no encontrada" }, { status: 404 });
+      }
+
+      const balance = currentRoute.potTotalCollected - currentRoute.potTotalSpent;
+      if (amount > balance) {
+        return NextResponse.json({
+          ok: false,
+          error: `Saldo insuficiente. Disponible: ${balance.toFixed(2)}€`
+        }, { status: 400 });
       }
 
       await prisma.$transaction([
@@ -259,6 +309,8 @@ export async function POST(
             routeId: id,
             amount,
             description,
+            registeredById: userId || undefined,
+            registeredByName: auth.user.name || (isGuest ? "Invitado" : "Usuario"),
           },
         }),
       ]);

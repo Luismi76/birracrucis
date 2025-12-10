@@ -66,6 +66,7 @@ model User {
   predictions          Prediction[]
   barReactions         BarReaction[]
   barChallenges        BarChallenge[]
+  potTransactions      PotTransaction[]
 }
 
 model VerificationToken {
@@ -363,14 +364,19 @@ model PotContribution {
 }
 
 model PotTransaction {
-  id          String   @id @default(cuid())
-  routeId     String
-  amount      Float
-  description String?
-  createdAt   DateTime @default(now())
-  route       Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  id             String   @id @default(cuid())
+  routeId        String
+  amount         Float
+  description    String?
+  createdAt      DateTime @default(now())
+  // Quién registró el gasto (auditoría)
+  registeredById String?
+  registeredByName String?
+  registeredBy   User?    @relation(fields: [registeredById], references: [id], onDelete: SetNull)
+  route          Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
   @@index([routeId, createdAt(sort: Desc)])
+  @@index([registeredById])
 }
 
 // ========== GAMIFICATION MODELS ==========
