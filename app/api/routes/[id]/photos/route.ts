@@ -124,7 +124,10 @@ export async function POST(
     return NextResponse.json({ ok: true, photo }, { status: 201 });
   } catch (error) {
     console.error("Error en POST /api/routes/[id]/photos:", error);
-    return NextResponse.json({ ok: false, error: "Error al subir foto" }, { status: 500 });
+    return NextResponse.json({
+      ok: false,
+      error: `Error al subir foto: ${(error as any)?.message || "Error desconocido"}`
+    }, { status: 500 });
   }
 }
 
