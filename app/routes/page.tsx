@@ -18,9 +18,12 @@ type RouteData = {
   isTemplate: boolean;
   templateId: string | null;
   description: string | null;
-  stops: any[];
+  stops: { name: string; address?: string | null }[];
   _count: { participants: number; editions?: number };
   creator?: { name: string | null };
+  startMode?: "manual" | "scheduled" | "all_present";
+  potEnabled?: boolean;
+  potAmountPerPerson?: number | null;
 };
 
 // Helper component for accordion sections
@@ -79,6 +82,7 @@ export default function RoutesPage() {
   // Create edition modal state
   const [editionTemplateId, setEditionTemplateId] = useState<string | null>(null);
   const [editionTemplateName, setEditionTemplateName] = useState("");
+  const [editionTemplateData, setEditionTemplateData] = useState<RouteData | null>(null);
 
   useEffect(() => {
     fetchRoutes();
@@ -313,6 +317,7 @@ export default function RoutesPage() {
                   onClick={() => {
                     setEditionTemplateId(template.id);
                     setEditionTemplateName(template.name);
+                    setEditionTemplateData(template);
                   }}
                   className="flex-1 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2 shadow-md"
                 >
@@ -400,10 +405,15 @@ export default function RoutesPage() {
             onClose={() => {
               setEditionTemplateId(null);
               setEditionTemplateName("");
+              setEditionTemplateData(null);
               fetchRoutes(); // Refresh routes after creating edition
             }}
             templateId={editionTemplateId}
             templateName={editionTemplateName}
+            templateStartMode={editionTemplateData?.startMode as "manual" | "scheduled" | "all_present" | undefined}
+            templateStops={editionTemplateData?.stops?.map(s => ({ name: s.name, address: s.address }))}
+            templatePotEnabled={editionTemplateData?.potEnabled}
+            templatePotAmount={editionTemplateData?.potAmountPerPerson}
           />
         )
       }

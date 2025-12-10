@@ -2,15 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { X, Calendar, Clock, Users, Coins } from "lucide-react";
+import { X, Calendar, Clock, Users, Coins, MapPin } from "lucide-react";
 import { toast } from "sonner";
 import ShareInviteCode from "./ShareInviteCode";
+
+type TemplateStop = {
+    name: string;
+    address?: string | null;
+};
 
 type CreateEditionModalProps = {
     isOpen: boolean;
     onClose: () => void;
     templateId: string;
     templateName: string;
+    templateStartMode?: "manual" | "scheduled" | "all_present";
+    templateStops?: TemplateStop[];
+    templatePotEnabled?: boolean;
+    templatePotAmount?: number | null;
 };
 
 export default function CreateEditionModal({
@@ -18,6 +27,10 @@ export default function CreateEditionModal({
     onClose,
     templateId,
     templateName,
+    templateStartMode = "manual",
+    templateStops = [],
+    templatePotEnabled = false,
+    templatePotAmount = null,
 }: CreateEditionModalProps) {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -33,16 +46,17 @@ export default function CreateEditionModal({
     // Success state
     const [createdRoute, setCreatedRoute] = useState<{ id: string, name: string, inviteCode: string } | null>(null);
 
-    // Reset when opening
+    // Reset when opening - heredar valores de la plantilla
     useEffect(() => {
         if (isOpen && !createdRoute) {
             setDate(new Date().toISOString().slice(0, 10)); // Default today
-            setStartMode("manual");
-            setPotEnabled(false);
+            setStartMode(templateStartMode); // Heredar modo de inicio
+            setPotEnabled(templatePotEnabled); // Heredar config de bote
+            setPotAmount(templatePotAmount ? templatePotAmount.toString() : "");
             setCreatedRoute(null);
             setName(templateName);
         }
-    }, [isOpen, createdRoute, templateName]);
+    }, [isOpen, createdRoute, templateName, templateStartMode, templatePotEnabled, templatePotAmount]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -162,34 +176,88 @@ export default function CreateEditionModal({
 
                 {/* Form */}
                 <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
-                    {/* Nombre */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2">
-                            Nombre de la Ruta
-                        </label>
-                        <input
-                            type="text"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
-                            placeholder="Ej: Birracrucis de Navidad"
-                            required
-                        />
+                    {/* Preview de bares */}
+                    {templateStops.length > 0 && (
+                        <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                            <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase mb-2">
+                                <MapPin className="w-3 h-3" />
+                                {templateStops.length} bares en esta ruta
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                                {templateStops.slice(0, 5).map((stop, i) => (
+                                    <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-white rounded-lg text-xs text-slate-600 border border-slate-200">
+                                        <span className="w-4 h-4 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center text-[10px] font-bold">{i + 1}</span>
+                                        {stop.name}
+                                    </span>
+                                ))}
+                                {templateStops.length > 5 && (
+                                    <span className="px-2 py-1 text-xs text-slate-400">+{templateStops.length - 5} más</span>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Nombre y Fecha en fila */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                                Nombre
+                            </label>
+                            <input
+                                type="text"
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
+                                placeholder="Nombre"
+                                required
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1 flex items-center gap-1">
+                                <Calendar className="w-3 h-3" />
+                                Fecha <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                                type="date"
+                                value={date}
+                                onChange={(e) => setDate(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
+                                required
+                            />
+                        </div>
                     </div>
 
-                    {/* Fecha */}
-                    <div>
-                        <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <Calendar className="w-4 h-4" />
-                            Fecha *
+                    {/* Bote Común - DESTACADO */}
+                    <div className={`rounded-xl p-4 border-2 transition-all ${potEnabled ? 'bg-emerald-50 border-emerald-300' : 'bg-slate-50 border-slate-200'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={potEnabled}
+                                onChange={(e) => setPotEnabled(e.target.checked)}
+                                className="w-5 h-5 text-emerald-500 rounded"
+                            />
+                            <div className="flex-1">
+                                <div className="font-bold text-slate-800 flex items-center gap-2">
+                                    <Coins className="w-4 h-4 text-emerald-600" />
+                                    Bote Común
+                                </div>
+                                <div className="text-xs text-slate-500">Gestionar gastos compartidos</div>
+                            </div>
+                            {potEnabled && (
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="0"
+                                        value={potAmount}
+                                        onChange={(e) => setPotAmount(e.target.value)}
+                                        className="w-16 px-2 py-1 bg-white border border-emerald-300 rounded-lg text-center font-bold text-emerald-700"
+                                        placeholder="20"
+                                    />
+                                    <span className="text-emerald-700 font-bold">€</span>
+                                </div>
+                            )}
                         </label>
-                        <input
-                            type="date"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
-                            required
-                        />
                     </div>
 
                     {/* Modo de Inicio */}
@@ -269,45 +337,6 @@ export default function CreateEditionModal({
                             />
                         </div>
                     )}
-
-                    {/* Bote Común */}
-                    <div className="border-t pt-4">
-                        <label className="flex items-center gap-3 cursor-pointer">
-                            <input
-                                type="checkbox"
-                                checked={potEnabled}
-                                onChange={(e) => setPotEnabled(e.target.checked)}
-                                className="w-5 h-5 text-amber-500 rounded"
-                            />
-                            <div className="flex-1">
-                                <div className="font-bold text-slate-800 flex items-center gap-2">
-                                    <Coins className="w-4 h-4" />
-                                    Activar Bote Común
-                                </div>
-                                <div className="text-xs text-slate-500">Para gestionar gastos compartidos</div>
-                            </div>
-                        </label>
-
-                        {potEnabled && (
-                            <div className="mt-3">
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    Cantidad por persona (€)
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={potAmount}
-                                    onChange={(e) => setPotAmount(e.target.value)}
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all"
-                                    placeholder="Ej: 20.00"
-                                />
-                            </div>
-                        )}
-                    </div>
-
-
-
 
                 </form>
 
