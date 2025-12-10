@@ -45,6 +45,11 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
     return acc;
   }, {} as Record<string, { name: string; photos: Photo[]; stopId: string }>);
 
+  console.log("Session:", session);
+  console.log("Filtered Photos:", filteredPhotos);
+  console.log("Grouped Photos:", groupedPhotos);
+
+
   // Sort groups based on Route Stops order
   const sortedGroups = Object.values(groupedPhotos).sort((a, b) => {
     if (a.stopId === "general") return 1; // General at the end (or beginning?)
