@@ -387,8 +387,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             if (selectedBars.size < minBars) {
                 throw new Error(isDiscovery ? "Selecciona el punto de partida." : "Selecciona al menos 2 bares para crear una ruta.");
             }
-            if (!name.trim() || !date) {
-                throw new Error("Nombre y fecha son obligatorios.");
+            if (!name.trim()) {
+                throw new Error("El nombre de la ruta es obligatorio.");
             }
 
             const orderedBars = orderedIds.map((id) => selectedBars.get(id)).filter((b): b is BarConfig => !!b);
@@ -483,7 +483,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const handleNext = () => {
         if (currentStep === 0) {
             if (!name.trim()) return toast.error("El nombre es obligatorio");
-            if (!date) return toast.error("La fecha es obligatoria");
+            // Date is now optional for templates
         }
         if (currentStep === 1) {
             const minBars = isDiscovery ? 1 : 2;

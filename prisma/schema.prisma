@@ -80,7 +80,7 @@ model VerificationToken {
 model Route {
   id                 String            @id @default(cuid())
   name               String
-  date               DateTime
+  date               DateTime?
   createdAt          DateTime          @default(now())
   inviteCode         String?           @unique
   startMode          String            @default("manual")

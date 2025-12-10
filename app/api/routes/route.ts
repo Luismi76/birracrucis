@@ -68,9 +68,9 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as CreateRouteBody;
     const { name, date, stops, startMode, startTime, hasEndTime, endTime } = body;
 
-    if (!name || !date || !Array.isArray(stops) || stops.length === 0) {
+    if (!name || !Array.isArray(stops) || stops.length === 0) {
       return NextResponse.json(
-        { ok: false, error: "Datos inválidos: name, date y stops son obligatorios." },
+        { ok: false, error: "Datos inválidos: name y stops son obligatorios." },
         { status: 400 }
       );
     }
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     const route = await prisma.route.create({
       data: {
         name,
-        date: new Date(date),
+        date: date ? new Date(date) : null,
         inviteCode,
         creatorId: userId || null,
         // Public visibility

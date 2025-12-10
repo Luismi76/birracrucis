@@ -51,7 +51,9 @@ export default function InfoStep({
                 </div>
 
                 <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Fecha</label>
+                    <label className="text-sm font-bold text-slate-700 ml-1">
+                        Fecha <span className="font-normal text-slate-400 text-xs">(Opcional para plantilla)</span>
+                    </label>
                     <div className="relative">
                         <span className="absolute left-4 top-3.5 text-xl">📅</span>
                         <input
