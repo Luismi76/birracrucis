@@ -31,7 +31,7 @@ export default function RouteChat({ routeId, currentUserId, onClose, onUnreadCou
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const res = await fetch(`/api/routes/${routeId}/messages`);
+
         if (res.ok) {
           const data = await res.json();
           setMessages(data.messages || []);
