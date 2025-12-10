@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/user/data - Exportar todos los datos del usuario (Derecho de Acceso/Portabilidad)
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
-            return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
         const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
+            where: { id: auth.user.id },
             include: {
                 // Rutas creadas
                 createdRoutes: {
@@ -154,9 +153,9 @@ export async function GET() {
 // DELETE /api/user/data - Eliminar cuenta y todos los datos (Derecho de Supresión)
 export async function DELETE(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
-            return NextResponse.json({ ok: false, error: "No autorizado" }, { status: 401 });
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
         // Verificar confirmación
@@ -168,17 +167,9 @@ export async function DELETE(req: NextRequest) {
             );
         }
 
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
-        });
-
-        if (!user) {
-            return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-        }
-
         // Eliminar el usuario (cascade eliminará todos los datos relacionados)
         await prisma.user.delete({
-            where: { id: user.id },
+            where: { id: auth.user.id },
         });
 
         return NextResponse.json({

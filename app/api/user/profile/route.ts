@@ -1,18 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 // GET - Obtener perfil del usuario con estadísticas
 export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    let user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+    const user = await prisma.user.findUnique({
+      where: { id: auth.user.id },
       include: {
         badges: {
           include: {
@@ -23,28 +22,9 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Si el usuario no existe (ej: borrado manualmente), lo recreamos
     if (!user) {
-      console.log("Usuario no encontrado, recreando:", session.user.email);
-      user = await prisma.user.create({
-        data: {
-          email: session.user.email,
-          name: session.user.name || "Nuevo Usuario",
-          image: session.user.image || `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}`,
-          onboardingCompleted: false, // Forzar onboarding
-        },
-        include: {
-          badges: {
-            include: {
-              badge: true,
-            },
-            orderBy: { earnedAt: "desc" },
-          },
-        },
-      });
+      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
     }
-
-    if (!user) throw new Error("Could not create user");
 
     // Estadísticas
     const [
@@ -117,9 +97,9 @@ export async function GET(req: NextRequest) {
 // PATCH - Actualizar configuracion del usuario
 export async function PATCH(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const body = await req.json();
@@ -151,7 +131,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     const user = await prisma.user.update({
-      where: { email: session.user.email },
+      where: { id: auth.user.id },
       data: updateData,
       select: {
         id: true,

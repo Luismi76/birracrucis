@@ -1,30 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
-// POST - Enviar un nudge (meter prisa)
 // POST - Enviar un nudge (meter prisa)
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    let userId: string | undefined;
-    let guestId: string | undefined;
-
-    // Check auth
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-      userId = user?.id;
-    } else {
-      guestId = req.cookies.get("guestId")?.value;
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    if (!userId && !guestId) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-    }
+    const { userId, guestId } = getUserIds(auth.user);
 
     const { id: routeId } = await params;
     const body = await req.json();
@@ -58,11 +47,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    const guestId = req.cookies.get("guestId")?.value;
-
-    if (!session?.user?.email && !guestId) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const { id: routeId } = await params;

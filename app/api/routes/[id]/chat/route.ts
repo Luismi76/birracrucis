@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 // GET - Obtener mensajes del chat
@@ -17,31 +16,22 @@ export async function GET(
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    const { cookies } = await import('next/headers');
-    const cookieStore = await cookies();
-    const guestId = cookieStore.get("guestId")?.value;
-
-    // Allow both authenticated users and guests
-    if (!session?.user?.email && !guestId) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const { userId, guestId } = getUserIds(auth.user);
     const { id: routeId } = await params;
 
     // Verify user/guest is a participant
     let isParticipant = false;
 
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user.email }
+    if (userId) {
+      const participant = await prisma.participant.findUnique({
+        where: { routeId_userId: { routeId, userId } }
       });
-      if (user) {
-        const participant = await prisma.participant.findUnique({
-          where: { routeId_userId: { routeId, userId: user.id } }
-        });
-        isParticipant = !!participant;
-      }
+      isParticipant = !!participant;
     } else if (guestId) {
       const participant = await prisma.participant.findUnique({
         where: { routeId_guestId: { routeId, guestId } }
@@ -122,39 +112,24 @@ export async function POST(
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    const { cookies } = await import('next/headers');
-    const cookieStore = await cookies();
-    const guestId = cookieStore.get("guestId")?.value;
-
-    // Allow both authenticated users and guests
-    if (!session?.user?.email && !guestId) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const { userId, guestId } = getUserIds(auth.user);
     const { id: routeId } = await params;
 
-    // Verify user/guest is a participant and get user info if authenticated
+    // Verify user/guest is a participant and get user info
     let isParticipant = false;
-    let userId: string | null = null;
-    let userName: string | null = null;
-    let userImage: string | null = null;
+    let userName: string | null = auth.user.name;
+    let userImage: string | null = auth.user.type === "user" ? auth.user.image || null : null;
 
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user.email }
+    if (userId) {
+      const participant = await prisma.participant.findUnique({
+        where: { routeId_userId: { routeId, userId } }
       });
-      if (user) {
-        const participant = await prisma.participant.findUnique({
-          where: { routeId_userId: { routeId, userId: user.id } }
-        });
-        if (participant) {
-          isParticipant = true;
-          userId = user.id;
-          userName = user.name;
-          userImage = user.image;
-        }
-      }
+      isParticipant = !!participant;
     } else if (guestId) {
       const participant = await prisma.participant.findUnique({
         where: { routeId_guestId: { routeId, guestId } }

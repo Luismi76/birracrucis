@@ -1,30 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 // GET - Obtener mis invitaciones pendientes
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
+    const userId = auth.user.id;
+    const userEmail = auth.user.email;
 
     // Buscar invitaciones para este usuario (por ID o por email)
     const invitations = await prisma.invitation.findMany({
       where: {
         OR: [
-          { invitedUserId: user.id },
-          { invitedEmail: session.user.email.toLowerCase() },
+          { invitedUserId: userId },
+          { invitedEmail: userEmail.toLowerCase() },
         ],
         status: "pending",
       },
@@ -53,18 +47,13 @@ export async function GET() {
 // POST - Responder a una invitación (aceptar/rechazar)
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
+    const userId = auth.user.id;
+    const userEmail = auth.user.email;
 
     const body = await req.json();
     const { invitationId, action } = body;
@@ -78,8 +67,8 @@ export async function POST(req: NextRequest) {
       where: {
         id: invitationId,
         OR: [
-          { invitedUserId: user.id },
-          { invitedEmail: session.user.email.toLowerCase() },
+          { invitedUserId: userId },
+          { invitedEmail: userEmail.toLowerCase() },
         ],
         status: "pending",
       },
@@ -100,13 +89,13 @@ export async function POST(req: NextRequest) {
           data: {
             status: "accepted",
             respondedAt: new Date(),
-            invitedUserId: user.id, // Vincular al usuario si estaba por email
+            invitedUserId: userId, // Vincular al usuario si estaba por email
           },
         }),
         prisma.participant.create({
           data: {
             routeId: invitation.routeId,
-            userId: user.id,
+            userId,
             isActive: true,
           },
         }),
@@ -125,7 +114,7 @@ export async function POST(req: NextRequest) {
         data: {
           status: "rejected",
           respondedAt: new Date(),
-          invitedUserId: user.id,
+          invitedUserId: userId,
         },
       });
 

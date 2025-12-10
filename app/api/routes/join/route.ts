@@ -1,8 +1,7 @@
 // app/api/routes/join/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 type JoinRouteBody = {
@@ -20,7 +19,6 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const session = await getServerSession(authOptions);
     const body = (await req.json());
     const { inviteCode, guestName, guestId: existingGuestId } = body;
 
@@ -33,16 +31,14 @@ export async function POST(req: NextRequest) {
     let name: string | null = null;
     let avatar: string | null = null;
 
+    // Intentar obtener usuario actual
+    const auth = await getCurrentUser(req);
+
     // 1. Caso Usuario Autenticado
-    if (session?.user?.email) {
-      const user = await prisma.user.upsert({
-        where: { email: session.user.email },
-        update: { name: session.user.name, image: session.user.image },
-        create: { email: session.user.email, name: session.user.name, image: session.user.image },
-      });
-      userId = user.id;
-      name = user.name;
-      avatar = user.image;
+    if (auth.ok && auth.user.type === "user") {
+      userId = auth.user.id;
+      name = auth.user.name;
+      avatar = auth.user.image || null;
     }
     // 2. Caso Invitado
     else {
@@ -176,20 +172,23 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "Código no válido" }, { status: 404 });
     }
 
-    const session = await getServerSession(authOptions);
+    const auth = await getCurrentUser(req);
     let isParticipant = false;
 
-    if (session?.user?.id) {
-      const p = await prisma.participant.findUnique({
-        where: { routeId_userId: { routeId: route.id, userId: session.user.id } }
-      });
-      isParticipant = !!p;
-    } else if (guestId) {
-      // @ts-ignore
-      const p = await prisma.participant.findUnique({
-        where: { routeId_guestId: { routeId: route.id, guestId } }
-      });
-      isParticipant = !!p;
+    if (auth.ok) {
+      const { userId: authUserId, guestId: authGuestId } = getUserIds(auth.user);
+      if (authUserId) {
+        const p = await prisma.participant.findUnique({
+          where: { routeId_userId: { routeId: route.id, userId: authUserId } }
+        });
+        isParticipant = !!p;
+      } else if (authGuestId || guestId) {
+        const effectiveGuestId = authGuestId || guestId;
+        const p = await prisma.participant.findUnique({
+          where: { routeId_guestId: { routeId: route.id, guestId: effectiveGuestId! } }
+        });
+        isParticipant = !!p;
+      }
     }
 
     const response = NextResponse.json({
@@ -204,10 +203,10 @@ export async function GET(req: NextRequest) {
         creator: route.creator,
       },
       isParticipant,
-      isAuthenticated: !!session?.user,
+      isAuthenticated: auth.ok && auth.user.type === "user",
     });
 
-    if (isParticipant && guestId && !session?.user) {
+    if (isParticipant && guestId && !(auth.ok && auth.user.type === "user")) {
       response.cookies.set("guestId", guestId, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

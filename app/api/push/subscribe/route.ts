@@ -1,23 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 // POST - Guardar suscripción push
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
+    const userId = auth.user.id;
 
     const body = await req.json();
     const { subscription } = body;
@@ -30,13 +23,13 @@ export async function POST(req: NextRequest) {
     await prisma.pushSubscription.upsert({
       where: { endpoint: subscription.endpoint },
       update: {
-        userId: user.id,
+        userId,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
         updatedAt: new Date(),
       },
       create: {
-        userId: user.id,
+        userId,
         endpoint: subscription.endpoint,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
@@ -53,9 +46,9 @@ export async function POST(req: NextRequest) {
 // DELETE - Eliminar suscripción push
 export async function DELETE(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const body = await req.json();

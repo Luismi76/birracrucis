@@ -3,20 +3,28 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 
-export type CurrentUser = {
+export type AuthenticatedUser = {
   type: "user";
   id: string;
   email: string;
   name: string | null;
   image: string | null;
-} | {
+};
+
+export type GuestUser = {
   type: "guest";
   id: string;
   name: string | null;
 };
 
+export type CurrentUser = AuthenticatedUser | GuestUser;
+
 export type AuthResult =
   | { ok: true; user: CurrentUser }
+  | { ok: false; error: string; status: 401 | 403 | 404 };
+
+export type AuthenticatedResult =
+  | { ok: true; user: AuthenticatedUser }
   | { ok: false; error: string; status: 401 | 403 | 404 };
 
 /**
@@ -85,7 +93,7 @@ export async function getCurrentUser(req: NextRequest): Promise<AuthResult> {
  * Obtiene solo usuarios autenticados (no guests)
  * Útil para endpoints que requieren cuenta registrada
  */
-export async function getAuthenticatedUser(req: NextRequest): Promise<AuthResult> {
+export async function getAuthenticatedUser(req: NextRequest): Promise<AuthenticatedResult> {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.email) {

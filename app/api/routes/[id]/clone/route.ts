@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 function generateInviteCode(): string {
     return nanoid(8).toUpperCase();
@@ -13,26 +12,12 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        let userId = session?.user?.id || null;
-
-        // Ensure user exists if session is present (ignoring complex auth logic for now, similar to create route)
-        if (session?.user?.email) {
-            const user = await prisma.user.upsert({
-                where: { email: session.user.email },
-                update: {},
-                create: {
-                    email: session.user.email,
-                    name: session.user.name,
-                    image: session.user.image,
-                },
-            });
-            userId = user.id;
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
 
-        if (!userId) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-        }
+        const userId = auth.user.id;
 
         const { id } = await params;
 
