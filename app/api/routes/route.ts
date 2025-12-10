@@ -84,21 +84,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Generar código de invitación único
-    let inviteCode = generateInviteCode();
-    let attempts = 0;
-    while (attempts < 5) {
-      const existing = await prisma.route.findUnique({ where: { inviteCode } });
-      if (!existing) break;
-      inviteCode = generateInviteCode();
-      attempts++;
-    }
-
+    // Las plantillas NO tienen inviteCode - solo las ediciones
     const route = await prisma.route.create({
       data: {
         name,
         date: (date && !isNaN(Date.parse(date))) ? new Date(date) : null,
-        inviteCode,
         creatorId: userId || null,
         // Public visibility
         isPublic: body.isPublic ?? false,
