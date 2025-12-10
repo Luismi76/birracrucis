@@ -21,7 +21,7 @@ export default async function EditRoutePage({ params }: EditRoutePageProps) {
     // Serializar fechas para pasar a Client Component
     const serializedRoute = {
         ...route,
-        date: route.date.toISOString(),
+        date: route.date ? route.date.toISOString() : null,
         startTime: route.startTime ? route.startTime.toISOString() : null,
         endTime: route.endTime ? route.endTime.toISOString() : null,
         startMode: route.startMode as "manual" | "scheduled" | "all_present",

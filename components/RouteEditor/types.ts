@@ -34,7 +34,7 @@ export type RouteStop = {
 export type RouteData = {
     id: string;
     name: string;
-    date: string; // ISO string
+    date: string | null; // ISO string
     stops: RouteStop[];
     // Campos de configuración de tiempo
     startMode: "manual" | "scheduled" | "all_present";
