@@ -50,20 +50,7 @@ export default function InfoStep({
                     </div>
                 </div>
 
-                <div className="space-y-2">
-                    <label className="text-sm font-bold text-slate-700 ml-1">
-                        Fecha <span className="font-normal text-slate-400 text-xs">(Opcional para plantilla)</span>
-                    </label>
-                    <div className="relative">
-                        <span className="absolute left-4 top-3.5 text-xl">📅</span>
-                        <input
-                            type="date"
-                            className="w-full pl-12 p-4 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-0 outline-none transition-all bg-white text-lg font-medium"
-                            value={date}
-                            onChange={(e) => onDateChange(e.target.value)}
-                        />
-                    </div>
-                </div>
+
 
                 <div className="pt-4 space-y-4">
                     {/* Discovery Mode Toggle */}

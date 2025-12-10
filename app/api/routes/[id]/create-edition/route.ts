@@ -96,10 +96,18 @@ export async function POST(
 
                 // Añadir al creador como participante
                 participants: {
-                    create: {
-                        userId: user.id,
-                        isActive: true,
-                    },
+                    create: [
+                        { userId: user.id, isActive: true },
+                        // Añadir invitados si los hay
+                        ...(body.invitedUserIds && Array.isArray(body.invitedUserIds) ?
+                            body.invitedUserIds.map((invitedId: string) => ({
+                                userId: invitedId,
+                                isActive: false, // Invitados empiezan inactivos hasta que acepten? O activos directamente si es "Invitar"?
+                                // En este sistema parece que Participation es membresía.
+                                // Si es create-edition, el creador está "invitando" a gente que YA son usuarios (amigos).
+                            }))
+                            : [])
+                    ],
                 },
             },
             include: {

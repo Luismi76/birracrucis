@@ -19,7 +19,7 @@ type StopInput = {
 
 type CreateRouteBody = {
   name: string;
-  date: string;
+  date?: string | null;
   stops: StopInput[];
   // Campos de configuración de tiempo
   startMode?: "manual" | "scheduled" | "all_present";
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
     const route = await prisma.route.create({
       data: {
         name,
-        date: date ? new Date(date) : null,
+        date: (date && !isNaN(Date.parse(date))) ? new Date(date) : null,
         inviteCode,
         creatorId: userId || null,
         // Public visibility
@@ -146,6 +146,52 @@ export async function POST(req: NextRequest) {
       },
       include: { stops: true },
     });
+
+    // Si es modo descubrimiento, crear automáticamente una EDICIÓN ACTIVA
+    if (body.isDiscovery && userId) {
+      // Crear código de invitación para la edición
+      let editionInviteCode = generateInviteCode();
+      let attCheck = 0;
+      while (attCheck < 5) {
+        const temp = await prisma.route.findUnique({ where: { inviteCode: editionInviteCode } });
+        if (!temp) break;
+        editionInviteCode = generateInviteCode();
+        attCheck++;
+      }
+
+      const activeEdition = await prisma.route.create({
+        data: {
+          name: route.name, // Mismo nombre que la plantilla
+          date: new Date(), // Fecha actual
+          creatorId: userId,
+          startMode: "manual",
+          isTemplate: false,
+          templateId: route.id,
+          inviteCode: editionInviteCode,
+          status: "active", // Ya está activa o lista para empezar? "pending" es mejor si startMode=manual, pero el usuario quiere empezar ya. Pongamos "pending" para que le de a "Empezar" en la UI.
+          // Copiar paradas (en discovery suele ser solo 1 inicial)
+          stops: {
+            create: route.stops.map(s => ({
+              name: s.name,
+              address: s.address,
+              lat: s.lat,
+              lng: s.lng,
+              order: s.order,
+              plannedRounds: s.plannedRounds,
+              maxRounds: s.maxRounds,
+              googlePlaceId: s.googlePlaceId,
+              stayDuration: s.stayDuration
+            }))
+          },
+          participants: {
+            create: { userId }
+          }
+        }
+      });
+
+      // Devolver la edición ACTIVA en lugar de la plantilla
+      return NextResponse.json({ ok: true, route: activeEdition, isDiscoveryRedirect: true }, { status: 201 });
+    }
 
     return NextResponse.json({ ok: true, route }, { status: 201 });
   } catch (error) {
