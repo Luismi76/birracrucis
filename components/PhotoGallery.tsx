@@ -22,6 +22,21 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [filter, setFilter] = useState<'all' | 'challenges'>('all');
 
+  const { data: session } = useSession();
+  const deletePhoto = useDeletePhoto(routeId);
+
+  const handleDelete = async (photo: Photo) => {
+    if (!confirm("¿Estás seguro de que quieres eliminar esta foto?")) return;
+
+    try {
+      await deletePhoto.mutateAsync(photo.id);
+      setSelectedPhoto(null);
+    } catch (error) {
+      console.error("Error al eliminar:", error);
+      alert("No se pudo eliminar la foto");
+    }
+  };
+
   const { data, isLoading } = usePhotos(routeId);
   const photos = data?.photos ?? [];
   const hashtag = data?.hashtag ?? "";
