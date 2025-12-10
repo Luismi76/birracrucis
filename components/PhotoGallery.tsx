@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import OptimizedImage from "@/components/ui/OptimizedImage";
+import { useSession } from "next-auth/react";
+import { usePhotos, useDeletePhoto, type Photo } from "@/hooks/usePhotos";
 
 
 type StopInfo = {
