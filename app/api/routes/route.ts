@@ -27,6 +27,10 @@ type CreateRouteBody = {
   endTime?: string | null; // ISO string
   isPublic?: boolean;
   isDiscovery?: boolean;
+  // Opción para crear edición directamente
+  createEditionNow?: boolean;
+  potEnabled?: boolean;
+  potAmountPerPerson?: number | null;
 };
 
 // Genera un código de invitación único (8 caracteres, alfanumérico)
@@ -169,6 +173,56 @@ export async function POST(req: NextRequest) {
 
       // Devolver la edición ACTIVA en lugar de la plantilla
       return NextResponse.json({ ok: true, route: activeEdition, isDiscoveryRedirect: true }, { status: 201 });
+    }
+
+    // Si el usuario marcó "Crear edición ahora", crear plantilla + edición en un solo paso
+    if (body.createEditionNow && userId) {
+      let editionInviteCode = generateInviteCode();
+      let attCheck = 0;
+      while (attCheck < 5) {
+        const temp = await prisma.route.findUnique({ where: { inviteCode: editionInviteCode } });
+        if (!temp) break;
+        editionInviteCode = generateInviteCode();
+        attCheck++;
+      }
+
+      const edition = await prisma.route.create({
+        data: {
+          name: route.name,
+          date: date ? new Date(date) : new Date(),
+          creatorId: userId,
+          startMode: startMode ?? "manual",
+          startTime: startTime ? new Date(startTime) : null,
+          hasEndTime: hasEndTime ?? false,
+          endTime: endTime ? new Date(endTime) : null,
+          isTemplate: false,
+          templateId: route.id,
+          inviteCode: editionInviteCode,
+          status: "pending",
+          potEnabled: body.potEnabled ?? false,
+          potAmountPerPerson: body.potAmountPerPerson ?? null,
+          stops: {
+            create: route.stops.map(s => ({
+              name: s.name,
+              address: s.address,
+              lat: s.lat,
+              lng: s.lng,
+              order: s.order,
+              plannedRounds: s.plannedRounds,
+              maxRounds: s.maxRounds,
+              googlePlaceId: s.googlePlaceId,
+              stayDuration: s.stayDuration
+            }))
+          },
+          participants: {
+            create: { userId }
+          }
+        },
+        include: { stops: true }
+      });
+
+      // Devolver plantilla + edición creada
+      return NextResponse.json({ ok: true, route, edition }, { status: 201 });
     }
 
     return NextResponse.json({ ok: true, route }, { status: 201 });
