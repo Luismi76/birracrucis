@@ -71,8 +71,8 @@ export function useUploadPhoto(routeId: string) {
             queryClient.setQueryData<PhotosResponse>(["photos", routeId], (old) =>
                 old ? { ...old, photos: [newPhoto, ...old.photos] } : { photos: [newPhoto], hashtag: "", routeName: "" }
             );
-            );
-},
+
+        },
     });
 }
 
