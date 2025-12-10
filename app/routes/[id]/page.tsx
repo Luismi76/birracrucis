@@ -56,7 +56,18 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     getServerSession(authOptions),
     prisma.route.findUnique({
       where: { id },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        date: true,
+        inviteCode: true,
+        status: true,
+        startTime: true,
+        actualStartTime: true,
+        actualEndTime: true,
+        isPublic: true,
+        isDiscovery: true,
+        creatorId: true,
         stops: {
           orderBy: { order: "asc" },
         },
@@ -174,6 +185,8 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
       creatorId={route.creator?.id || null}
       participantsCount={route._count.participants}
       isDiscovery={route.isDiscovery}
+      actualStartTime={route.actualStartTime?.toISOString() || null}
+      actualEndTime={route.actualEndTime?.toISOString() || null}
     />
   );
 }

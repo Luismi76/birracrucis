@@ -27,6 +27,8 @@ type CompletedRouteSummaryProps = {
     onViewGroup: () => void;
     onExportPDF?: () => void;
     onShare?: () => void;
+    actualStartTime?: string | null;
+    actualEndTime?: string | null;
 };
 
 type RouteStats = {
@@ -44,6 +46,25 @@ type ParticipantRanking = {
     rounds: number;
 };
 
+// Calcular duración formateada a partir de dos fechas ISO
+function calculateDuration(startTime?: string | null, endTime?: string | null): string {
+    if (!startTime || !endTime) return "-";
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const diffMs = end.getTime() - start.getTime();
+
+    if (diffMs < 0) return "-";
+
+    const totalMinutes = Math.floor(diffMs / 60000);
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+
+    if (hours === 0) return `${minutes}m`;
+    if (minutes === 0) return `${hours}h`;
+    return `${hours}h ${minutes}m`;
+}
+
 export default function CompletedRouteSummary({
     routeId,
     routeName,
@@ -55,6 +76,8 @@ export default function CompletedRouteSummary({
     onViewGroup,
     onExportPDF,
     onShare,
+    actualStartTime,
+    actualEndTime,
 }: CompletedRouteSummaryProps) {
     const [rankings, setRankings] = useState<ParticipantRanking[]>([]);
     const [loading, setLoading] = useState(true);
@@ -64,7 +87,7 @@ export default function CompletedRouteSummary({
         totalBars: stops.length,
         totalRounds: stops.reduce((sum, stop) => sum + stop.actualRounds, 0),
         totalParticipants: participants.length,
-        duration: "2h 30m", // TODO: Calcular duración real
+        duration: calculateDuration(actualStartTime, actualEndTime),
     };
 
     // Cargar rankings

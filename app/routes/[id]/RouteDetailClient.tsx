@@ -87,7 +87,6 @@ const DEFAULT_BEER_PRICE = 1.50;
 const DEFAULT_TAPA_PRICE = 3.00;
 
 type RouteDetailClientProps = {
-  // ... existing props ...
   stops: StopClient[];
   routeId: string;
   routeName: string;
@@ -104,9 +103,11 @@ type RouteDetailClientProps = {
   showAccessibilityPanel?: boolean;
   onCloseAccessibilityPanel?: () => void;
   isDiscovery?: boolean;
+  actualStartTime?: string | null;
+  actualEndTime?: string | null;
 };
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, creatorId, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, creatorId, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false, actualStartTime, actualEndTime }: RouteDetailClientProps) {
   const { data: session } = useSession();
 
   // Geolocalización
@@ -137,6 +138,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Tabs
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
+
+  // Estado para centrar el mapa en una ubicación específica
+  const [mapFocusLocation, setMapFocusLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Auto-checkin silencioso
   const [autoCheckinEnabled, setAutoCheckinEnabled] = useState(true);
@@ -798,6 +802,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
       distance,
       estimatedArrival: etaString,
       googlePlaceId: nextBar.googlePlaceId,
+      lat: nextBar.lat,
+      lng: nextBar.lng,
     };
   }, [currentBarIndex, stops, position]);
 
@@ -927,6 +933,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           isRouteComplete={routeStatus === "completed"}
           onParticipantClick={(p) => handleSendNudge({ id: p.id, name: p.name, isGuest: p.isGuest })}
           creatorId={creatorId}
+          focusLocation={mapFocusLocation}
         />
 
         {/* Notificaciones Flotantes (sobre el mapa) */}
@@ -972,6 +979,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               onViewRatings={() => setActiveTab('ratings')}
               onViewGroup={() => setActiveTab('group')}
               onShare={onOpenShare}
+              actualStartTime={actualStartTime}
+              actualEndTime={actualEndTime}
             />
           ) : (
             /* RUTA ACTIVA: Mostrar acciones y controles */
@@ -1008,8 +1017,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   estimatedArrival={nextBarData.estimatedArrival}
                   googlePlaceId={nextBarData.googlePlaceId}
                   onViewOnMap={() => {
-                    // TODO: Implementar centrado de mapa en próximo bar
-                    toast.info("Próximo bar en el mapa");
+                    setMapFocusLocation({ lat: nextBarData.lat, lng: nextBarData.lng });
                   }}
                 />
               )}

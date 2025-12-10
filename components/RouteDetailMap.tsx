@@ -34,6 +34,7 @@ type RouteDetailMapProps = {
     onParticipantClick?: (participant: Participant) => void;
     isRouteComplete?: boolean; // Si es true, tooltips siempre visibles
     creatorId?: string | null;
+    focusLocation?: { lat: number; lng: number } | null; // Si cambia, centra el mapa en esta ubicación
 };
 
 function isValidCoordinate(lat: number, lng: number) {
@@ -158,7 +159,7 @@ const PARTICIPANT_COLORS = [
     "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
 ];
 
-export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick, isRouteComplete = false, creatorId }: RouteDetailMapProps) {
+export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick, isRouteComplete = false, creatorId, focusLocation }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES,
@@ -218,6 +219,15 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
             map.setZoom(16);
         }
     }, [stops.length, userPosition, map, userHasInteracted, participants]);
+
+    // Centrar mapa cuando focusLocation cambie (ej: "Ver en mapa" del próximo bar)
+    useEffect(() => {
+        if (!map || !focusLocation) return;
+        if (!isValidCoordinate(focusLocation.lat, focusLocation.lng)) return;
+
+        map.panTo(focusLocation);
+        map.setZoom(17);
+    }, [map, focusLocation]);
 
     // Estado para controlar el overlay de "Buscando..."
     const [showLocatingOverlay, setShowLocatingOverlay] = useState(true);

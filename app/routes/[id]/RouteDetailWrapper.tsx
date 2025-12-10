@@ -75,6 +75,8 @@ type RouteDetailWrapperProps = {
   creatorId: string | null;
   participantsCount: number;
   isDiscovery: boolean;
+  actualStartTime: string | null;
+  actualEndTime: string | null;
 };
 
 // Calcular tiempo hasta el inicio de la ruta
@@ -112,6 +114,8 @@ export default function RouteDetailWrapper({
   creatorId,
   participantsCount,
   isDiscovery,
+  actualStartTime,
+  actualEndTime,
 }: RouteDetailWrapperProps) {
   const { data: session } = useSession();
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -383,6 +387,8 @@ export default function RouteDetailWrapper({
           showAccessibilityPanel={showAccessibilityPanel}
           onCloseAccessibilityPanel={closeAccessibilityPanel}
           isDiscovery={isDiscovery}
+          actualStartTime={actualStartTime}
+          actualEndTime={actualEndTime}
         />
       </main>
 
