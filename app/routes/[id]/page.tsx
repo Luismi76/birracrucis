@@ -25,11 +25,11 @@ export async function generateMetadata({ params }: RoutePageProps): Promise<Meta
     };
   }
 
-  const dateStr = route.date.toLocaleDateString("es-ES", {
+  const dateStr = route.date ? route.date.toLocaleDateString("es-ES", {
     weekday: "long",
     day: "numeric",
     month: "long",
-  });
+  }) : "Fecha sin definir";
 
   return {
     title: `${route.name} - Birracrucis`,
@@ -163,7 +163,7 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     <RouteDetailWrapper
       routeId={route.id}
       routeName={route.name}
-      routeDate={route.date.toISOString()}
+      routeDate={route.date ? route.date.toISOString() : new Date().toISOString()}
       startTime={startTimeStr}
       routeStatus={route.status}
       currentUserId={currentUserId}
