@@ -315,27 +315,26 @@ export default function CreateEditionModal({
                     </div>
 
 
-            </div>
-        </form>
+                </form>
 
-                {/* Footer */ }
-    <div className="border-t bg-slate-50 p-4 flex gap-3">
-        <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 py-3 px-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors"
-            disabled={loading}
-        >
-            Cancelar
-        </button>
-        <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/30"
-        >
-            {loading ? "Creando..." : "Crear Edición"}
-        </button>
-    </div>
+                {/* Footer */}
+                <div className="border-t bg-slate-50 p-4 flex gap-3">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="flex-1 py-3 px-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-colors"
+                        disabled={loading}
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/30"
+                    >
+                        {loading ? "Creando..." : "Crear Edición"}
+                    </button>
+                </div>
             </div >
         </div >
     );
