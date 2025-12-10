@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 // GET - Obtener bebidas de la ruta
@@ -9,7 +8,6 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Rate limiting - endpoint frecuente
   const clientId = getClientIdentifier(req);
   const rateLimitResult = rateLimit(`drinks:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
   if (!rateLimitResult.success) {
@@ -17,19 +15,9 @@ export async function GET(
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    let userId: string | undefined;
-    let guestId: string | undefined;
-
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-      userId = user?.id;
-    } else {
-      guestId = req.cookies.get("guestId")?.value;
-    }
-
-    if (!userId && !guestId) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const { id: routeId } = await params;
@@ -44,25 +32,21 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
 
-    // Calcular estadísticas (agrupando por quien sea)
-    let statsData = {};
-    // ... simplificado por ahora, stats complejos para guests requiere refactor mayor
-
-    // Calcular estadísticas por usuario (solo registrados para no romper compatibilidad rápida)
+    // Estadísticas por usuario
     const stats = await prisma.drink.groupBy({
       by: ["userId"],
       where: { routeId, userId: { not: null } },
       _count: { id: true },
     });
 
-    // Estadisticas de guests
+    // Estadísticas de guests
     const guestStats = await prisma.drink.groupBy({
       by: ["guestId"],
       where: { routeId, guestId: { not: null } },
-      _count: { id: true }
+      _count: { id: true },
     });
 
-    // Calcular quién ha pagado más (pagadores siempre son Users por ahora?)
+    // Quién ha pagado más
     const paidStats = await prisma.drink.groupBy({
       by: ["paidById"],
       where: { routeId, paidById: { not: null } },
@@ -73,7 +57,7 @@ export async function GET(
       ok: true,
       drinks,
       stats: {
-        byUser: [...stats, ...guestStats.map(g => ({ userId: g.guestId, _count: g._count }))], // Hack mezcla
+        byUser: [...stats, ...guestStats.map(g => ({ userId: g.guestId, _count: g._count }))],
         byPayer: paidStats,
       },
     });
@@ -88,7 +72,6 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  // Rate limiting - endpoint estándar
   const clientId = getClientIdentifier(req);
   const rateLimitResult = rateLimit(`drinks:add:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
@@ -96,21 +79,12 @@ export async function POST(
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    let userId: string | undefined;
-    let guestId: string | undefined;
-
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-      userId = user?.id;
-    } else {
-      guestId = req.cookies.get("guestId")?.value;
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    if (!userId && !guestId) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-    }
-
+    const { userId, guestId } = getUserIds(auth.user);
     const { id: routeId } = await params;
     const body = await req.json();
     const { stopId, type = "beer", paidById } = body;
@@ -131,8 +105,8 @@ export async function POST(
       data: {
         routeId,
         stopId,
-        userId: userId, // Optional, can be undefined/null
-        guestId: guestId, // Optional
+        userId,
+        guestId,
         type,
         paidById: paidById || null,
       },

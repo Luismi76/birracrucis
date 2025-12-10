@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 
 // GET - Obtener votos de una parada
 export async function GET(
@@ -9,9 +8,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const { id: routeId } = await params;
@@ -43,19 +42,12 @@ export async function GET(
 
     const skipVotes = votes.filter(v => v.vote === true).length;
     const stayVotes = votes.filter(v => v.vote === false).length;
-
-    // Si más del 50% vota saltar, se salta
     const shouldSkip = skipVotes > totalParticipants / 2;
 
     return NextResponse.json({
       ok: true,
       votes,
-      summary: {
-        skip: skipVotes,
-        stay: stayVotes,
-        total: totalParticipants,
-        shouldSkip,
-      },
+      summary: { skip: skipVotes, stay: stayVotes, total: totalParticipants, shouldSkip },
     });
   } catch (error) {
     console.error("Error en GET /api/routes/[id]/votes:", error);
@@ -69,23 +61,14 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const { id: routeId } = await params;
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
-
     const body = await req.json();
-    const { stopId, vote } = body; // vote: true = saltar, false = quedarse
+    const { stopId, vote } = body;
 
     if (!stopId || typeof vote !== "boolean") {
       return NextResponse.json({ ok: false, error: "stopId y vote requeridos" }, { status: 400 });
@@ -99,16 +82,15 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Stop no pertenece a esta ruta" }, { status: 400 });
     }
 
-    // Upsert para actualizar o crear voto
     const skipVote = await prisma.skipVote.upsert({
       where: {
-        routeId_stopId_userId: { routeId, stopId, userId: user.id },
+        routeId_stopId_userId: { routeId, stopId, userId: auth.user.id },
       },
       update: { vote },
       create: {
         routeId,
         stopId,
-        userId: user.id,
+        userId: auth.user.id,
         vote,
       },
       include: {
