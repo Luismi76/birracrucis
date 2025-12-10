@@ -7,43 +7,27 @@ import PhotoCapture, { PhotoCaptureHandle } from "@/components/PhotoCapture";
 import PhotoGallery from "@/components/PhotoGallery";
 import { distanceInMeters, CHECKIN_RADIUS_METERS } from "@/lib/geo-utils";
 
-import NudgeButton from "@/components/NudgeButton";
-import SkipVoteButton from "@/components/SkipVoteButton";
-import BarTimer from "@/components/BarTimer";
 import BarRating from "@/components/BarRating";
-import RouteSummary from "@/components/RouteSummary";
-import AddToCalendar from "@/components/AddToCalendar";
 import ParticipantsList from "@/components/ParticipantsList";
-// InvitationManager removed
 import PricePicker from "@/components/PricePicker";
 import BarPlaceInfo from "@/components/BarPlaceInfo";
 import CompletedRouteSummary from "@/components/CompletedRouteSummary";
 import { toast } from "sonner";
-import InRouteActions from "@/components/RouteDetail/InRouteActions";
 import DevLocationControl from "@/components/DevLocationControl";
 import RankingView from "@/components/RankingView";
 import ParticipantPicker from "@/components/ParticipantPicker";
 import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
-import { Beer, Utensils, MapPin, Crown, Camera, Trophy, Users, MessageCircle, UserPlus, Bell, Star } from "lucide-react"; // Import icons for actions
+import { Beer, MapPin, Camera, Trophy, Users, UserPlus, Bell, Star } from "lucide-react";
 import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
 import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, AchievementsToast, DrinkComparison, WeatherWidget, BarChallenge, PredictionsPanel, QuickReactions } from "@/components/route-detail";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useBatterySaver } from "@/hooks/useBatterySaver";
 import AccessibilityPanel from "@/components/AccessibilityPanel";
 import SystemStatus from "@/components/SystemStatus";
-import ThemeToggle from "@/components/ThemeToggle";
 import ConfettiTrigger from "@/components/ConfettiTrigger";
 
-// Lazy load componentes pesados (ExportPDF usa jsPDF ~87KB)
-const ExportRoutePDF = dynamic(() => import("@/components/ExportRoutePDF"), {
-  loading: () => (
-    <button className="opacity-50 cursor-wait bg-slate-100 text-slate-400 px-4 py-2 rounded-lg text-sm">
-      Cargando...
-    </button>
-  ),
-});
-
+// Lazy load componentes pesados
 const PotManager = dynamic(() => import("@/components/PotManager"), {
   loading: () => <div className="h-24 bg-slate-100 rounded-xl animate-pulse" />,
 });
@@ -124,17 +108,15 @@ type RouteDetailClientProps = {
 };
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, creatorId, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false }: RouteDetailClientProps) {
-  // ... state ...
   const { data: session } = useSession();
+
+  // Geolocalización
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [locError, setLocError] = useState<string | null>(null);
   const watchIdRef = useRef<number | null>(null);
-  const [useWatch, setUseWatch] = useState(false);
+
+  // Participantes
   const [participants, setParticipants] = useState<Participant[]>([]);
-  const [showSummary, setShowSummary] = useState(false);
-  const [isSheetExpanded, setIsSheetExpanded] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
   const photoCaptureRef = useRef<PhotoCaptureHandle>(null);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [notificationPickerOpen, setNotificationPickerOpen] = useState(false);
@@ -153,9 +135,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     existingStopPlaceIds
   });
 
-  // Debug loop removed
-
-  // Tabs simplificadas
+  // Tabs
   const [activeTab, setActiveTab] = useState<"route" | "photos" | "ratings" | "group">("route");
   const [photoRefresh, setPhotoRefresh] = useState(0);
 
@@ -164,9 +144,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   const autoCheckinStopsRef = useRef<Set<string>>(new Set());
 
   const [autoCheckinNotification, setAutoCheckinNotification] = useState<string | null>(null);
-
-  // SSE Global Connection
-  const [messages, setMessages] = useState<any[]>([]); // Should be Message type
 
   // Track shown nudges to avoid duplicates (persists across remounts)
   const getShownNudges = (): Set<string> => {
@@ -187,14 +164,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     setParticipants(data);
     onParticipantsChange?.(data);
   }, [onParticipantsChange]);
-
-  const handleMessagesUpdate = useCallback((newMessages: any[]) => {
-    setMessages(prev => {
-      const existingIds = new Set(prev.map((m) => m.id));
-      const uniqueNew = newMessages.filter((m: any) => !existingIds.has(m.id));
-      return [...prev, ...uniqueNew];
-    });
-  }, []);
 
   const handleNudgesUpdate = useCallback((nudges: any[]) => {
     const shownNudges = getShownNudges();
@@ -220,11 +189,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     });
   }, [routeId]);
 
-  const { participants: streamParticipants } = useRouteStream({
+  useRouteStream({
     routeId,
     enabled: true,
     onParticipants: handleParticipantsUpdate,
-    onMessages: handleMessagesUpdate,
     onNudges: handleNudgesUpdate,
   });
   const AUTOCHECKIN_RADIUS = 30; // metros
@@ -283,7 +251,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // El bar activo es el que el usuario tiene seleccionado
   const activeStop = stops[currentBarIndex] || stops[stops.length - 1];
   const isRouteComplete = currentBarIndex >= stops.length;
-  // const currentStopIndex = currentBarIndex; // Removed alias
 
   // Detectar si nos hemos pasado de rondas planificadas
   const isOverPlannedRounds = activeStop && (rounds[activeStop.id] || 0) >= activeStop.plannedRounds;
@@ -369,20 +336,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   }, [position, currentBarIndex, stops, isRouteComplete, isOverPlannedRounds]);
 
-  // Calcular progreso and stats (same as before)
+  // Calcular progreso
   const completedStops = stops.filter(s => (rounds[s.id] || 0) >= s.plannedRounds).length;
-  // const totalRounds = Object.values(rounds).reduce((sum, r) => sum + r, 0); // Unused
-  // const progressPercent = (completedStops / stops.length) * 100; // Unused
 
-  const totalSpent = stops.reduce((sum, stop) => {
-    const prices = barPrices[stop.id] || { beer: DEFAULT_BEER_PRICE, tapa: DEFAULT_TAPA_PRICE };
-    return sum + (beers[stop.id] || 0) * prices.beer + (tapas[stop.id] || 0) * prices.tapa;
-  }, 0);
-
-  // const totalBeers = Object.values(beers).reduce((sum, b) => sum + b, 0); // Unused
-  // const totalTapas = Object.values(tapas).reduce((sum, t) => sum + t, 0); // Unused
-
-  // ... Location effects (same as before) ...
+  // ========== GEOLOCALIZACIÓN ==========
   const lastLocationSentRef = useRef<number>(0);
 
   useEffect(() => {
@@ -546,8 +503,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   const handleStartWatch = () => {
     if (!("geolocation" in navigator)) return;
-    setLocError(null);
-    setUseWatch(true);
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         const newPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
@@ -562,8 +517,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     );
     watchIdRef.current = id;
   };
-
-  const handleStopWatch = () => { /* ... Unused but keeping ... */ };
 
   const isPositionReliable = () => {
     if (accuracy == null) return false;
@@ -643,14 +596,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   };
 
-  // Effect to clean up location watching if route is completed
+  // Limpiar geolocalización cuando la ruta está completada
   useEffect(() => {
-    if (routeStatus === "completed") {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-      setUseWatch(false);
+    if (routeStatus === "completed" && watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
     }
   }, [routeStatus]);
 
@@ -857,13 +807,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     };
   }, [currentBarIndex, stops, position]);
 
-  // Detectar logros (achievements)
-  const currentUserBeers = activeStop ? (beers[activeStop.id] || 0) : 0;
-  const totalUserBeers = Object.values(beers).reduce((sum, b) => sum + b, 0);
-
-  // Achievements are now fetched directly by AchievementsToast component
-  const achievements: any[] = [];
-
   // Preparar datos para comparativa de bebidas
   const [drinkStats, setDrinkStats] = useState<Record<string, number>>({});
 
@@ -910,11 +853,8 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     });
   }, [participants, drinkStats]);
 
-  // ========== DATOS PARA SPRINT 3 ==========
-
-  // Datos de desafíos - Fetch dinámico desde API
+  // Desafíos del bar
   const [barChallenges, setBarChallenges] = useState<any[]>([]);
-  const [challengesLoading, setChallengesLoading] = useState(false);
 
   useEffect(() => {
     async function fetchChallenges() {
@@ -923,101 +863,31 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         return;
       }
 
-      setChallengesLoading(true);
       try {
         const res = await fetch(`/api/routes/${routeId}/stops/${activeStop.id}/challenges`);
         const data = await res.json();
-
         if (data.ok) {
           setBarChallenges(data.challenges);
         }
       } catch (error) {
         console.error('Error fetching challenges:', error);
-      } finally {
-        setChallengesLoading(false);
       }
     }
 
     fetchChallenges();
   }, [routeId, activeStop?.id]);
 
-
-  // Datos de predicciones (placeholder)
-  const predictions = useMemo(() => [
-    {
-      id: "pred-1",
-      type: "first_arrival" as const,
-      question: "¿Quién llegará primero al próximo bar?",
-      options: participants.slice(0, 3).map(p => p.name || "Usuario"),
-      points: 20,
-    },
-    {
-      id: "pred-2",
-      type: "rounds_count" as const,
-      question: "¿Cuántas rondas haremos en total?",
-      options: ["5-7", "8-10", "11-15", "16+"],
-      points: 30,
-    },
-  ], [participants]);
-
-  // Datos de reacciones (placeholder)
-  const quickReactions = useMemo(() => {
-    if (!activeStop) return [];
-    return [
-      {
-        type: "good_beer" as const,
-        emoji: "🍺",
-        label: "Buena cerveza",
-        count: 0,
-        userReacted: false,
-      },
-      {
-        type: "great_food" as const,
-        emoji: "😋",
-        label: "Tapas increíbles",
-        count: 0,
-        userReacted: false,
-      },
-      {
-        type: "good_music" as const,
-        emoji: "🎶",
-        label: "Buena música",
-        count: 0,
-        userReacted: false,
-      },
-      {
-        type: "good_vibe" as const,
-        emoji: "👍",
-        label: "Buen ambiente",
-        count: 0,
-        userReacted: false,
-      },
-    ];
-  }, [activeStop]);
-
-  // ========== SPRINT 5: CONFETTI TRIGGERS ==========
-
-  const [showAchievementConfetti, setShowAchievementConfetti] = useState(false);
+  // Confetti al completar ruta
   const [showCompletionConfetti, setShowCompletionConfetti] = useState(false);
 
-  // Trigger confetti cuando se completa la ruta
   useEffect(() => {
     if (routeStatus === "completed" && !showCompletionConfetti) {
       setShowCompletionConfetti(true);
     }
   }, [routeStatus, showCompletionConfetti]);
 
-  // Trigger confetti cuando se consigue un logro
-  useEffect(() => {
-    if (achievements.length > 0) {
-      setShowAchievementConfetti(true);
-      setTimeout(() => setShowAchievementConfetti(false), 100);
-    }
-  }, [achievements.length]);
-
   return (
     <div className="flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden pointer-events-auto bg-slate-50 dark:bg-slate-900">
-      {/* SYSTEM STATUS - Sprint 4 */}
       <SystemStatus
         isOnline={offlineQueue.isOnline}
         queueSize={offlineQueue.queueSize}
@@ -1025,7 +895,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         batterySaverMode={batterySaver.mode}
       />
 
-      {/* ACCESSIBILITY PANEL - Sprint 4 (Controlled from header) */}
       {showAccessibilityPanel && (
         <AccessibilityPanel
           settings={accessibilitySettings}
@@ -1033,8 +902,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         />
       )}
 
-      {/* CONFETTI TRIGGERS - Sprint 5 */}
-      <ConfettiTrigger trigger={showAchievementConfetti} type="achievement" />
       <ConfettiTrigger trigger={showCompletionConfetti} type="completion" />
 
       {/* 1. ROUTE PROGRESS HEADER (Nuevo) */}
