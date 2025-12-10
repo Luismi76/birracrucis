@@ -132,13 +132,14 @@ type RouteDetailClientProps = {
   onParticipantsChange?: (participants: Participant[]) => void;
   onProgressChange?: (progress: RouteProgress) => void;
   isCreator?: boolean;
+  creatorId?: string | null;
   onOpenShare?: () => void;
   showAccessibilityPanel?: boolean;
   onCloseAccessibilityPanel?: () => void;
   isDiscovery?: boolean;
 };
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, creatorId, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false }: RouteDetailClientProps) {
   // ... state ...
   const { data: session } = useSession();
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -1076,6 +1077,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           participants={participants}
           isRouteComplete={routeStatus === "completed"}
           onParticipantClick={(p) => handleSendNudge({ id: p.id, name: p.name, isGuest: p.isGuest })}
+          creatorId={creatorId}
         />
 
         {/* Notificaciones Flotantes (sobre el mapa) */}

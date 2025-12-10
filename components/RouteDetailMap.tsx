@@ -33,7 +33,12 @@ type RouteDetailMapProps = {
     participants?: Participant[];
     onParticipantClick?: (participant: Participant) => void;
     isRouteComplete?: boolean; // Si es true, tooltips siempre visibles
+    creatorId?: string | null;
 };
+
+function isValidCoordinate(lat: number, lng: number) {
+    return typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+}
 
 // Componente para tooltip fijo del bar
 function BarTooltip({ stop, index }: { stop: Stop; index: number }) {
@@ -153,7 +158,7 @@ const PARTICIPANT_COLORS = [
     "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
 ];
 
-export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick, isRouteComplete = false }: RouteDetailMapProps) {
+export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick, isRouteComplete = false, creatorId }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES,
@@ -168,23 +173,69 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
     // Calcular el centro inicial para mostrar toda la ruta
     const initialCenter = useMemo(() => {
         if (stops.length === 0) {
-            // Si no hay paradas (Modo Aventura), usar ubicación del usuario o Madrid
-            return userPosition || { lat: 40.4168, lng: -3.7038 };
+            // 1. Priorizar centro de participantes (donde está el grupo/creador)
+            const activeParticipants = participants.filter(p => isValidCoordinate(p.lat, p.lng));
+            if (activeParticipants.length > 0) {
+                const avgLat = activeParticipants.reduce((sum, p) => sum + p.lat, 0) / activeParticipants.length;
+                const avgLng = activeParticipants.reduce((sum, p) => sum + p.lng, 0) / activeParticipants.length;
+                return { lat: avgLat, lng: avgLng };
+            }
+
+            // 2. Si no hay participantes activos, usar ubicación del usuario (si es válida)
+            if (userPosition && isValidCoordinate(userPosition.lat, userPosition.lng)) {
+                return userPosition;
+            }
+
+            // Fallback: Madrid (evita mapa gris)
+            return { lat: 40.4168, lng: -3.7038 };
         }
 
-        const avgLat = stops.reduce((sum, stop) => sum + stop.lat, 0) / stops.length;
-        const avgLng = stops.reduce((sum, stop) => sum + stop.lng, 0) / stops.length;
+        const validStops = stops.filter(s => isValidCoordinate(s.lat, s.lng));
+        if (validStops.length === 0) return { lat: 40.4168, lng: -3.7038 };
+
+        const avgLat = validStops.reduce((sum, stop) => sum + stop.lat, 0) / validStops.length;
+        const avgLng = validStops.reduce((sum, stop) => sum + stop.lng, 0) / validStops.length;
 
         return { lat: avgLat, lng: avgLng };
-    }, [stops, userPosition]);
+    }, [stops, userPosition, participants]);
 
-    // Pan to user position if discovery mode (no stops) and position loads
+    // Pan to user position or participants if discovery mode (no stops) and position loads
     useEffect(() => {
-        if (stops.length === 0 && userPosition && map && !userHasInteracted) {
+        if (stops.length > 0 || userHasInteracted || !map) return;
+
+        // Misma lógica de prioridad que initialCenter
+        const activeParticipants = participants.filter(p => isValidCoordinate(p.lat, p.lng));
+        if (activeParticipants.length > 0) {
+            const avgLat = activeParticipants.reduce((sum, p) => sum + p.lat, 0) / activeParticipants.length;
+            const avgLng = activeParticipants.reduce((sum, p) => sum + p.lng, 0) / activeParticipants.length;
+            map.panTo({ lat: avgLat, lng: avgLng });
+            map.setZoom(15);
+            return;
+        }
+
+        if (userPosition && isValidCoordinate(userPosition.lat, userPosition.lng)) {
             map.panTo(userPosition);
             map.setZoom(16);
         }
-    }, [stops.length, userPosition, map, userHasInteracted]);
+    }, [stops.length, userPosition, map, userHasInteracted, participants]);
+
+    // Estado para controlar el overlay de "Buscando..."
+    const [showLocatingOverlay, setShowLocatingOverlay] = useState(true);
+
+    // Ocultar overlay si encontramos ubicación válida (usuario o participantes) o si hay stops
+    useEffect(() => {
+        if (stops.length > 0) {
+            setShowLocatingOverlay(false);
+            return;
+        }
+
+        const validUserPos = userPosition && isValidCoordinate(userPosition.lat, userPosition.lng);
+        const hasValidParticipants = participants.some(p => isValidCoordinate(p.lat, p.lng));
+
+        if (validUserPos || hasValidParticipants) {
+            setShowLocatingOverlay(false);
+        }
+    }, [userPosition, stops.length, participants]);
 
     // Determinar color del marcador según estado
     const getMarkerColor = (stop: Stop) => {
@@ -297,11 +348,22 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
     return (
         <div className="relative w-full h-full">
             {/* Overlay: Buscando ubicación en Modo Aventura */}
-            {stops.length === 0 && !userPosition && !loadError && (
-                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm">
+            {stops.length === 0 && !loadError && showLocatingOverlay && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm p-4 text-center">
                     <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
                     <p className="font-bold text-slate-700 animate-pulse">Buscando tu ubicación...</p>
-                    <p className="text-xs text-slate-500 mt-2">Asegúrate de activar el GPS 🛰️</p>
+                    <p className="text-xs text-slate-500 mt-2 mb-6">Estamos centrando el mapa en ti o en los participantes 🛰️</p>
+                    <button
+                        onClick={() => setShowLocatingOverlay(false)}
+                        className="px-4 py-2 bg-white border border-slate-300 rounded-lg text-sm text-slate-600 font-medium shadow-sm hover:bg-slate-50"
+                    >
+                        Cancelar y ver mapa manual
+                    </button>
+                    {participants.length > 0 && (
+                        <p className="text-[10px] text-slate-400 mt-4">
+                            Hay {participants.length} participantes activos en el mapa.
+                        </p>
+                    )}
                 </div>
             )}
 

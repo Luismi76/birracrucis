@@ -171,6 +171,7 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
       stops={clientStops}
       isCreator={isCreator}
       creatorName={route.creator?.name || null}
+      creatorId={route.creator?.id || null}
       participantsCount={route._count.participants}
       isDiscovery={route.isDiscovery}
     />

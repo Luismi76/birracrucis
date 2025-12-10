@@ -72,6 +72,7 @@ type RouteDetailWrapperProps = {
   stops: Stop[];
   isCreator: boolean;
   creatorName: string | null;
+  creatorId: string | null;
   participantsCount: number;
   isDiscovery: boolean;
 };
@@ -108,6 +109,7 @@ export default function RouteDetailWrapper({
   stops,
   isCreator,
   creatorName,
+  creatorId,
   participantsCount,
   isDiscovery,
 }: RouteDetailWrapperProps) {
@@ -376,6 +378,7 @@ export default function RouteDetailWrapper({
           onParticipantsChange={handleParticipantsChange}
           onProgressChange={handleProgressChange}
           isCreator={isCreator}
+          creatorId={creatorId}
           onOpenShare={openShareModal}
           showAccessibilityPanel={showAccessibilityPanel}
           onCloseAccessibilityPanel={closeAccessibilityPanel}
