@@ -63,6 +63,29 @@ export default function InfoStep({
                     </div>
                 </div>
 
+                <div className="pt-4 space-y-4">
+                    {/* Discovery Mode Toggle */}
+                    <div
+                        onClick={() => onIsDiscoveryChange(!isDiscovery)}
+                        className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${isDiscovery ? 'border-amber-500 bg-amber-50' : 'border-slate-200 bg-white hover:border-amber-200'}`}
+                    >
+                        <div className="flex items-start gap-4">
+                            <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mt-1 transition-colors ${isDiscovery ? 'border-amber-500 bg-amber-500' : 'border-slate-300'}`}>
+                                {isDiscovery && <span className="text-white text-xs">✓</span>}
+                            </div>
+                            <div className="flex-1">
+                                <div className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                    Modo Aventura
+                                    <span className="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full">Descubrimiento</span>
+                                </div>
+                                <p className="text-slate-500 text-sm mt-1">
+                                    En este modo solo defines el punto de partida. La ruta se construirá sobre la marcha detectando los bares automáticamente. Ideal si no tienes plan fijo.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {showPublicOption && (
                     <div className="pt-4">
                         <div className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${isPublic ? 'border-purple-500 bg-purple-50' : 'border-slate-200 bg-white hover:border-purple-200'}`}
