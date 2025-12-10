@@ -1,30 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(authOptions);
-
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
-        });
-
-        if (!user) {
-            return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
-        }
+        const userId = auth.user.id;
 
         const now = new Date();
 
         // Obtener plantillas creadas por el usuario (isTemplate = true)
         const templates = await prisma.route.findMany({
             where: {
-                creatorId: user.id,
+                creatorId: userId,
                 isTemplate: true,
                 templateId: null, // Las plantillas no tienen templateId
             },
@@ -45,7 +37,7 @@ export async function GET(req: NextRequest) {
         // Obtener ediciones pendientes (status = pending, fecha futura)
         const upcomingEditions = await prisma.route.findMany({
             where: {
-                creatorId: user.id,
+                creatorId: userId,
                 isTemplate: false,
                 status: "pending",
                 date: { gte: now },
@@ -64,7 +56,7 @@ export async function GET(req: NextRequest) {
         // Obtener ediciones activas (status = active)
         const activeEditions = await prisma.route.findMany({
             where: {
-                creatorId: user.id,
+                creatorId: userId,
                 status: "active",
             },
             include: {
@@ -82,9 +74,9 @@ export async function GET(req: NextRequest) {
         const invitedRoutes = await prisma.route.findMany({
             where: {
                 participants: {
-                    some: { userId: user.id },
+                    some: { userId },
                 },
-                NOT: { creatorId: user.id },
+                NOT: { creatorId: userId },
             },
             include: {
                 stops: {

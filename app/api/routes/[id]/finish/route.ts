@@ -1,17 +1,16 @@
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
-            return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
         const { id: routeId } = await params;
@@ -19,7 +18,7 @@ export async function POST(
         // Verificar que la ruta existe y el usuario es el creador
         const route = await prisma.route.findUnique({
             where: { id: routeId },
-            include: { creator: true }
+            select: { id: true, creatorId: true }
         });
 
         if (!route) {
@@ -27,9 +26,7 @@ export async function POST(
         }
 
         // Permitir solo al creador finalizar la ruta
-        // Nota: Si el creador es null (ruta antigua), nadie puede finalizarla, o podríamos permitir a admins.
-        // Asumimos validación por email del creador.
-        if (route.creator?.email !== session.user.email) {
+        if (route.creatorId !== auth.user.id) {
             return NextResponse.json({ ok: false, error: "Solo el creador puede finalizar la ruta" }, { status: 403 });
         }
 

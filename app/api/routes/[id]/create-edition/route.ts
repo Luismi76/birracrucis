@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,17 +9,9 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
-            return NextResponse.json({ error: "No autorizado" }, { status: 401 });
-        }
-
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
-        });
-
-        if (!user) {
-            return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
 
         const { id: templateId } = await params;
@@ -40,7 +31,7 @@ export async function POST(
         }
 
         // Verificar que el usuario es el creador o la plantilla es pública
-        if (template.creatorId !== user.id && !template.isPublic) {
+        if (template.creatorId !== auth.user.id && !template.isPublic) {
             return NextResponse.json({ error: "No tienes acceso a esta plantilla" }, { status: 403 });
         }
 
@@ -56,7 +47,7 @@ export async function POST(
             data: {
                 name: body.name || template.name,
                 date: new Date(body.date),
-                creatorId: user.id,
+                creatorId: auth.user.id,
 
                 // Configuración de tiempo
                 startMode: body.startMode || template.startMode || "manual",
@@ -97,7 +88,7 @@ export async function POST(
                 // Añadir al creador como participante
                 participants: {
                     create: [
-                        { userId: user.id, isActive: true },
+                        { userId: auth.user.id, isActive: true },
                         // Añadir invitados si los hay
                         ...(body.invitedUserIds && Array.isArray(body.invitedUserIds) ?
                             body.invitedUserIds.map((invitedId: string) => ({

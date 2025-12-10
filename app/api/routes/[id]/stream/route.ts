@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,38 +13,25 @@ export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const session = await getServerSession(authOptions);
-    const { cookies } = await import('next/headers');
-    const cookieStore = await cookies();
-    const guestId = cookieStore.get("guestId")?.value;
-
-    // Allow both authenticated users and guests
-    if (!session?.user?.email && !guestId) {
-        return new NextResponse("No autenticado", { status: 401 });
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+        return new NextResponse(auth.error, { status: auth.status });
     }
 
+    const { userId: currentUserId, guestId: currentGuestId } = getUserIds(auth.user);
     const { id: routeId } = await params;
 
     // Verify user/guest is a participant of this route
     let isParticipant = false;
-    let currentUserId: string | null = null;
-    let currentGuestId: string | null = null;
 
-    if (session?.user?.email) {
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email }
-        });
-        if (user) {
-            currentUserId = user.id;
-            const participant = await prisma.participant.findUnique({
-                where: { routeId_userId: { routeId, userId: user.id } }
-            });
-            isParticipant = !!participant;
-        }
-    } else if (guestId) {
-        currentGuestId = guestId;
+    if (currentUserId) {
         const participant = await prisma.participant.findUnique({
-            where: { routeId_guestId: { routeId, guestId } }
+            where: { routeId_userId: { routeId, userId: currentUserId } }
+        });
+        isParticipant = !!participant;
+    } else if (currentGuestId) {
+        const participant = await prisma.participant.findUnique({
+            where: { routeId_guestId: { routeId, guestId: currentGuestId } }
         });
         isParticipant = !!participant;
     }

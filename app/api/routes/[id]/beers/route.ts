@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser, getUserIds } from '@/lib/auth-helpers';
 import { prisma } from '@/lib/prisma';
 
 type RouteContext = {
@@ -9,13 +8,13 @@ type RouteContext = {
 
 // GET - Get beer consumption stats for route (usando modelo Drink)
 export async function GET(
-    request: Request,
+    request: NextRequest,
     context: RouteContext
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const auth = await getCurrentUser(request);
+        if (!auth.ok) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
 
         const { id: routeId } = await context.params;
@@ -105,23 +104,16 @@ export async function GET(
 
 // POST - Record beer consumption (usando modelo Drink)
 export async function POST(
-    request: Request,
+    request: NextRequest,
     context: RouteContext
 ) {
     try {
-        const session = await getServerSession(authOptions);
-
-        // Obtener userId o guestId
-        let userId: string | undefined;
-        let guestId: string | undefined;
-
-        if (session?.user?.email) {
-            const user = await prisma.user.findUnique({
-                where: { email: session.user.email },
-                select: { id: true }
-            });
-            userId = user?.id;
+        const auth = await getCurrentUser(request);
+        if (!auth.ok) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
+
+        const { userId, guestId } = getUserIds(auth.user);
 
         // Para requests del cliente que envían userId explícitamente
         const { id: routeId } = await context.params;
@@ -131,10 +123,6 @@ export async function POST(
         // Usar el userId del body si viene (para gamificación desde el cliente)
         // o el de la sesión si no
         const effectiveUserId = bodyUserId || userId;
-
-        if (!effectiveUserId) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-        }
 
         if (!stopId) {
             return NextResponse.json(

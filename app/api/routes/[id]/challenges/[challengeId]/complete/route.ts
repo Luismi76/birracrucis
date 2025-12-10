@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { prisma } from '@/lib/prisma';
-import { authOptions } from '@/lib/auth';
 
 // POST - Complete a challenge
 export async function POST(
@@ -9,26 +8,15 @@ export async function POST(
     { params }: { params: Promise<{ id: string; challengeId: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
         const { id: routeId, challengeId } = await params;
         const body = await req.json();
         const { photoUrl } = body;
-
-        // Get user ID
-        let userId: string | undefined;
-        if (session?.user?.email) {
-            const user = await prisma.user.findUnique({
-                where: { email: session.user.email },
-            });
-            userId = user?.id;
-        }
-
-        if (!userId) {
-            return NextResponse.json(
-                { ok: false, error: 'Not authenticated' },
-                { status: 401 }
-            );
-        }
+        const userId = auth.user.id;
 
         // Get the challenge
         const challenge = await prisma.barChallenge.findUnique({

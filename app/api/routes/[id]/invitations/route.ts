@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 import { sendInvitationEmail } from "@/lib/email";
 
 // GET - Obtener invitaciones de la ruta (solo creador)
@@ -10,20 +9,12 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const { id: routeId } = await params;
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
 
     // Verificar que es el creador de la ruta
     const route = await prisma.route.findUnique({
@@ -31,7 +22,7 @@ export async function GET(
       select: { creatorId: true },
     });
 
-    if (!route || route.creatorId !== user.id) {
+    if (!route || route.creatorId !== auth.user.id) {
       return NextResponse.json({ ok: false, error: "No tienes permiso" }, { status: 403 });
     }
 
@@ -57,26 +48,18 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const { id: routeId } = await params;
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
 
     // Verificar que es el creador o participante de la ruta
     const route = await prisma.route.findUnique({
       where: { id: routeId },
       include: {
-        participants: { where: { userId: user.id } },
+        participants: { where: { userId: auth.user.id } },
       },
     });
 
@@ -84,7 +67,7 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "Ruta no encontrada" }, { status: 404 });
     }
 
-    const isCreator = route.creatorId === user.id;
+    const isCreator = route.creatorId === auth.user.id;
     const isParticipant = route.participants.length > 0;
 
     if (!isCreator && !isParticipant) {
@@ -135,7 +118,7 @@ export async function POST(
     const invitation = await prisma.invitation.create({
       data: {
         routeId,
-        invitedById: user.id,
+        invitedById: auth.user.id,
         invitedUserId: invitedUser?.id || null,
         invitedEmail: invitedUser ? null : email.toLowerCase(),
         message: message || null,
@@ -150,7 +133,7 @@ export async function POST(
 
     // Enviar email de notificación
     const recipientEmail = invitedUser?.email || email.toLowerCase();
-    const inviterName = user.name || "Alguien";
+    const inviterName = auth.user.name || "Alguien";
 
     await sendInvitationEmail({
       to: recipientEmail,
@@ -174,9 +157,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
     const { id: routeId } = await params;
@@ -187,21 +170,13 @@ export async function DELETE(
       return NextResponse.json({ ok: false, error: "invitationId requerido" }, { status: 400 });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
-    }
-
     // Verificar que es el creador
     const route = await prisma.route.findUnique({
       where: { id: routeId },
       select: { creatorId: true },
     });
 
-    if (!route || route.creatorId !== user.id) {
+    if (!route || route.creatorId !== auth.user.id) {
       return NextResponse.json({ ok: false, error: "No tienes permiso" }, { status: 403 });
     }
 

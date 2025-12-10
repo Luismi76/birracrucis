@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth-helpers";
 
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        const { cookies } = await import('next/headers');
-        const cookieStore = await cookies();
-        const guestId = cookieStore.get("guestId")?.value;
-
-        // Allow both authenticated users and guests
-        if (!session?.user?.email && !guestId) {
-            return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+        const auth = await getCurrentUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
         const { id: routeId } = await params;

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 // POST /api/routes/[id]/stops - Agregar una nueva parada a la ruta
 export async function POST(
@@ -9,9 +8,9 @@ export async function POST(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.email) {
-            return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
         const { id: routeId } = await params;
@@ -26,12 +25,7 @@ export async function POST(
             return NextResponse.json({ ok: false, error: "Ruta no encontrada" }, { status: 404 });
         }
 
-        const user = await prisma.user.findUnique({
-            where: { email: session.user.email },
-            select: { id: true },
-        });
-
-        if (!user || route.creatorId !== user.id) {
+        if (route.creatorId !== auth.user.id) {
             return NextResponse.json({ ok: false, error: "Solo el creador puede añadir paradas" }, { status: 403 });
         }
 

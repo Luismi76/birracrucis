@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getCurrentUser, getAuthenticatedUser, getUserIds } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 type StopInput = {
@@ -44,10 +43,6 @@ export async function GET(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        // Note: Public routes should be accessible even without session for preview?
-        // Current requirement implies user is logged in for Community page, but good to keep in mind.
-
         const { id } = await params;
 
         const route = await prisma.route.findUnique({
@@ -56,7 +51,6 @@ export async function GET(
                 stops: {
                     orderBy: { order: "asc" },
                     include: {
-                        // Include ratings if needed for preview? Maybe overkill.
                         _count: { select: { photos: true } }
                     }
                 },
@@ -74,16 +68,15 @@ export async function GET(
         }
 
         // Check visibility: Must be public OR user must be creator/participant
-        // For preview purposes, we mostly care if it's public.
         let hasAccess = route.isPublic;
 
-        if (!hasAccess && session?.user?.email) {
-            const user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
-            if (user) {
-                if (route.creatorId === user.id) hasAccess = true;
+        if (!hasAccess) {
+            const auth = await getCurrentUser(req);
+            if (auth.ok && auth.user.type === "user") {
+                if (route.creatorId === auth.user.id) hasAccess = true;
                 else {
                     const participant = await prisma.participant.findUnique({
-                        where: { routeId_userId: { routeId: id, userId: user.id } }
+                        where: { routeId_userId: { routeId: id, userId: auth.user.id } }
                     });
                     if (participant) hasAccess = true;
                 }
@@ -113,28 +106,14 @@ export async function DELETE(
     }
 
     try {
-        const session = await getServerSession(authOptions);
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+        }
+
         const { id } = await params;
 
-        // Obtener el userId real de la BD (no el de Google/JWT)
-        let userId: string | null = null;
-        if (session?.user?.email) {
-            const user = await prisma.user.findUnique({
-                where: { email: session.user.email },
-                select: { id: true },
-            });
-            userId = user?.id || null;
-        }
-
-        // Verificar permisos - requiere autenticación y ser el creador
-        if (!userId) {
-            return NextResponse.json(
-                { ok: false, error: "Debes iniciar sesión para eliminar una ruta" },
-                { status: 401 }
-            );
-        }
-
-        const canModify = await canModifyRoute(id, userId);
+        const canModify = await canModifyRoute(id, auth.user.id);
         if (!canModify) {
             return NextResponse.json(
                 { ok: false, error: "No tienes permiso para eliminar esta ruta" },
@@ -179,32 +158,18 @@ export async function PUT(
     }
 
     try {
-        const session = await getServerSession(authOptions);
-        const { id } = await params;
-
-        // Obtener el userId real de la BD (no el de Google/JWT)
-        let userId: string | null = null;
-        if (session?.user?.email) {
-            const user = await prisma.user.findUnique({
-                where: { email: session.user.email },
-                select: { id: true },
-            });
-            userId = user?.id || null;
+        const auth = await getAuthenticatedUser(req);
+        if (!auth.ok) {
+            return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
         }
 
-        // Verificar permisos (solo si hay usuario en DB)
-        if (userId) {
-            const canModify = await canModifyRoute(id, userId);
-            if (!canModify) {
-                return NextResponse.json(
-                    { ok: false, error: "No tienes permiso para editar esta ruta" },
-                    { status: 403 }
-                );
-            }
-        } else {
+        const { id } = await params;
+
+        const canModify = await canModifyRoute(id, auth.user.id);
+        if (!canModify) {
             return NextResponse.json(
-                { ok: false, error: "Usuario no encontrado" },
-                { status: 401 }
+                { ok: false, error: "No tienes permiso para editar esta ruta" },
+                { status: 403 }
             );
         }
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
 
 // GET - Obtener estado del bote
@@ -76,47 +75,20 @@ export async function POST(
     const body = await request.json();
     const { action, amountPerPerson, userName } = body;
 
-    const session = await getServerSession(authOptions);
-    let currentUser: { id: string | null; name: string | null; email: string | null } | null = null;
-    let isGuest = false;
-
-    // 1. Intentar autenticar usuario
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user.email },
-        select: { id: true, name: true, email: true },
-      });
-      if (user) currentUser = user;
+    const auth = await getCurrentUser(request);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
-    // 2. Intentar autenticar invitado
-    if (!currentUser) {
-      const { cookies } = await import("next/headers");
-      const cookieStore = await cookies();
-      const guestId = cookieStore.get("guestId")?.value;
+    const { userId, guestId } = getUserIds(auth.user);
+    const isGuest = auth.user.type === "guest";
 
-      if (guestId) {
-        // Buscar participante invitado en esta ruta
-        // Necesitamos saber si este guestId está en la ruta
-        const participant = await prisma.participant.findUnique({
-          // @ts-ignore
-          where: { routeId_guestId: { routeId: id, guestId } }
-        });
-
-        if (participant) {
-          currentUser = {
-            id: null, // No tiene ID de User
-            name: participant.name,
-            email: null
-          };
-          isGuest = true;
-        }
-      }
-    }
-
-    if (!currentUser) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-    }
+    // Crear objeto currentUser para compatibilidad con el resto del código
+    const currentUser = {
+      id: userId || null,
+      name: auth.user.name,
+      email: auth.user.type === "user" ? auth.user.email : null
+    };
 
     const route = await prisma.route.findUnique({
       where: { id },

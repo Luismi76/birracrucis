@@ -1,8 +1,7 @@
 // app/api/routes/[id]/participants/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 
 // GET /api/routes/[id]/participants - Obtener participantes con sus ubicaciones
@@ -79,49 +78,40 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "lat y lng son requeridos" }, { status: 400 });
     }
 
-    const session = await getServerSession(authOptions);
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
+
+    const { userId, guestId } = getUserIds(auth.user);
     let participantId: string | null = null;
 
     // 1. Caso Usuario Autenticado
-    if (session?.user?.email) {
-      const user = await prisma.user.upsert({
-        where: { email: session.user.email },
-        update: { name: session.user.name },
-        create: { email: session.user.email, name: session.user.name, image: session.user.image },
-      });
-
+    if (userId) {
       const participant = await prisma.participant.findUnique({
-        where: { routeId_userId: { routeId, userId: user.id } }
+        where: { routeId_userId: { routeId, userId } }
       });
 
       if (participant) {
         participantId = participant.id;
       } else {
-        // Auto-join ONLY for logged in users (legacy behavior, maybe remove?)
-        // Keeping it for now as it's useful fallback
+        // Auto-join for logged in users
         const newParticipant = await prisma.participant.create({
-          data: { routeId, userId: user.id, lastLat: lat, lastLng: lng, lastSeenAt: new Date() },
+          data: { routeId, userId, lastLat: lat, lastLng: lng, lastSeenAt: new Date() },
         });
         participantId = newParticipant.id;
       }
     }
     // 2. Caso Invitado (Cookie)
-    else {
-      const { cookies } = await import("next/headers");
-      const cookieStore = await cookies();
-      const guestId = cookieStore.get("guestId")?.value;
-
-      if (guestId) {
-        const participant = await prisma.participant.findUnique({
-          // @ts-ignore
-          where: { routeId_guestId: { routeId, guestId } }
-        });
-        if (participant) participantId = participant.id;
-      }
+    else if (guestId) {
+      const participant = await prisma.participant.findUnique({
+        where: { routeId_guestId: { routeId, guestId } }
+      });
+      if (participant) participantId = participant.id;
     }
 
     if (!participantId) {
-      return NextResponse.json({ ok: false, error: "No autorizado o no participante" }, { status: 401 });
+      return NextResponse.json({ ok: false, error: "No eres participante de esta ruta" }, { status: 403 });
     }
 
     // Actualizar ubicación

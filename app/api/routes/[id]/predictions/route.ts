@@ -1,6 +1,5 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth-helpers';
 import { prisma } from '@/lib/prisma';
 
 type RouteContext = {
@@ -9,13 +8,13 @@ type RouteContext = {
 
 // GET - Get all predictions for route
 export async function GET(
-    request: Request,
+    request: NextRequest,
     context: RouteContext
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const auth = await getAuthenticatedUser(request);
+        if (!auth.ok) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
 
         const { id: routeId } = await context.params;
@@ -63,13 +62,13 @@ export async function GET(
 
 // POST - Create prediction
 export async function POST(
-    request: Request,
+    request: NextRequest,
     context: RouteContext
 ) {
     try {
-        const session = await getServerSession(authOptions);
-        if (!session?.user?.id) {
-            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const auth = await getAuthenticatedUser(request);
+        if (!auth.ok) {
+            return NextResponse.json({ error: auth.error }, { status: auth.status });
         }
 
         const { id: routeId } = await context.params;

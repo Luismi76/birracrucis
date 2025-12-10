@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
 import { uploadImage, ensureBucket } from "@/lib/minio";
 
@@ -19,31 +18,13 @@ export async function POST(
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    const { cookies } = await import('next/headers');
-    const cookieStore = await cookies();
-    const guestId = cookieStore.get("guestId")?.value;
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
+    }
 
+    const { userId, guestId: finalGuestId } = getUserIds(auth.user);
     const { id: routeId } = await params;
-
-    let userId: string | null = null;
-    let finalGuestId: string | null = null;
-
-    // Verificar si es usuario autenticado
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({
-        where: { email: session.user.email },
-      });
-      if (user) {
-        userId = user.id;
-      }
-    } else if (guestId) {
-      finalGuestId = guestId;
-    }
-
-    if (!userId && !finalGuestId) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-    }
 
     // Verificar que es participante de la ruta
     let isParticipant = false;
@@ -144,11 +125,12 @@ export async function GET(
   }
 
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    const auth = await getCurrentUser(req);
+    if (!auth.ok) {
+      return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
     }
 
+    const { userId: currentUserId, guestId: currentGuestId } = getUserIds(auth.user);
     const { id: routeId } = await params;
 
     // Obtener la ruta con su nombre para el hashtag
@@ -170,19 +152,6 @@ export async function GET(
       },
       orderBy: { createdAt: "desc" },
     });
-
-    // Detectar usuario actual (Session o Guest) to mark ownership
-    let currentUserId: string | null = null;
-    let currentGuestId: string | null = null;
-
-    if (session?.user?.email) {
-      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-      if (user) currentUserId = user.id;
-    } else {
-      const { cookies } = await import('next/headers');
-      const cookieStore = await cookies();
-      currentGuestId = cookieStore.get("guestId")?.value || null;
-    }
 
     const PHOTOS_WITH_OWNERSHIP = photos.map(p => ({
       ...p,
