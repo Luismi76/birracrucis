@@ -71,6 +71,27 @@ export function useUploadPhoto(routeId: string) {
             queryClient.setQueryData<PhotosResponse>(["photos", routeId], (old) =>
                 old ? { ...old, photos: [newPhoto, ...old.photos] } : { photos: [newPhoto], hashtag: "", routeName: "" }
             );
+            );
+},
+    });
+}
+
+export function useDeletePhoto(routeId: string) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (photoId: string) => {
+            const res = await fetch(`/api/routes/${routeId}/photos/${photoId}`, {
+                method: "DELETE",
+            });
+            if (!res.ok) throw new Error("Error al eliminar foto");
+            return res.json();
+        },
+        onSuccess: (_, photoId) => {
+            // Eliminar la foto del cache
+            queryClient.setQueryData<PhotosResponse>(["photos", routeId], (old) =>
+                old ? { ...old, photos: old.photos.filter((p) => p.id !== photoId) } : old
+            );
         },
     });
 }

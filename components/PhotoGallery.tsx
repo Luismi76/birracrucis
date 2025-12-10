@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import OptimizedImage from "@/components/ui/OptimizedImage";
-import { usePhotos, type Photo } from "@/hooks/usePhotos";
+
 
 type StopInfo = {
   id: string;
