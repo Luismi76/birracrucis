@@ -71,7 +71,6 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
         _count: {
           select: { participants: true },
         },
-        isDiscovery: true,
       },
     }),
   ]);
