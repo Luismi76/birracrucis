@@ -119,6 +119,14 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "stopId requerido" }, { status: 400 });
     }
 
+    // Validar que el stop pertenece a la ruta
+    const stop = await prisma.routeStop.findFirst({
+      where: { id: stopId, routeId },
+    });
+    if (!stop) {
+      return NextResponse.json({ ok: false, error: "Stop no pertenece a esta ruta" }, { status: 400 });
+    }
+
     const drink = await prisma.drink.create({
       data: {
         routeId,

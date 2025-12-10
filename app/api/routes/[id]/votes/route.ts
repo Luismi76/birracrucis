@@ -22,6 +22,14 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "stopId requerido" }, { status: 400 });
     }
 
+    // Validar que el stop pertenece a la ruta
+    const stop = await prisma.routeStop.findFirst({
+      where: { id: stopId, routeId },
+    });
+    if (!stop) {
+      return NextResponse.json({ ok: false, error: "Stop no pertenece a esta ruta" }, { status: 400 });
+    }
+
     const votes = await prisma.skipVote.findMany({
       where: { routeId, stopId },
       include: {
@@ -81,6 +89,14 @@ export async function POST(
 
     if (!stopId || typeof vote !== "boolean") {
       return NextResponse.json({ ok: false, error: "stopId y vote requeridos" }, { status: 400 });
+    }
+
+    // Validar que el stop pertenece a la ruta
+    const stop = await prisma.routeStop.findFirst({
+      where: { id: stopId, routeId },
+    });
+    if (!stop) {
+      return NextResponse.json({ ok: false, error: "Stop no pertenece a esta ruta" }, { status: 400 });
     }
 
     // Upsert para actualizar o crear voto

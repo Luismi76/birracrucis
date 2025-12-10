@@ -77,6 +77,14 @@ export async function POST(
       return NextResponse.json({ ok: false, error: "stopId y rating (1-5) requeridos" }, { status: 400 });
     }
 
+    // Validar que el stop pertenece a la ruta
+    const stop = await prisma.routeStop.findFirst({
+      where: { id: stopId, routeId },
+    });
+    if (!stop) {
+      return NextResponse.json({ ok: false, error: "Stop no pertenece a esta ruta" }, { status: 400 });
+    }
+
     // Upsert para actualizar o crear valoración
     const barRating = await prisma.barRating.upsert({
       where: {

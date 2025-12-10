@@ -116,6 +116,17 @@ export async function POST(
             );
         }
 
+        // Validar que el stop pertenece a la ruta
+        const stop = await prisma.routeStop.findFirst({
+            where: { id: stopId, routeId },
+        });
+        if (!stop) {
+            return NextResponse.json(
+                { error: 'Stop no pertenece a esta ruta' },
+                { status: 400 }
+            );
+        }
+
         // Create or update reaction (upsert)
         const reaction = await prisma.barReaction.upsert({
             where: {
