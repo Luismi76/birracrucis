@@ -79,9 +79,8 @@ type RouteProgress = {
 };
 
 const ACCURACY_THRESHOLD = 150;
-
 const LOCATION_UPDATE_INTERVAL = 10000;
-const PARTICIPANTS_FETCH_INTERVAL = 5000;
+const DATA_REFRESH_INTERVAL = 30000; // 30s para datos secundarios (pot, drinks)
 
 // Precio por defecto de la cerveza
 const DEFAULT_BEER_PRICE = 1.50;
@@ -469,37 +468,32 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }
   }, [activeTab]);
 
-  // Auto-refresh pot data every 10 seconds to catch new contributions
+  // Auto-refresh pot data (solo si pestaña visible)
   useEffect(() => {
     if (!routeId) return;
 
     const interval = setInterval(() => {
-      fetchPotData();
-    }, 10000); // 10 seconds
+      if (document.visibilityState === 'visible') {
+        fetchPotData();
+      }
+    }, DATA_REFRESH_INTERVAL);
 
     return () => clearInterval(interval);
   }, [routeId]);
 
+  // Participantes se reciben por SSE (useRouteStream), solo fetch inicial
   useEffect(() => {
-    if (!routeId || !onParticipantsChange) return;
-    const fetchParticipants = async () => {
-      try {
-        const res = await fetch(`/api/routes/${routeId}/participants`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.ok && data.participants) {
-            setParticipants(data.participants);
-            onParticipantsChange(data.participants);
-          }
+    if (!routeId) return;
+    fetch(`/api/routes/${routeId}/participants`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.ok && data.participants) {
+          setParticipants(data.participants);
+          onParticipantsChange?.(data.participants);
         }
-      } catch (err) {
-        console.warn("Error obteniendo participantes:", err);
-      }
-    };
-    fetchParticipants();
-    const interval = setInterval(fetchParticipants, PARTICIPANTS_FETCH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [routeId, onParticipantsChange]);
+      })
+      .catch(err => console.warn("Error obteniendo participantes:", err));
+  }, [routeId]);
 
   const handleStartWatch = () => {
     if (!("geolocation" in navigator)) return;
@@ -835,8 +829,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
     fetchDrinkStats();
 
-    // Refresh stats every 10 seconds
-    const interval = setInterval(fetchDrinkStats, 10000);
+    // Refresh stats (solo si pestaña visible)
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchDrinkStats();
+      }
+    }, DATA_REFRESH_INTERVAL);
     return () => clearInterval(interval);
   }, [routeId]);
 
