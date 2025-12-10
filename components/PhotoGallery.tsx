@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "next-auth/react";
+import OptimizedImage from "@/components/ui/OptimizedImage";
 import { usePhotos, useDeletePhoto, type Photo } from "@/hooks/usePhotos";
 
 
