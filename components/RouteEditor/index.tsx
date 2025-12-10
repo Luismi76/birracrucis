@@ -28,7 +28,9 @@ import CompactRouteSummary from "./components/CompactRouteSummary";
 import InfoStep from "./steps/InfoStep";
 import DetailsStep from "./steps/DetailsStep";
 import ReviewStep from "./steps/ReviewStep";
+import ShareInviteCode from "@/components/ShareInviteCode";
 
+// ... existing imports ...
 const STEPS = ["Info", "Mapa", "Detalles", "Revisión"];
 
 export default function RouteEditor({ initialData }: RouteEditorProps) {
@@ -37,7 +39,10 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
     // Wizard State
     const [currentStep, setCurrentStep] = useState(0);
-    const [isMobileListExpanded, setIsMobileListExpanded] = useState(false); // Nuevo estado para UI móvil
+    const [isMobileListExpanded, setIsMobileListExpanded] = useState(false);
+
+    // Success/Share State
+    const [createdRoute, setCreatedRoute] = useState<{ id: string, name: string, inviteCode: string } | null>(null); // Nuevo estado para UI móvil
 
     // Estado del formulario básico
     const [name, setName] = useState(initialData?.name || "");
@@ -451,11 +456,23 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             if (isEditing) {
                 toast.success("Ruta actualizada correctamente");
                 router.push(`/routes/${data.route.id}`);
+                router.refresh();
             } else {
-                toast.success("Plantilla creada. Ahora crea una edición para usar la ruta.");
-                router.push("/routes");
+                if (isDiscovery) {
+                    toast.success("¡Aventura iniciada! 🧭");
+                    // Show Share UI instead of redirecting immediately
+                    // Ensure route has inviteCode (it should)
+                    setCreatedRoute({
+                        id: data.route.id,
+                        name: data.route.name,
+                        inviteCode: data.route.inviteCode
+                    });
+                } else {
+                    toast.success("Plantilla creada. Ahora crea una edición para usar la ruta.");
+                    router.push("/routes");
+                    router.refresh();
+                }
             }
-            router.refresh();
         } catch (err) {
             const message = (err as Error).message;
             setError(message);
@@ -488,7 +505,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const handleNext = () => {
         if (currentStep === 0) {
             if (!name.trim()) return toast.error("El nombre es obligatorio");
-            // Date is now optional for templates
+            // If Discovery Mode, skip Map step (Step 1) and go to Details (Step 2)
+            if (isDiscovery) {
+                setCurrentStep(2);
+                return;
+            }
         }
         if (currentStep === 1) {
             const minBars = isDiscovery ? 0 : 2;
@@ -499,11 +520,54 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     };
 
     const handleBack = () => {
+        // If Discovery Mode and on Details (Step 2), go back to Info (Step 0)
+        if (currentStep === 2 && isDiscovery) {
+            setCurrentStep(0);
+            return;
+        }
         setCurrentStep(prev => Math.max(prev - 1, 0));
     };
 
     return (
         <div className="flex flex-col h-screen bg-slate-50 font-sans">
+            {/* Success/Share Overlay for Discovery Mode */}
+            {createdRoute && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-8 text-center space-y-6">
+                            <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-in zoom-in spin-in-12 duration-500">
+                                <span className="text-4xl">🧭</span>
+                            </div>
+
+                            <div>
+                                <h2 className="text-2xl font-bold text-slate-800 mb-2">¡Aventura Lista!</h2>
+                                <p className="text-slate-600">
+                                    Tu ruta <span className="font-bold text-blue-600">"{createdRoute.name}"</span> está creada.
+                                    <br />¡Invita a tus amigos antes de empezar!
+                                </p>
+                            </div>
+
+                            <div className="text-left bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                <ShareInviteCode
+                                    inviteCode={createdRoute.inviteCode}
+                                    routeName={createdRoute.name}
+                                />
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    router.push(`/routes/${createdRoute.id}`);
+                                    router.refresh();
+                                }}
+                                className="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold rounded-2xl hover:from-blue-600 hover:to-indigo-600 transition-all shadow-lg active:scale-[0.98] text-lg"
+                            >
+                                Ir a la Ruta &rarr;
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="bg-white border-b px-4 py-3 shadow-sm z-10 flex justify-between items-center">
                 <div className="flex items-center gap-3">
@@ -707,6 +771,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             defaultStayDuration={defaultStayDuration} isPublic={isPublic}
                             orderedIds={orderedIds} selectedBars={selectedBars}
                             routeDistance={routeDistance} routeDuration={routeDuration}
+                            isDiscovery={isDiscovery}
                         />
                     </div>
                 )}
