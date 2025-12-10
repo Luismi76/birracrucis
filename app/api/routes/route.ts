@@ -186,10 +186,13 @@ export async function POST(req: NextRequest) {
         attCheck++;
       }
 
+      // Validar fecha: usar la del body si es válida, sino usar hoy
+      const editionDate = (date && !isNaN(Date.parse(date))) ? new Date(date) : new Date();
+
       const edition = await prisma.route.create({
         data: {
           name: route.name,
-          date: date ? new Date(date) : new Date(),
+          date: editionDate,
           creatorId: userId,
           startMode: startMode ?? "manual",
           startTime: startTime ? new Date(startTime) : null,

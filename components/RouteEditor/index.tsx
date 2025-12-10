@@ -443,7 +443,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name,
-                    date: date.includes("T") ? date.split("T")[0] + "T00:00:00" : `${date}T00:00:00`,
+                    date: date ? (date.includes("T") ? date.split("T")[0] + "T00:00:00" : `${date}T00:00:00`) : null,
                     stops: stopsPayload,
                     startMode,
                     startTime: fullStartTime,
