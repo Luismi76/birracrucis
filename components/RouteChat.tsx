@@ -31,7 +31,7 @@ export default function RouteChat({ routeId, currentUserId, onClose, onUnreadCou
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-
+        const res = await fetch(`/api/routes/${routeId}/chat`);
         if (res.ok) {
           const data = await res.json();
           setMessages(data.messages || []);
@@ -70,7 +70,7 @@ export default function RouteChat({ routeId, currentUserId, onClose, onUnreadCou
 
     setSending(true);
     try {
-      const res = await fetch(`/api/routes/${routeId}/messages`, {
+      const res = await fetch(`/api/routes/${routeId}/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -82,7 +82,7 @@ export default function RouteChat({ routeId, currentUserId, onClose, onUnreadCou
       if (res.ok) {
         setNewMessage("");
         // Refresh messages
-        const messagesRes = await fetch(`/api/routes/${routeId}/messages`);
+        const messagesRes = await fetch(`/api/routes/${routeId}/chat`);
         if (messagesRes.ok) {
           const data = await messagesRes.json();
           setMessages(data.messages || []);
