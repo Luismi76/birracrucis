@@ -17,7 +17,7 @@ type StopInput = {
 
 type UpdateRouteBody = {
     name: string;
-    date: string;
+    date?: string | null;
     stops: StopInput[];
     // Campos de configuración de tiempo
     startMode?: "manual" | "scheduled" | "all_present";
@@ -215,7 +215,7 @@ export async function PUT(
         const body = (await req.json()) as UpdateRouteBody;
         const { name, date, stops, startMode, startTime, hasEndTime, endTime } = body;
 
-        if (!name || !date || !Array.isArray(stops) || stops.length === 0) {
+        if (!name || !Array.isArray(stops) || stops.length === 0) {
             return NextResponse.json(
                 { ok: false, error: "Datos inválidos" },
                 { status: 400 }
@@ -229,7 +229,7 @@ export async function PUT(
                 where: { id },
                 data: {
                     name,
-                    date: new Date(date),
+                    date: date ? new Date(date) : null,
                     // Campos de tiempo
                     startMode: startMode ?? "manual",
                     startTime: startTime ? new Date(startTime) : null,

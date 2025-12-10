@@ -74,10 +74,10 @@ export default async function RouteHistoryPage() {
     const duration =
       route.actualStartTime && route.actualEndTime
         ? Math.round(
-            (new Date(route.actualEndTime).getTime() -
-              new Date(route.actualStartTime).getTime()) /
-              60000
-          )
+          (new Date(route.actualEndTime).getTime() -
+            new Date(route.actualStartTime).getTime()) /
+          60000
+        )
         : null;
 
     return {
@@ -134,12 +134,12 @@ export default async function RouteHistoryPage() {
                   <div>
                     <h3 className="text-lg font-bold">{route.name}</h3>
                     <p className="text-green-100 text-sm">
-                      {new Date(route.date).toLocaleDateString("es-ES", {
+                      {route.date ? new Date(route.date).toLocaleDateString("es-ES", {
                         weekday: "long",
                         day: "numeric",
                         month: "long",
                         year: "numeric",
-                      })}
+                      }) : "Fecha sin definir"}
                     </p>
                   </div>
                   <span className="bg-white/20 px-3 py-1 rounded-full text-sm font-medium">
