@@ -22,13 +22,28 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         // En desarrollo, cualquier login es valido
-        const user = {
+        // Intentar obtener el usuario de la BD real para tener el ID correcto
+        const email = "test@birracrucis.com";
+        const dbUser = await prisma.user.findUnique({
+          where: { email }
+        });
+
+        if (dbUser) {
+          return {
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            image: dbUser.image
+          };
+        }
+
+        // Fallback si no existe en BD (aunque debería crearse al iniciar)
+        return {
           id: "dev-user-123",
           name: "Usuario de Prueba",
-          email: "test@birracrucis.com",
+          email: email,
           image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
         };
-        return user;
       }
     }),
   ],

@@ -20,27 +20,47 @@ export async function POST(
 
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
-      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-    }
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const guestId = cookieStore.get("guestId")?.value;
 
     const { id: routeId } = await params;
 
-    // Obtener usuario
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
+    let userId: string | null = null;
+    let finalGuestId: string | null = null;
 
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "Usuario no encontrado" }, { status: 404 });
+    // Verificar si es usuario autenticado
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({
+        where: { email: session.user.email },
+      });
+      if (user) {
+        userId = user.id;
+      }
+    } else if (guestId) {
+      finalGuestId = guestId;
     }
 
-    // Verificar que el usuario es participante de la ruta
-    const participant = await prisma.participant.findUnique({
-      where: { routeId_userId: { routeId, userId: user.id } },
-    });
+    if (!userId && !finalGuestId) {
+      return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
+    }
 
-    if (!participant) {
+    // Verificar que es participante de la ruta
+    let isParticipant = false;
+
+    if (userId) {
+      const participant = await prisma.participant.findUnique({
+        where: { routeId_userId: { routeId, userId } },
+      });
+      isParticipant = !!participant;
+    } else if (finalGuestId) {
+      const participant = await prisma.participant.findUnique({
+        where: { routeId_guestId: { routeId, guestId: finalGuestId } },
+      });
+      isParticipant = !!participant;
+    }
+
+    if (!isParticipant) {
       return NextResponse.json({ ok: false, error: "No eres participante de esta ruta" }, { status: 403 });
     }
 
@@ -89,7 +109,8 @@ export async function POST(
     const photo = await prisma.photo.create({
       data: {
         routeId,
-        userId: user.id,
+        userId: userId || undefined, // undefined para que Prisma lo ignore si es null y no viole tipos si fuera required, pero ahora es optional
+        guestId: finalGuestId || undefined,
         url: finalUrl,
         caption: caption || null,
         stopId: stopId || null,

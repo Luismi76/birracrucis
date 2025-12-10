@@ -25,6 +25,15 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
   const { data: session } = useSession();
   const deletePhoto = useDeletePhoto(routeId);
 
+  // Obtener guestId de las cookies (cliente)
+  const [guestId, setGuestId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Helper simple para leer cookie
+    const match = document.cookie.match(new RegExp('(^| )guestId=([^;]+)'));
+    if (match) setGuestId(match[2]);
+  }, []);
+
   const handleDelete = async (photo: Photo) => {
     if (!confirm("¿Estás seguro de que quieres eliminar esta foto?")) return;
 
@@ -285,10 +294,7 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
                 Compartir Foto
               </button>
 
-              {/* Debug Info (Temporal) */}
-              <div className="text-[10px] text-slate-500 mb-2 font-mono text-center">
-                Yo: {(session?.user as any)?.id || 'No ID'} | Foto: {selectedPhoto.userId || 'No Owner'}
-              </div>
+
 
               {/* Botón Eliminar - Solo si eres el dueño */}
               {session?.user && (session.user as any).id === selectedPhoto.userId && (
@@ -304,9 +310,8 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
               )}
             </div>
           </div>
-          </div>
-  )
-}
+        )
+      }
     </div >
   );
 }
