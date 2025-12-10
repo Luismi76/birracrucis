@@ -284,10 +284,29 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
                 </svg>
                 Compartir Foto
               </button>
+
+              {/* Debug Info (Temporal) */}
+              <div className="text-[10px] text-slate-500 mb-2 font-mono text-center">
+                Yo: {(session?.user as any)?.id || 'No ID'} | Foto: {selectedPhoto.userId || 'No Owner'}
+              </div>
+
+              {/* Botón Eliminar - Solo si eres el dueño */}
+              {session?.user && (session.user as any).id === selectedPhoto.userId && (
+                <button
+                  onClick={() => handleDelete(selectedPhoto)}
+                  className="w-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-200 dark:hover:bg-red-900/50 active:scale-95 transition-all"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  Eliminar Foto
+                </button>
+              )}
             </div>
           </div>
-        )
-      }
+          </div>
+  )
+}
     </div >
   );
 }
