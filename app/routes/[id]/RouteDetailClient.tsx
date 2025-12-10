@@ -18,6 +18,9 @@ import RankingView from "@/components/RankingView";
 import ParticipantPicker from "@/components/ParticipantPicker";
 import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
+import { usePot } from "@/hooks/usePot";
+import { useDrinkStats } from "@/hooks/useDrinkStats";
+import { useQueryClient } from "@tanstack/react-query";
 import { Beer, MapPin, Camera, Trophy, Users, UserPlus, Bell, Star } from "lucide-react";
 import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
 import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, AchievementsToast, DrinkComparison, WeatherWidget, BarChallenge, PredictionsPanel, QuickReactions } from "@/components/route-detail";
@@ -109,6 +112,7 @@ type RouteDetailClientProps = {
 
 export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, creatorId, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false, actualStartTime, actualEndTime }: RouteDetailClientProps) {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
 
   // Geolocalización
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -236,13 +240,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     return initial;
   });
 
-  // Estado del bote
-  const [potData, setPotData] = useState({
-    currentAmount: 0,
-    targetAmount: 0,
-    participantsCount: 0,
-    paidCount: 0,
-  });
+  // Estado del bote (TanStack Query)
+  const { data: potData = { currentAmount: 0, targetAmount: 0, participantsCount: 0, paidCount: 0 } } = usePot(routeId);
+
+  // Estadísticas de bebidas (TanStack Query)
+  const { data: drinkStats = {} } = useDrinkStats(routeId);
 
   // Indice del bar actual (manual, no automatico)
   const [currentBarIndex, setCurrentBarIndex] = useState(() => {
@@ -424,66 +426,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }).catch(err => console.warn("Error enviando ubicación:", err));
   }, [position, routeId]);
 
-  // Fetch pot data
-  const fetchPotData = async () => {
-    if (!routeId) return;
-    try {
-      console.log('[POT] Fetching pot data for route:', routeId);
-      const res = await fetch(`/api/routes/${routeId}/pot`);
-      console.log('[POT] Fetch response status:', res.status, res.ok);
-
-      if (!res.ok) {
-        console.error('[POT] Failed to fetch pot data, status:', res.status);
-        return;
-      }
-
-      const data = await res.json();
-      console.log('[POT] Fetched pot data:', data);
-
-      if (data.ok && data.pot) {
-        const pot = data.pot;
-        const availableBalance = (pot.totalCollected || 0) - (pot.totalSpent || 0);
-        console.log('[POT] Calculated balance:', { totalCollected: pot.totalCollected, totalSpent: pot.totalSpent, availableBalance });
-
-        setPotData({
-          currentAmount: availableBalance,
-          targetAmount: (pot.amountPerPerson || 0) * (pot.participantCount || 0),
-          participantsCount: pot.participantCount || 0,
-          paidCount: pot.contributions?.length || 0,
-        });
-        console.log('[POT] State updated');
-      } else {
-        console.warn('[POT] Invalid pot data structure:', data);
-      }
-    } catch (error) {
-      console.error('[POT] Error fetching pot data:', error);
-    }
-  };
-
-  // Fetch pot data on mount and when participants change
-  useEffect(() => {
-    fetchPotData();
-  }, [routeId, participants.length]);
-
-  // Refresh pot data when switching to group tab
-  useEffect(() => {
-    if (activeTab === 'group') {
-      fetchPotData();
-    }
-  }, [activeTab]);
-
-  // Auto-refresh pot data (solo si pestaña visible)
-  useEffect(() => {
-    if (!routeId) return;
-
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchPotData();
-      }
-    }, DATA_REFRESH_INTERVAL);
-
-    return () => clearInterval(interval);
-  }, [routeId]);
+  // Pot data ahora viene del hook usePot (TanStack Query con auto-refresh)
 
   // Participantes se reciben por SSE (useRouteStream), solo fetch inicial
   useEffect(() => {
@@ -661,9 +604,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       // Update pot spending
       try {
-        console.log('[POT] Updating pot spending:', { routeId, roundCost, peopleAtBar, beerPrice });
-
-        // Get current stop name for description
         const currentStop = stops.find(s => s.id === stopId);
         const description = `Ronda en ${currentStop?.name || 'bar'} (${peopleAtBar} ${peopleAtBar === 1 ? 'persona' : 'personas'})`;
 
@@ -676,20 +616,14 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             description,
           }),
         });
-        const potData = await potResponse.json();
-        console.log('[POT] Pot API response:', potData);
+        const potResponseData = await potResponse.json();
 
         if (!potResponse.ok) {
-          console.error('[POT] Failed to update pot:', potData);
-          toast.error(`Error actualizando bote: ${potData.error || 'Unknown'}`);
+          toast.error(`Error actualizando bote: ${potResponseData.error || 'Unknown'}`);
         } else {
-          console.log('[POT] Pot updated successfully, refreshing data...');
-          // Refresh pot data
-          await fetchPotData();
-          console.log('[POT] Pot data refreshed');
+          queryClient.invalidateQueries({ queryKey: ["pot", routeId] });
         }
-      } catch (potError) {
-        console.error('[POT] Error updating pot:', potError);
+      } catch {
         toast.error('Error al actualizar el bote');
       }
 
@@ -825,43 +759,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     };
   }, [currentBarIndex, stops, position]);
 
-  // Preparar datos para comparativa de bebidas
-  const [drinkStats, setDrinkStats] = useState<Record<string, number>>({});
-
-  // Fetch drink statistics
-  useEffect(() => {
-    async function fetchDrinkStats() {
-      try {
-        const res = await fetch(`/api/routes/${routeId}/drinks`);
-        if (!res.ok) return;
-
-        const data = await res.json();
-        if (data.ok && data.stats?.byUser) {
-          // Convert array of stats to a map of userId -> count
-          const statsMap: Record<string, number> = {};
-          data.stats.byUser.forEach((stat: { userId: string; _count: { id: number } }) => {
-            if (stat.userId) {
-              statsMap[stat.userId] = stat._count.id;
-            }
-          });
-          setDrinkStats(statsMap);
-        }
-      } catch (error) {
-        console.error('Error fetching drink stats:', error);
-      }
-    }
-
-    fetchDrinkStats();
-
-    // Refresh stats (solo si pestaña visible)
-    const interval = setInterval(() => {
-      if (document.visibilityState === 'visible') {
-        fetchDrinkStats();
-      }
-    }, DATA_REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [routeId]);
-
+  // Preparar datos para comparativa de bebidas (drinkStats viene de useDrinkStats hook)
   const participantsWithBeers = useMemo(() => {
     return participants.map(p => {
       // Get real drink count from stats, default to 0
