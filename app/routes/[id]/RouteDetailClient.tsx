@@ -135,10 +135,10 @@ type RouteDetailClientProps = {
   onOpenShare?: () => void;
   showAccessibilityPanel?: boolean;
   onCloseAccessibilityPanel?: () => void;
-
+  isDiscovery?: boolean;
 };
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false }: RouteDetailClientProps) {
   // ... state ...
   const { data: session } = useSession();
   const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);

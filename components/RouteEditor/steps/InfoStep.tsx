@@ -7,6 +7,8 @@ interface InfoStepProps {
     onDateChange: (date: string) => void;
     isPublic: boolean;
     onIsPublicChange: (isPublic: boolean) => void;
+    isDiscovery: boolean;
+    onIsDiscoveryChange: (isDiscovery: boolean) => void;
     description: string;
     onDescriptionChange: (desc: string) => void;
     showPublicOption: boolean;
@@ -19,6 +21,8 @@ export default function InfoStep({
     onDateChange,
     isPublic,
     onIsPublicChange,
+    isDiscovery,
+    onIsDiscoveryChange,
     description,
     onDescriptionChange,
     showPublicOption

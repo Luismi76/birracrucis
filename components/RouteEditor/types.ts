@@ -44,6 +44,7 @@ export type RouteData = {
     defaultStayDuration?: number;
     // Campos de visibilidad
     isPublic: boolean;
+    isDiscovery?: boolean;
     description: string | null;
     originalRouteId?: string | null;
 };

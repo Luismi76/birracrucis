@@ -71,6 +71,7 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
         _count: {
           select: { participants: true },
         },
+        isDiscovery: true,
       },
     }),
   ]);
@@ -172,6 +173,7 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
       isCreator={isCreator}
       creatorName={route.creator?.name || null}
       participantsCount={route._count.participants}
+      isDiscovery={route.isDiscovery}
     />
   );
 }

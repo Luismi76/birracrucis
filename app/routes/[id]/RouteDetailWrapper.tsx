@@ -73,6 +73,7 @@ type RouteDetailWrapperProps = {
   isCreator: boolean;
   creatorName: string | null;
   participantsCount: number;
+  isDiscovery: boolean;
 };
 
 // Calcular tiempo hasta el inicio de la ruta
@@ -108,6 +109,7 @@ export default function RouteDetailWrapper({
   isCreator,
   creatorName,
   participantsCount,
+  isDiscovery,
 }: RouteDetailWrapperProps) {
   const { data: session } = useSession();
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
@@ -275,9 +277,12 @@ export default function RouteDetailWrapper({
               ) : isScheduled ? (
                 <div>
                   <p className="text-xs font-bold text-slate-900 truncate uppercase tracking-wide">{routeName}</p>
-                  <p className="text-[10px] text-amber-600 font-black">
-                    {countdown.hours > 0 ? `${countdown.hours}h ${countdown.minutes}m` : `${countdown.minutes} min`} para empezar
-                  </p>
+                  <div className="flex flex-col items-center">
+                    <p className="text-[10px] text-amber-600 font-black">
+                      {countdown.hours > 0 ? `${countdown.hours}h ${countdown.minutes}m` : `${countdown.minutes} min`} para empezar
+                    </p>
+                    {isDiscovery && <span className="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full mt-0.5 font-bold border border-amber-200">Aventura 🧭</span>}
+                  </div>
                 </div>
               ) : (
                 <div>
@@ -374,6 +379,7 @@ export default function RouteDetailWrapper({
           onOpenShare={openShareModal}
           showAccessibilityPanel={showAccessibilityPanel}
           onCloseAccessibilityPanel={closeAccessibilityPanel}
+          isDiscovery={isDiscovery}
         />
       </main>
 

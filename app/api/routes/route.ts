@@ -27,6 +27,7 @@ type CreateRouteBody = {
   hasEndTime?: boolean;
   endTime?: string | null; // ISO string
   isPublic?: boolean;
+  isDiscovery?: boolean;
 };
 
 // Genera un código de invitación único (8 caracteres, alfanumérico)
@@ -113,6 +114,7 @@ export async function POST(req: NextRequest) {
         creatorId: userId || null,
         // Public visibility
         isPublic: body.isPublic ?? false,
+        isDiscovery: body.isDiscovery ?? false,
         // Template system - new routes are templates by default
         isTemplate: true,
         // Campos de tiempo

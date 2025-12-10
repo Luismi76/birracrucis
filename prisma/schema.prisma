@@ -100,6 +100,7 @@ model Route {
   potTotalCollected  Float             @default(0)
   potTotalSpent      Float             @default(0)
   isTemplate         Boolean           @default(false)
+  isDiscovery        Boolean           @default(false)
   templateId         String?
   barRatings         BarRating[]
   drinks             Drink[]

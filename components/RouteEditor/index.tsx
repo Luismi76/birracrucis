@@ -60,6 +60,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     );
     const [defaultStayDuration, setDefaultStayDuration] = useState(initialData?.defaultStayDuration || 30);
     const [isPublic, setIsPublic] = useState(initialData?.isPublic || false);
+    const [isDiscovery, setIsDiscovery] = useState(initialData?.isDiscovery || false);
     const [description, setDescription] = useState(initialData?.description || "");
 
     // Estado de búsqueda
@@ -382,8 +383,9 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         setError(null);
 
         try {
-            if (selectedBars.size < 2) {
-                throw new Error("Selecciona al menos 2 bares para crear una ruta.");
+            const minBars = isDiscovery ? 1 : 2;
+            if (selectedBars.size < minBars) {
+                throw new Error(isDiscovery ? "Selecciona el punto de partida." : "Selecciona al menos 2 bares para crear una ruta.");
             }
             if (!name.trim() || !date) {
                 throw new Error("Nombre y fecha son obligatorios.");
@@ -433,6 +435,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     hasEndTime,
                     endTime: fullEndTime,
                     isPublic,
+                    isDiscovery,
                     description,
                 }),
             });
@@ -483,7 +486,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             if (!date) return toast.error("La fecha es obligatoria");
         }
         if (currentStep === 1) {
-            if (selectedBars.size < 2) return toast.error("Selecciona al menos 2 bares");
+            const minBars = isDiscovery ? 1 : 2;
+            if (selectedBars.size < minBars) return toast.error(isDiscovery ? "Selecciona el punto de partida" : "Selecciona al menos 2 bares");
         }
 
         setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
@@ -536,6 +540,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             name={name} onNameChange={setName}
                             date={date} onDateChange={setDate}
                             isPublic={isPublic} onIsPublicChange={setIsPublic}
+                            isDiscovery={isDiscovery} onIsDiscoveryChange={setIsDiscovery}
                             description={description} onDescriptionChange={setDescription}
                             showPublicOption={showPublicOption}
                         />
