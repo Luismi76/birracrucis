@@ -2,24 +2,27 @@
 
 import Image from "next/image";
 import BeerLoader from "@/components/ui/BeerLoader";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
-export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
+interface SplashScreenProps {
+  onFinish: () => void;
+  isReady?: boolean; // Nueva prop: indica si la app está lista para mostrar
+}
+
+export default function SplashScreen({ onFinish, isReady = false }: SplashScreenProps) {
   const [fadeOut, setFadeOut] = useState(false);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setFadeOut(true);
-      setTimeout(onFinish, 500); // Esperar a que termine la animación
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, [onFinish]);
+  // Cuando isReady cambia a true, iniciamos el fade out
+  if (isReady && !fadeOut) {
+    setFadeOut(true);
+    setTimeout(onFinish, 500); // Esperar a que termine la animación
+  }
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-amber-500 to-orange-600 transition-opacity duration-500 ${fadeOut ? "opacity-0" : "opacity-100"
-        }`}
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-gradient-to-b from-amber-500 to-orange-600 transition-opacity duration-500 ${
+        fadeOut ? "opacity-0 pointer-events-none" : "opacity-100"
+      }`}
     >
       <div className="animate-pulse">
         <Image

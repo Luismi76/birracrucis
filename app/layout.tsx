@@ -1,12 +1,8 @@
 import type { Metadata } from "next";
-// import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppWrapper from "@/components/AppWrapper";
 import AuthProvider from "@/components/AuthProvider";
 import { Toaster } from "sonner";
-import OfflineBanner from "@/components/OfflineBanner";
-
-import OnboardingCheck from "@/components/OnboardingCheck";
 
 // const geistSans = Geist({
 //   variable: "--font-geist-sans",
@@ -83,10 +79,6 @@ export default function RootLayout({
         <AuthProvider>
           <AppWrapper>{children}</AppWrapper>
           <Toaster richColors position="top-center" />
-
-          <OnboardingCheck />
-          <main className="flex-1 pb-16 md:pb-0">
-          </main>
         </AuthProvider>
       </body>
     </html>
