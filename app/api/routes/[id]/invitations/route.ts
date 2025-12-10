@@ -156,7 +156,7 @@ export async function POST(
       to: recipientEmail,
       inviterName,
       routeName: invitation.route.name,
-      routeDate: invitation.route.date,
+      routeDate: invitation.route.date || new Date(),
       message: message || null,
       routeId,
     });
