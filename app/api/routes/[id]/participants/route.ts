@@ -11,7 +11,7 @@ export async function GET(
 ) {
   // Rate limiting - endpoint frecuente
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`participants:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
+  const rateLimitResult = await rateLimit(`participants:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }

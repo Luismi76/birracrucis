@@ -100,7 +100,7 @@ export async function DELETE(
 ) {
     // Rate limiting - endpoint de escritura (eliminar ruta)
     const clientId = getClientIdentifier(req);
-    const rateLimitResult = rateLimit(`routes:delete:${clientId}`, RATE_LIMIT_CONFIGS.write);
+    const rateLimitResult = await rateLimit(`routes:delete:${clientId}`, RATE_LIMIT_CONFIGS.write);
     if (!rateLimitResult.success) {
         return rateLimitExceededResponse(rateLimitResult.reset);
     }
@@ -152,7 +152,7 @@ export async function PUT(
 ) {
     // Rate limiting - endpoint de escritura (actualizar ruta)
     const clientId = getClientIdentifier(req);
-    const rateLimitResult = rateLimit(`routes:update:${clientId}`, RATE_LIMIT_CONFIGS.write);
+    const rateLimitResult = await rateLimit(`routes:update:${clientId}`, RATE_LIMIT_CONFIGS.write);
     if (!rateLimitResult.success) {
         return rateLimitExceededResponse(rateLimitResult.reset);
     }

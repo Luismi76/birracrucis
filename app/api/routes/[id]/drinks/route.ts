@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`drinks:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
+  const rateLimitResult = await rateLimit(`drinks:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }
@@ -73,7 +73,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`drinks:add:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  const rateLimitResult = await rateLimit(`drinks:add:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }

@@ -1,74 +1,86 @@
 /**
- * Simple in-memory rate limiter
- * Para producción, considera usar @upstash/ratelimit con Redis
+ * Rate limiter con PostgreSQL
+ * Funciona en serverless (Vercel) porque persiste en base de datos
  */
+
+import { prisma } from "@/lib/prisma";
 
 type RateLimitConfig = {
     interval: number; // ventana en ms
     maxRequests: number; // máximo de requests en la ventana
 };
 
-type RateLimitEntry = {
-    count: number;
-    resetAt: number;
-};
+/**
+ * Verifica si una IP/usuario ha excedido el rate limit
+ * Usa PostgreSQL para persistir entre instancias serverless
+ */
+export async function rateLimit(
+    identifier: string,
+    config: RateLimitConfig = { interval: 60000, maxRequests: 60 }
+): Promise<{ success: boolean; remaining: number; reset: number }> {
+    const now = new Date();
+    const resetAt = new Date(now.getTime() + config.interval);
 
-// Store en memoria (se reinicia con el servidor)
-const rateLimitStore = new Map<string, RateLimitEntry>();
+    try {
+        // Usar upsert atómico para evitar race conditions
+        const result = await prisma.$queryRaw<{ count: number; reset_at: Date }[]>`
+            INSERT INTO "RateLimit" (id, count, "resetAt")
+            VALUES (${identifier}, 1, ${resetAt})
+            ON CONFLICT (id) DO UPDATE SET
+                count = CASE
+                    WHEN "RateLimit"."resetAt" < ${now} THEN 1
+                    ELSE "RateLimit".count + 1
+                END,
+                "resetAt" = CASE
+                    WHEN "RateLimit"."resetAt" < ${now} THEN ${resetAt}
+                    ELSE "RateLimit"."resetAt"
+                END
+            RETURNING count, "resetAt" as reset_at
+        `;
 
-// Limpiar entradas expiradas cada minuto
-if (typeof setInterval !== "undefined") {
-    setInterval(() => {
-        const now = Date.now();
-        for (const [key, entry] of rateLimitStore.entries()) {
-            if (entry.resetAt < now) {
-                rateLimitStore.delete(key);
-            }
+        const { count, reset_at } = result[0];
+        const resetTime = reset_at.getTime();
+
+        if (count > config.maxRequests) {
+            return {
+                success: false,
+                remaining: 0,
+                reset: resetTime,
+            };
         }
-    }, 60000);
+
+        return {
+            success: true,
+            remaining: config.maxRequests - count,
+            reset: resetTime,
+        };
+    } catch (error) {
+        // Si falla la DB, permitir la request (fail open)
+        console.error("Rate limit check failed:", error);
+        return {
+            success: true,
+            remaining: config.maxRequests,
+            reset: resetAt.getTime(),
+        };
+    }
 }
 
 /**
- * Verifica si una IP/usuario ha excedido el rate limit
- * @returns { success: boolean, remaining: number, reset: number }
+ * Limpia entradas de rate limit expiradas
+ * Llamar periódicamente (ej: cron job o al inicio de la app)
  */
-export function rateLimit(
-    identifier: string,
-    config: RateLimitConfig = { interval: 60000, maxRequests: 60 }
-): { success: boolean; remaining: number; reset: number } {
-    const now = Date.now();
-    const entry = rateLimitStore.get(identifier);
-
-    // Si no hay entrada o ya expiró, crear nueva
-    if (!entry || entry.resetAt < now) {
-        const newEntry: RateLimitEntry = {
-            count: 1,
-            resetAt: now + config.interval,
-        };
-        rateLimitStore.set(identifier, newEntry);
-        return {
-            success: true,
-            remaining: config.maxRequests - 1,
-            reset: newEntry.resetAt,
-        };
+export async function cleanupExpiredRateLimits(): Promise<number> {
+    try {
+        const result = await prisma.rateLimit.deleteMany({
+            where: {
+                resetAt: { lt: new Date() },
+            },
+        });
+        return result.count;
+    } catch (error) {
+        console.error("Rate limit cleanup failed:", error);
+        return 0;
     }
-
-    // Si excedió el límite
-    if (entry.count >= config.maxRequests) {
-        return {
-            success: false,
-            remaining: 0,
-            reset: entry.resetAt,
-        };
-    }
-
-    // Incrementar contador
-    entry.count++;
-    return {
-        success: true,
-        remaining: config.maxRequests - entry.count,
-        reset: entry.resetAt,
-    };
 }
 
 /**

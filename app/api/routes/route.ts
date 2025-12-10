@@ -37,7 +37,7 @@ function generateInviteCode(): string {
 export async function POST(req: NextRequest) {
   // Rate limiting - endpoint de escritura (crear rutas)
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`routes:create:${clientId}`, RATE_LIMIT_CONFIGS.write);
+  const rateLimitResult = await rateLimit(`routes:create:${clientId}`, RATE_LIMIT_CONFIGS.write);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }

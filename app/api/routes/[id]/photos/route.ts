@@ -12,7 +12,7 @@ export async function POST(
 ) {
   // Rate limiting - endpoint de escritura (subir fotos)
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`photos:upload:${clientId}`, RATE_LIMIT_CONFIGS.write);
+  const rateLimitResult = await rateLimit(`photos:upload:${clientId}`, RATE_LIMIT_CONFIGS.write);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }
@@ -119,7 +119,7 @@ export async function GET(
 ) {
   // Rate limiting - endpoint estándar
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`photos:get:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  const rateLimitResult = await rateLimit(`photos:get:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }

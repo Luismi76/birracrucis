@@ -10,7 +10,7 @@ export async function GET(
 ) {
   // Rate limiting - endpoint frecuente (polling de chat)
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`chat:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
+  const rateLimitResult = await rateLimit(`chat:get:${clientId}`, RATE_LIMIT_CONFIGS.frequent);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }
@@ -106,7 +106,7 @@ export async function POST(
 ) {
   // Rate limiting - endpoint de escritura (enviar mensajes)
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`chat:send:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  const rateLimitResult = await rateLimit(`chat:send:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }

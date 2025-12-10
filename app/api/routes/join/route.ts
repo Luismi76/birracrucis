@@ -13,7 +13,7 @@ type JoinRouteBody = {
 // POST /api/routes/join - Unirse a una ruta con código de invitación
 export async function POST(req: NextRequest) {
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`routes:join:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  const rateLimitResult = await rateLimit(`routes:join:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
 // GET /api/routes/join?code=ABC123&guestId=XYZ
 export async function GET(req: NextRequest) {
   const clientId = getClientIdentifier(req);
-  const rateLimitResult = rateLimit(`routes:join-info:${clientId}`, RATE_LIMIT_CONFIGS.standard);
+  const rateLimitResult = await rateLimit(`routes:join-info:${clientId}`, RATE_LIMIT_CONFIGS.standard);
   if (!rateLimitResult.success) {
     return rateLimitExceededResponse(rateLimitResult.reset);
   }

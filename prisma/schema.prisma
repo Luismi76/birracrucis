@@ -455,3 +455,13 @@ model BarChallenge {
   @@index([userId, completed])
   @@index([stopId, completed])
 }
+
+// ========== RATE LIMITING ==========
+
+model RateLimit {
+  id         String   @id
+  count      Int      @default(1)
+  resetAt    DateTime
+
+  @@index([resetAt])
+}
