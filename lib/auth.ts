@@ -14,38 +14,38 @@ export const authOptions: NextAuthOptions = {
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       allowDangerousEmailAccountLinking: true,
     }),
-    CredentialsProvider({
-      name: "Modo Desarrollo",
-      credentials: {
-        username: { label: "Username", type: "text", placeholder: "dev" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        // En desarrollo, cualquier login es valido
-        // Intentar obtener el usuario de la BD real para tener el ID correcto
-        const email = "test@birracrucis.com";
-        const dbUser = await prisma.user.findUnique({
-          where: { email }
-        });
+    // CredentialsProvider solo disponible en desarrollo
+    ...(process.env.NODE_ENV === "development" ? [
+      CredentialsProvider({
+        name: "Modo Desarrollo",
+        credentials: {
+          username: { label: "Username", type: "text", placeholder: "dev" },
+          password: { label: "Password", type: "password" }
+        },
+        async authorize() {
+          const email = "test@birracrucis.com";
+          const dbUser = await prisma.user.findUnique({
+            where: { email }
+          });
 
-        if (dbUser) {
+          if (dbUser) {
+            return {
+              id: dbUser.id,
+              name: dbUser.name,
+              email: dbUser.email,
+              image: dbUser.image
+            };
+          }
+
           return {
-            id: dbUser.id,
-            name: dbUser.name,
-            email: dbUser.email,
-            image: dbUser.image
+            id: "dev-user-123",
+            name: "Usuario de Prueba",
+            email: email,
+            image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
           };
         }
-
-        // Fallback si no existe en BD (aunque debería crearse al iniciar)
-        return {
-          id: "dev-user-123",
-          name: "Usuario de Prueba",
-          email: email,
-          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-        };
-      }
-    }),
+      }),
+    ] : []),
   ],
   session: {
     strategy: "jwt",
