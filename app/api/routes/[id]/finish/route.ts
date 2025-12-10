@@ -58,7 +58,7 @@ export async function POST(
                     to: p.user.email,
                     userName: p.user.name || "Participante",
                     routeName: updatedRoute.name,
-                    routeDate: updatedRoute.date,
+                    routeDate: updatedRoute.date || updatedRoute.createdAt || new Date(),
                     stopsVisited: updatedRoute.stops.length,
                     totalStops: updatedRoute.stops.length
                 });
