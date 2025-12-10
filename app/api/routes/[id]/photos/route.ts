@@ -69,21 +69,14 @@ export async function POST(
     const isBase64 = url.startsWith("data:image/");
     const minioConfigured = !!process.env.MINIO_ENDPOINT;
 
-    console.log(`[Photos] Base64: ${isBase64}, MinIO configured: ${minioConfigured}, Endpoint: ${process.env.MINIO_ENDPOINT || 'not set'}`);
-
     if (isBase64 && minioConfigured) {
       try {
-        console.log("[Photos] Intentando subir a MinIO...");
         await ensureBucket();
         const fileName = `${routeId}/${nanoid(12)}`;
         finalUrl = await uploadImage(url, fileName);
-        console.log(`[Photos] Subido exitosamente a MinIO: ${finalUrl}`);
-      } catch (minioError) {
-        console.error("[Photos] Error subiendo a MinIO, guardando base64:", minioError);
+      } catch {
         // Si falla MinIO, guardamos base64 como fallback
       }
-    } else {
-      console.log("[Photos] Guardando como base64 (MinIO no configurado o URL externa)");
     }
 
     // Crear la foto

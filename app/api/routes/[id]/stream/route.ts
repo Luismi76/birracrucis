@@ -54,7 +54,6 @@ export async function GET(
 
     const stream = new ReadableStream({
         async start(controller) {
-            console.log(`[SSE] Connected: ${routeId} (User: ${currentUserId || "Guest-" + currentGuestId})`);
             // Enviar evento inicial de conexión
             controller.enqueue(
                 encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: "ok" })}\n\n`)
@@ -233,7 +232,6 @@ export async function GET(
 
             // Cleanup
             req.signal.addEventListener("abort", () => {
-                console.log(`[SSE] Disconnected/Aborted: ${routeId}`);
                 clearInterval(interval);
             });
         },

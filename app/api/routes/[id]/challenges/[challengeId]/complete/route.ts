@@ -84,9 +84,8 @@ export async function POST(
                     points: challenge.points,
                 },
             });
-        } catch (achievementError) {
+        } catch {
             // Achievement might already exist, that's ok
-            console.log('Achievement creation skipped (might already exist)');
         }
 
         return NextResponse.json({
