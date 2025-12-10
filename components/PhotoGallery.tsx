@@ -296,8 +296,8 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
 
 
 
-              {/* Botón Eliminar - Solo si eres el dueño */}
-              {session?.user && (session.user as any).id === selectedPhoto.userId && (
+              {/* Botón Eliminar - Check server-side ownership flag */}
+              {selectedPhoto.isMine && (
                 <button
                   onClick={() => handleDelete(selectedPhoto)}
                   className="w-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-red-200 dark:hover:bg-red-900/50 active:scale-95 transition-all"

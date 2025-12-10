@@ -9,6 +9,8 @@ export type Photo = {
     stopId?: string | null;
     userId?: string;
     challengeId?: string | null;
+    guestId?: string | null;
+    isMine?: boolean;
     createdAt: string;
     user: {
         name: string | null;

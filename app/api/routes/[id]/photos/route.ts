@@ -161,7 +161,7 @@ export async function GET(
       return NextResponse.json({ ok: false, error: "Ruta no encontrada" }, { status: 404 });
     }
 
-    // Obtener todas las fotos de la ruta
+    // Obtener fotos y marcar ownership
     const photos = await prisma.photo.findMany({
       where: { routeId },
       include: {
@@ -171,10 +171,28 @@ export async function GET(
       orderBy: { createdAt: "desc" },
     });
 
+    // Detectar usuario actual (Session o Guest) to mark ownership
+    let currentUserId: string | null = null;
+    let currentGuestId: string | null = null;
+
+    if (session?.user?.email) {
+      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      if (user) currentUserId = user.id;
+    } else {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      currentGuestId = cookieStore.get("guestId")?.value || null;
+    }
+
+    const PHOTOS_WITH_OWNERSHIP = photos.map(p => ({
+      ...p,
+      isMine: (currentUserId && p.userId === currentUserId) || (currentGuestId && p.guestId === currentGuestId)
+    }));
+
     // Generar hashtag
     const hashtag = `#${route.name.replace(/\s+/g, "")}Birracrucis`;
 
-    return NextResponse.json({ ok: true, photos, hashtag, routeName: route.name });
+    return NextResponse.json({ ok: true, photos: PHOTOS_WITH_OWNERSHIP, hashtag, routeName: route.name });
   } catch (error) {
     console.error("Error en GET /api/routes/[id]/photos:", error);
     return NextResponse.json({ ok: false, error: "Error al obtener fotos" }, { status: 500 });
