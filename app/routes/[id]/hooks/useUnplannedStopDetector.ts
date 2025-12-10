@@ -121,7 +121,9 @@ export function useUnplannedStopDetector({
                 toast.success(`¡${candidate.name} añadido automáticamente!`);
                 router.refresh();
             } else {
-                console.error("Error añadiendo bar automático");
+                const errorData = await addRes.json().catch(() => ({ error: "Error desconocido" }));
+                console.error("Error añadiendo bar automático:", errorData.error || addRes.statusText);
+                toast.error(`Error al añadir bar: ${errorData.error || "Error desconocido"}`);
             }
 
         } catch (error) {
