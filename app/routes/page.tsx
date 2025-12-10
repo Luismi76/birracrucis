@@ -23,6 +23,47 @@ type RouteData = {
   creator?: { name: string | null };
 };
 
+// Helper component for accordion sections
+function CollapsibleSection({
+  title,
+  count,
+  icon,
+  colorClass,
+  children,
+  defaultOpen = false
+}: {
+  title: string;
+  count: number;
+  icon: string;
+  colorClass: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
+  return (
+    <section className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden transition-all hover:shadow-md">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full flex items-center justify-between p-4 bg-slate-50/50 hover:bg-slate-100/50 transition-colors"
+      >
+        <h2 className={`text-sm font-bold ${colorClass} uppercase tracking-wide flex items-center gap-2`}>
+          <span className="text-2xl">{icon}</span> {title} ({count})
+        </h2>
+        <div className={`transition-transform duration-300 text-slate-400 ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </div>
+      </button>
+
+      {isOpen && (
+        <div className="p-3 space-y-3 border-t border-slate-100 animate-in slide-in-from-top-2 fade-in duration-200">
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function RoutesPage() {
   const router = useRouter();
   const [templates, setTemplates] = useState<RouteData[]>([]);
@@ -123,220 +164,217 @@ export default function RoutesPage() {
 
       {/* Rutas Activas */}
       {activeEditions.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-sm font-bold text-green-600 uppercase tracking-wide flex items-center gap-2">
-            <span className="text-2xl">🔥</span> En Curso ({activeEditions.length})
-          </h2>
-          <div className="space-y-3">
-            {activeEditions.map((route) => (
-              <Link
-                key={route.id}
-                href={`/routes/${route.id}`}
-                className="block border-2 border-green-300 bg-green-50 rounded-xl p-4 hover:bg-green-100 hover:border-green-400 transition-all"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-slate-800 truncate">{route.name}</h3>
-                      <span className="shrink-0 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse">
-                        Activa
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-600 mt-1">
-                      {route.date ? new Date(route.date).toLocaleDateString("es-ES", {
-                        weekday: "long",
-                        day: "numeric",
-                        month: "long",
-                      }) : "Fecha pendiente"}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <span>🍺</span> {route.stops.length} {route.stops.length === 1 ? "bar" : "bares"}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span>👥</span> {route._count.participants}
-                      </span>
-                    </div>
-                  </div >
-                </div >
-              </Link >
-            ))}
-          </div >
-        </section >
-      )
-      }
-
-      {/* Próximas Rutas (Ediciones Pendientes) */}
-      {
-        upcomingEditions.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-bold text-blue-600 uppercase tracking-wide flex items-center gap-2">
-              <span className="text-2xl">📅</span> Próximas Rutas ({upcomingEditions.length})
-            </h2>
-            <div className="space-y-3">
-              {upcomingEditions.map((route) => (
-                <Link
-                  key={route.id}
-                  href={`/routes/${route.id}`}
-                  className="block border-2 border-blue-200 bg-blue-50/50 rounded-xl p-4 hover:bg-blue-50 hover:border-blue-300 transition-all"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-slate-800 truncate">{route.name}</h3>
-                        <span className="shrink-0 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
-                          Programada
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-1">
-                        {route.date ? new Date(route.date).toLocaleDateString("es-ES", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        }) : "Fecha pendiente"}
-                      </p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <span>🍺</span> {route.stops.length} {route.stops.length === 1 ? "bar" : "bares"}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span>👥</span> {route._count.participants}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="ml-2">
-                      <DeleteRouteButton routeId={route.id} routeName={route.name} />
-                    </div>
+        <CollapsibleSection
+          title="En Curso"
+          count={activeEditions.length}
+          icon="🔥"
+          colorClass="text-green-600"
+          defaultOpen={true}
+        >
+          {activeEditions.map((route) => (
+            <Link
+              key={route.id}
+              href={`/routes/${route.id}`}
+              className="block border-2 border-green-300 bg-green-50 rounded-xl p-4 hover:bg-green-100 hover:border-green-400 transition-all"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-slate-800 truncate">{route.name}</h3>
+                    <span className="shrink-0 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse">
+                      Activa
+                    </span>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )
-      }
-
-      {/* Mis Plantillas */}
-      {
-        templates.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-bold text-purple-600 uppercase tracking-wide flex items-center gap-2">
-              <span className="text-2xl">📋</span> Mis Plantillas ({templates.length})
-            </h2>
-            <div className="space-y-3">
-              {templates.map((template) => (
-                <div
-                  key={template.id}
-                  className="block border-2 border-purple-200 bg-purple-50/50 rounded-xl p-4 hover:bg-purple-50 hover:border-purple-300 transition-all"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-slate-800 truncate">{template.name}</h3>
-                        <span className="shrink-0 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
-                          Plantilla
-                        </span>
-                      </div>
-                      {template.description && (
-                        <p className="text-sm text-slate-600 mt-1 line-clamp-1">{template.description}</p>
-                      )}
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                        <span className="flex items-center gap-1">
-                          <span>🍺</span> {template.stops.length} {template.stops.length === 1 ? "bar" : "bares"}
-                        </span>
-                        {template._count.editions !== undefined && template._count.editions > 0 && (
-                          <span className="flex items-center gap-1">
-                            <span>📅</span> {template._count.editions} {template._count.editions === 1 ? "edición" : "ediciones"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="ml-2">
-                      <DeleteRouteButton routeId={template.id} routeName={template.name} />
-                    </div>
-                  </div>
-
-                  {/* Botones de acción */}
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      onClick={() => {
-                        setPreviewRouteId(template.id);
-                        setPreviewRouteData(template);
-                      }}
-                      className="flex-1 py-2 bg-white border border-purple-200 text-purple-700 font-semibold rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
-                    >
-                      <span>👁️</span> Ver Plantilla
-                    </button>
-                    <button
-                      onClick={() => {
-                        setEditionTemplateId(template.id);
-                        setEditionTemplateName(template.name);
-                      }}
-                      className="flex-1 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2 shadow-md"
-                    >
-                      <span>➕</span> Nueva Edición
-                    </button>
+                  <p className="text-sm text-slate-600 mt-1">
+                    {route.date ? new Date(route.date).toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                    }) : "Fecha pendiente"}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <span>🍺</span> {route.stops.length} {route.stops.length === 1 ? "bar" : "bares"}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span>👥</span> {route._count.participants}
+                    </span>
                   </div>
                 </div>
-              ))}
+              </div>
+            </Link>
+          ))}
+        </CollapsibleSection>
+      )}
+
+      {/* Próximas Rutas (Ediciones Pendientes) */}
+      {upcomingEditions.length > 0 && (
+        <CollapsibleSection
+          title="Próximas Rutas"
+          count={upcomingEditions.length}
+          icon="📅"
+          colorClass="text-blue-600"
+          defaultOpen={true}
+        >
+          {upcomingEditions.map((route) => (
+            <Link
+              key={route.id}
+              href={`/routes/${route.id}`}
+              className="block border-2 border-blue-200 bg-blue-50/50 rounded-xl p-4 hover:bg-blue-50 hover:border-blue-300 transition-all"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-slate-800 truncate">{route.name}</h3>
+                    <span className="shrink-0 text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
+                      Programada
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-600 mt-1">
+                    {route.date ? new Date(route.date).toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    }) : "Fecha pendiente"}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <span>🍺</span> {route.stops.length} {route.stops.length === 1 ? "bar" : "bares"}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span>👥</span> {route._count.participants}
+                    </span>
+                  </div>
+                </div>
+                <div className="ml-2">
+                  <DeleteRouteButton routeId={route.id} routeName={route.name} />
+                </div>
+              </div>
+            </Link>
+          ))}
+        </CollapsibleSection>
+      )}
+
+      {/* Mis Plantillas */}
+      {templates.length > 0 && (
+        <CollapsibleSection
+          title="Mis Plantillas"
+          count={templates.length}
+          icon="📋"
+          colorClass="text-purple-600"
+          defaultOpen={false}
+        >
+          {templates.map((template) => (
+            <div
+              key={template.id}
+              className="block border-2 border-purple-200 bg-purple-50/50 rounded-xl p-4 hover:bg-purple-50 hover:border-purple-300 transition-all"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-slate-800 truncate">{template.name}</h3>
+                    <span className="shrink-0 text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
+                      Plantilla
+                    </span>
+                  </div>
+                  {template.description && (
+                    <p className="text-sm text-slate-600 mt-1 line-clamp-1">{template.description}</p>
+                  )}
+                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <span>🍺</span> {template.stops.length} {template.stops.length === 1 ? "bar" : "bares"}
+                    </span>
+                    {template._count.editions !== undefined && template._count.editions > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span>📅</span> {template._count.editions} {template._count.editions === 1 ? "edición" : "ediciones"}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="ml-2">
+                  <DeleteRouteButton routeId={template.id} routeName={template.name} />
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="mt-3 flex gap-2">
+                <button
+                  onClick={() => {
+                    setPreviewRouteId(template.id);
+                    setPreviewRouteData(template);
+                  }}
+                  className="flex-1 py-2 bg-white border border-purple-200 text-purple-700 font-semibold rounded-lg hover:bg-purple-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  <span>👁️</span> Ver Plantilla
+                </button>
+                <button
+                  onClick={() => {
+                    setEditionTemplateId(template.id);
+                    setEditionTemplateName(template.name);
+                  }}
+                  className="flex-1 py-2 bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-semibold rounded-lg hover:from-purple-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2 shadow-md"
+                >
+                  <span>➕</span> Nueva Edición
+                </button>
+              </div>
             </div>
-          </section>
-        )
-      }
+          ))}
+        </CollapsibleSection>
+      )}
 
       {/* Rutas donde el usuario ha sido invitado */}
-      {
-        invitedRoutes.length > 0 && (
-          <section className="space-y-3">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-wide flex items-center gap-2">
-              <span className="text-amber-500">🎟️</span> Invitaciones ({invitedRoutes.length})
-            </h2>
-            <div className="space-y-3">
-              {invitedRoutes.map((route) => (
-                <Link
-                  key={route.id}
-                  href={`/routes/${route.id}`}
-                  className="block border border-slate-200 bg-white rounded-xl p-4 hover:bg-slate-50 hover:border-blue-200 transition-all"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-slate-800 truncate">{route.name}</h3>
-                        <span className="shrink-0 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
-                          Invitado
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-600 mt-1">
-                        {route.date ? new Date(route.date).toLocaleDateString("es-ES", {
-                          weekday: "long",
-                          day: "numeric",
-                          month: "long",
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        }) : "Fecha pendiente"}
-                      </p>
-                      <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
-                        {route.creator?.name && (
-                          <span className="flex items-center gap-1">
-                            <span>👤</span> Por {route.creator.name}
-                          </span>
-                        )}
-                        <span className="flex items-center gap-1">
-                          <span>🍺</span> {route.stops.length} {route.stops.length === 1 ? "bar" : "bares"}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span>👥</span> {route._count.participants}
-                        </span>
-                      </div>
-                    </div>
+      {invitedRoutes.length > 0 && (
+        <CollapsibleSection
+          title="Invitaciones"
+          count={invitedRoutes.length}
+          icon="🎟️"
+          colorClass="text-amber-500"
+          defaultOpen={true}
+        >
+          {invitedRoutes.map((route) => (
+            <Link
+              key={route.id}
+              href={`/routes/${route.id}`}
+              className="block border border-slate-200 bg-white rounded-xl p-4 hover:bg-slate-50 hover:border-blue-200 transition-all"
+            >
+              <div className="flex justify-between items-start">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-slate-800 truncate">{route.name}</h3>
+                    <span className="shrink-0 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
+                      Invitado
+                    </span>
                   </div>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )
-      }
+                  <p className="text-sm text-slate-600 mt-1">
+                    {route.date ? new Date(route.date).toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    }) : "Fecha pendiente"}
+                  </p>
+                  <div className="flex items-center gap-3 mt-2 text-xs text-slate-500">
+                    {route.creator?.name && (
+                      <span className="flex items-center gap-1">
+                        <span>👤</span> Por {route.creator.name}
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1">
+                      <span>🍺</span> {route.stops.length} {route.stops.length === 1 ? "bar" : "bares"}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span>👥</span> {route._count.participants}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </CollapsibleSection>
+      )}
 
       {/* Preview Modal */}
       {

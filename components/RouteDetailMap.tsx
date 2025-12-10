@@ -296,6 +296,15 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
 
     return (
         <div className="relative w-full h-full">
+            {/* Overlay: Buscando ubicación en Modo Aventura */}
+            {stops.length === 0 && !userPosition && !loadError && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm">
+                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4" />
+                    <p className="font-bold text-slate-700 animate-pulse">Buscando tu ubicación...</p>
+                    <p className="text-xs text-slate-500 mt-2">Asegúrate de activar el GPS 🛰️</p>
+                </div>
+            )}
+
             <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 center={userHasInteracted ? undefined : initialCenter}
