@@ -167,13 +167,24 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
 
     // Calcular el centro inicial para mostrar toda la ruta
     const initialCenter = useMemo(() => {
-        if (stops.length === 0) return { lat: 40.4168, lng: -3.7038 }; // Madrid por defecto
+        if (stops.length === 0) {
+            // Si no hay paradas (Modo Aventura), usar ubicación del usuario o Madrid
+            return userPosition || { lat: 40.4168, lng: -3.7038 };
+        }
 
         const avgLat = stops.reduce((sum, stop) => sum + stop.lat, 0) / stops.length;
         const avgLng = stops.reduce((sum, stop) => sum + stop.lng, 0) / stops.length;
 
         return { lat: avgLat, lng: avgLng };
-    }, [stops]);
+    }, [stops, userPosition]);
+
+    // Pan to user position if discovery mode (no stops) and position loads
+    useEffect(() => {
+        if (stops.length === 0 && userPosition && map && !userHasInteracted) {
+            map.panTo(userPosition);
+            map.setZoom(16);
+        }
+    }, [stops.length, userPosition, map, userHasInteracted]);
 
     // Determinar color del marcador según estado
     const getMarkerColor = (stop: Stop) => {

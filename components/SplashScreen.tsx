@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import BeerLoader from "@/components/ui/BeerLoader";
 import { useEffect, useState } from "react";
 
 export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
@@ -17,9 +18,8 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-amber-500 to-orange-600 transition-opacity duration-500 ${
-        fadeOut ? "opacity-0" : "opacity-100"
-      }`}
+      className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-b from-amber-500 to-orange-600 transition-opacity duration-500 ${fadeOut ? "opacity-0" : "opacity-100"
+        }`}
     >
       <div className="animate-pulse">
         <Image
@@ -34,9 +34,8 @@ export default function SplashScreen({ onFinish }: { onFinish: () => void }) {
       <h1 className="mt-6 text-3xl font-bold text-white drop-shadow-lg">
         Birracrucis
       </h1>
-      <p className="mt-2 text-amber-100">Cargando...</p>
-      <div className="mt-6 h-1 w-32 overflow-hidden rounded-full bg-amber-300/30">
-        <div className="h-full animate-[loading_2s_ease-in-out] bg-white rounded-full" />
+      <div className="mt-8 p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl">
+        <BeerLoader showText={true} className="[&_h2]:text-white [&_h2]:text-sm [&_h2]:mt-4" />
       </div>
     </div>
   );

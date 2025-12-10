@@ -1031,7 +1031,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   }, [achievements.length]);
 
   return (
-    <div className="flex flex-col h-screen max-h-screen overflow-hidden pointer-events-auto bg-slate-50 dark:bg-slate-900">
+    <div className="flex flex-col h-[100dvh] max-h-[100dvh] overflow-hidden pointer-events-auto bg-slate-50 dark:bg-slate-900">
       {/* SYSTEM STATUS - Sprint 4 */}
       <SystemStatus
         isOnline={offlineQueue.isOnline}

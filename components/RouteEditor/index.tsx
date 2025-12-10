@@ -529,7 +529,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     };
 
     return (
-        <div className="flex flex-col h-screen bg-slate-50 font-sans">
+        <div className="flex flex-col h-[100dvh] bg-slate-50 font-sans text-slate-900">
             {/* Success/Share Overlay for Discovery Mode */}
             {createdRoute && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
