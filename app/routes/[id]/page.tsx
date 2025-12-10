@@ -144,6 +144,9 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
     maxRounds: s.maxRounds,
     actualRounds: s.actualRounds,
     googlePlaceId: s.googlePlaceId,
+    stayDuration: s.stayDuration,
+    arrivedAt: s.arrivedAt?.toISOString() || null,
+    departedAt: s.departedAt?.toISOString() || null,
   }));
 
   // Formatear startTime como HH:MM

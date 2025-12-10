@@ -5,6 +5,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useSession } from "next-auth/react";
 import ShareModal from "@/components/ShareModal";
+import SettingsModal from "@/components/SettingsModal";
 import RouteChat from "@/components/RouteChat";
 import { MapSkeleton, BarCardSkeleton } from "@/components/ui/Skeleton";
 import { Share2, MessageCircle, Settings, Moon, Sun, Accessibility } from "lucide-react";
@@ -36,6 +37,9 @@ type Stop = {
   maxRounds: number | null;
   actualRounds: number;
   googlePlaceId?: string | null;
+  stayDuration: number;
+  arrivedAt: string | null;
+  departedAt: string | null;
 };
 
 type Participant = {
@@ -121,6 +125,7 @@ export default function RouteDetailWrapper({
   const [userPosition, setUserPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   const [showChat, setShowChat] = useState(false);
@@ -257,7 +262,7 @@ export default function RouteDetailWrapper({
                           {/* Settings */}
                           <button
                             onClick={() => {
-                              // TODO: Open settings modal
+                              setIsSettingsModalOpen(true);
                               setShowUserDropdown(false);
                             }}
                             className="w-full px-4 py-2 text-left text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center gap-3 transition-colors"
@@ -412,6 +417,12 @@ export default function RouteDetailWrapper({
           onUnreadCountChange={setUnreadMessages}
         />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+      />
     </div>
   );
 }

@@ -49,10 +49,10 @@ type StopClient = {
   plannedRounds: number;
   maxRounds: number | null;
   actualRounds: number;
-  arrivalTime?: string;
-  departureTime?: string;
-  durationMinutes?: number;
   googlePlaceId?: string | null;
+  stayDuration: number; // minutos planificados en el bar
+  arrivedAt: string | null; // ISO timestamp
+  departedAt: string | null; // ISO timestamp
 };
 
 type Participant = {
@@ -744,11 +744,22 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     return `${minutes}m`;
   };
 
-  // Calcular ritmo (pace)
+  // Calcular ritmo (pace) - minutos adelantados/retrasados respecto al plan
   const calculatePace = () => {
-    // TODO: Implementar cálculo real basado en tiempos planificados
-    // Por ahora retorna 0 (ritmo perfecto)
-    return 0;
+    if (!actualStartTime) return 0;
+
+    const startTime = new Date(actualStartTime).getTime();
+    const now = Date.now();
+    const elapsedMinutes = Math.floor((now - startTime) / 60000);
+
+    // Calcular tiempo planificado hasta el bar actual
+    let plannedMinutes = 0;
+    for (let i = 0; i <= currentBarIndex && i < stops.length; i++) {
+      plannedMinutes += stops[i].stayDuration;
+    }
+
+    // Positivo = adelantados, Negativo = retrasados
+    return plannedMinutes - elapsedMinutes;
   };
 
   // Preparar datos de participantes para ParticipantsAtBar
@@ -763,12 +774,19 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     }));
   }, [participants, activeStop]);
 
+  // Calcular tiempo real en el bar actual
+  const timeInCurrentBar = useMemo(() => {
+    if (!activeStop?.arrivedAt) return 0;
+    const arrivedTime = new Date(activeStop.arrivedAt).getTime();
+    return Math.floor((Date.now() - arrivedTime) / 60000);
+  }, [activeStop?.arrivedAt]);
+
   // Generar notificaciones inteligentes
   const smartNotifications = useSmartNotifications({
     participants: participantsWithDistance,
     currentBarId: activeStop?.id || "",
-    timeInBar: 15, // TODO: Calcular tiempo real en bar
-    plannedDuration: 30,
+    timeInBar: timeInCurrentBar,
+    plannedDuration: activeStop?.stayDuration || 30,
     roundsCompleted: activeStop ? (rounds[activeStop.id] || 0) : 0,
     plannedRounds: activeStop?.plannedRounds || 0,
     potPaid: potData.currentAmount,
