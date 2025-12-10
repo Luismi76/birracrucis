@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { nanoid } from "nanoid";
+
+// Genera un código de invitación único (8 caracteres, alfanumérico)
+function generateInviteCode(): string {
+    return nanoid(8).toUpperCase();
+}
 
 export const dynamic = "force-dynamic";
 
@@ -42,12 +48,21 @@ export async function POST(
             return NextResponse.json({ error: "La fecha es requerida para crear una edición" }, { status: 400 });
         }
 
+        // Generar código de invitación único
+        let inviteCode = generateInviteCode();
+        let existingRoute = await prisma.route.findUnique({ where: { inviteCode } });
+        while (existingRoute) {
+            inviteCode = generateInviteCode();
+            existingRoute = await prisma.route.findUnique({ where: { inviteCode } });
+        }
+
         // Crear la nueva edición
         const edition = await prisma.route.create({
             data: {
                 name: body.name || template.name,
                 date: new Date(body.date),
                 creatorId: auth.user.id,
+                inviteCode,
 
                 // Configuración de tiempo
                 startMode: body.startMode || template.startMode || "manual",
