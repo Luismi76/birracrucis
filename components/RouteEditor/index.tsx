@@ -383,9 +383,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         setError(null);
 
         try {
-            const minBars = isDiscovery ? 1 : 2;
+            const minBars = isDiscovery ? 0 : 2;
             if (selectedBars.size < minBars) {
-                throw new Error(isDiscovery ? "Selecciona el punto de partida." : "Selecciona al menos 2 bares para crear una ruta.");
+                // If discovery and 0 bars, it's fine.
+                // If standard route, need 2.
+                throw new Error("Selecciona al menos 2 bares para crear una ruta estándar.");
             }
             if (!name.trim()) {
                 throw new Error("El nombre de la ruta es obligatorio.");
@@ -393,8 +395,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
             const orderedBars = orderedIds.map((id) => selectedBars.get(id)).filter((b): b is BarConfig => !!b);
 
-            const startBar = orderedBars.find((b) => b.isStart);
-            if (!startBar) throw new Error("Debe haber un bar de inicio.");
+            // In Discovery mode with 0 bars, there is no start bar.
+            if (!isDiscovery) {
+                const startBar = orderedBars.find((b) => b.isStart);
+                if (!startBar) throw new Error("Debe haber un bar de inicio.");
+            }
 
             const stopsPayload = orderedBars.map((b, index) => ({
                 name: b.bar.name,
@@ -486,8 +491,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             // Date is now optional for templates
         }
         if (currentStep === 1) {
-            const minBars = isDiscovery ? 1 : 2;
-            if (selectedBars.size < minBars) return toast.error(isDiscovery ? "Selecciona el punto de partida" : "Selecciona al menos 2 bares");
+            const minBars = isDiscovery ? 0 : 2;
+            if (selectedBars.size < minBars) return toast.error("Selecciona al menos 2 bares");
         }
 
         setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));

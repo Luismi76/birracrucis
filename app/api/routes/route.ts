@@ -66,11 +66,12 @@ export async function POST(req: NextRequest) {
     }
 
     const body = (await req.json()) as CreateRouteBody;
-    const { name, date, stops, startMode, startTime, hasEndTime, endTime } = body;
+    const { name, date, stops, startMode, startTime, hasEndTime, endTime, isDiscovery } = body;
 
-    if (!name || !Array.isArray(stops) || stops.length === 0) {
+    // Validation: Name is required. Stops are required unless it's a discovery route.
+    if (!name || !Array.isArray(stops) || (stops.length === 0 && !isDiscovery)) {
       return NextResponse.json(
-        { ok: false, error: "Datos inválidos: name y stops son obligatorios." },
+        { ok: false, error: "Datos inválidos: name y stops (mínimo 1 para rutas no-discovery) son obligatorios." },
         { status: 400 }
       );
     }

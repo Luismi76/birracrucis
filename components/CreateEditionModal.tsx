@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { X, Calendar, Clock, Users, Coins } from "lucide-react";
 import { toast } from "sonner";
+import ShareInviteCode from "./ShareInviteCode";
 
 type CreateEditionModalProps = {
     isOpen: boolean;
@@ -29,21 +30,19 @@ export default function CreateEditionModal({
     const [potEnabled, setPotEnabled] = useState(false);
     const [potAmount, setPotAmount] = useState("");
 
-    // New state for invitations
-    const [invitedEmails, setInvitedEmails] = useState<string[]>([]);
-    const [emailInput, setEmailInput] = useState("");
+    // Success state
+    const [createdRoute, setCreatedRoute] = useState<{ id: string, name: string, inviteCode: string } | null>(null);
 
-    const handleAddEmail = () => {
-        const email = emailInput.trim();
-        if (email && email.includes('@') && !invitedEmails.includes(email)) {
-            setInvitedEmails([...invitedEmails, email]);
-            setEmailInput("");
+    // Reset when opening
+    useEffect(() => {
+        if (isOpen && !createdRoute) {
+            setDate(new Date().toISOString().slice(0, 10)); // Default today
+            setStartMode("manual");
+            setPotEnabled(false);
+            setCreatedRoute(null);
+            setName(templateName);
         }
-    };
-
-    const handleRemoveEmail = (email: string) => {
-        setInvitedEmails(invitedEmails.filter(e => e !== email));
-    };
+    }, [isOpen, createdRoute, templateName]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,7 +65,6 @@ export default function CreateEditionModal({
                 date: dateTime.toISOString(),
                 startMode,
                 potEnabled,
-                invitedEmails, // Send invited emails
             };
 
             if (startMode === "scheduled" && time) {
@@ -87,9 +85,8 @@ export default function CreateEditionModal({
 
             if (data.ok) {
                 toast.success("¡Edición creada exitosamente!");
-                router.push(`/routes/${data.edition.id}`);
-                router.refresh();
-                onClose();
+                // Show Success View
+                setCreatedRoute(data.edition);
             } else {
                 toast.error(data.error || "Error al crear la edición");
             }
@@ -101,7 +98,52 @@ export default function CreateEditionModal({
         }
     };
 
+    const handleFinish = () => {
+        if (createdRoute) {
+            onClose();
+            router.push(`/routes/${createdRoute.id}`);
+            router.refresh();
+        }
+    };
+
     if (!isOpen) return null;
+
+    // --- SUCCESS VIEW (SHARE) ---
+    if (createdRoute) {
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                    <div className="p-8 text-center space-y-6">
+                        <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-in zoom-in spin-in-12 duration-500">
+                            <Users className="w-10 h-10" />
+                        </div>
+
+                        <div>
+                            <h2 className="text-2xl font-bold text-slate-800 mb-2">¡Ruta Creada!</h2>
+                            <p className="text-slate-600">
+                                Tu edición de <span className="font-bold text-amber-600">"{templateName}"</span> está lista.
+                                <br />¡Invita a tus amigos ahora!
+                            </p>
+                        </div>
+
+                        <div className="text-left bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                            <ShareInviteCode
+                                inviteCode={createdRoute.inviteCode}
+                                routeName={createdRoute.name}
+                            />
+                        </div>
+
+                        <button
+                            onClick={handleFinish}
+                            className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-2xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg active:scale-[0.98] text-lg"
+                        >
+                            Ir a la Ruta &rarr;
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -264,55 +306,7 @@ export default function CreateEditionModal({
                         )}
                     </div>
 
-                    {/* Invitaciones */}
-                    <div className="border-t pt-4">
-                        <label className="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2">
-                            <Users className="w-4 h-4" />
-                            Invitar Amigos <span className="font-normal text-slate-400 text-xs">(Opcional)</span>
-                        </label>
 
-                        <div className="flex gap-2 mb-3">
-                            <input
-                                type="email"
-                                value={emailInput}
-                                onChange={(e) => setEmailInput(e.target.value)}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                        e.preventDefault();
-                                        handleAddEmail();
-                                    }
-                                }}
-                                placeholder="Email del amigo..."
-                                className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none transition-all text-sm"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddEmail}
-                                disabled={!emailInput.includes('@')}
-                                className="px-4 py-2 bg-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-300 transition-colors disabled:opacity-50"
-                            >
-                                Añadir
-                            </button>
-                        </div>
-
-                        {/* Lista de emails */}
-                        {invitedEmails.length > 0 && (
-                            <div className="flex flex-wrap gap-2">
-                                {invitedEmails.map((email) => (
-                                    <div key={email} className="flex items-center gap-2 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full text-sm text-amber-800">
-                                        <span>{email}</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRemoveEmail(email)}
-                                            className="text-amber-500 hover:text-amber-700 rounded-full hover:bg-amber-100 p-0.5"
-                                        >
-                                            <X className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </div>
 
 
                 </form>
