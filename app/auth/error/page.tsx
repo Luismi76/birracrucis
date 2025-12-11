@@ -10,10 +10,10 @@ function ErrorContent() {
   const error = searchParams.get("error");
 
   const errorMessages: Record<string, string> = {
-    Configuration: "Hay un problema con la configuracion del servidor.",
+    Configuration: "Hay un problema con la configuración del servidor.",
     AccessDenied: "No tienes permiso para acceder.",
-    Verification: "El enlace de verificacion ha expirado o ya fue usado.",
-    Default: "Ocurrio un error al iniciar sesion.",
+    Verification: "El enlace de verificación ha expirado o ya fue usado.",
+    Default: "Ocurrió un error al iniciar sesión.",
   };
 
   const message = errorMessages[error || ""] || errorMessages.Default;
@@ -31,7 +31,7 @@ function ErrorContent() {
       </div>
 
       <div className="text-6xl mb-4">😵</div>
-      <h1 className="text-2xl font-bold text-amber-900 mb-2">Algo salio mal</h1>
+      <h1 className="text-2xl font-bold text-amber-900 mb-2">Algo salió mal</h1>
       <p className="text-amber-700 mb-6 text-center max-w-xs">{message}</p>
 
       <Link

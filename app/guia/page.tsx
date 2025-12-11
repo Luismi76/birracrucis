@@ -52,7 +52,7 @@ export default function GuiaPage() {
           </h2>
           <div className="space-y-4 text-slate-600">
             <p>
-              <strong>Iniciar sesion:</strong> Birracrucis usa tu cuenta de Google para identificarte.
+              <strong>Iniciar sesión:</strong> Birracrucis usa tu cuenta de Google para identificarte.
               Solo tienes que pulsar &quot;Entrar con Google&quot; y autorizar la app.
             </p>
             <p>

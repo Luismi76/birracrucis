@@ -28,12 +28,12 @@ function SignInContent() {
 
       <h1 className="text-3xl font-bold text-amber-900 mb-2">Birracrucis</h1>
       <p className="text-amber-700 mb-8 text-center">
-        Inicia sesion para unirte a la aventura
+        Inicia sesión para unirte a la aventura
       </p>
 
       {error && (
         <div className="mb-4 p-3 bg-red-100 border border-red-300 rounded-lg text-red-700 text-sm">
-          Error al iniciar sesion. Intentalo de nuevo.
+          Error al iniciar sesión. Inténtalo de nuevo.
         </div>
       )}
 

@@ -66,7 +66,7 @@ export default function Home() {
               className="flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-white font-bold py-4 px-6 rounded-xl shadow-lg transition-all active:scale-95"
             >
               <span className="text-xl">👋</span>
-              Iniciar sesion
+              Iniciar sesión
             </Link>
           )}
         </div>
