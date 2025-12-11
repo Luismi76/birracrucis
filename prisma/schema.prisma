@@ -62,10 +62,6 @@ model User {
   sessions             Session[]
   skipVotes            SkipVote[]
   badges               UserBadge[]
-  achievements         Achievement[]
-  predictions          Prediction[]
-  barReactions         BarReaction[]
-  barChallenges        BarChallenge[]
   potTransactions      PotTransaction[]
 }
 
@@ -120,10 +116,6 @@ model Route {
   stops              RouteStop[]
   skipVotes          SkipVote[]
   earnedBadges       UserBadge[]
-  achievements       Achievement[]
-  predictions        Prediction[]
-  barReactions       BarReaction[]
-  challenges         BarChallenge[]
 
   @@index([creatorId])
   @@index([status, date(sort: Desc)])
@@ -152,8 +144,6 @@ model RouteStop {
   rounds           Round[]
   route            Route             @relation(fields: [routeId], references: [id], onDelete: Cascade)
   skipVotes        SkipVote[]
-  barReactions     BarReaction[]
-  challenges       BarChallenge[]
 
   @@index([routeId, order])
 }
@@ -197,15 +187,12 @@ model Photo {
   guestId     String?
   url         String
   caption     String?
-  challengeId String?       // Link to completed challenge
   createdAt   DateTime      @default(now())
   route       Route         @relation(fields: [routeId], references: [id], onDelete: Cascade)
   stop        RouteStop?    @relation(fields: [stopId], references: [id])
   user        User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  challenge   BarChallenge? @relation(fields: [challengeId], references: [id], onDelete: SetNull)
 
   @@index([routeId, createdAt(sort: Desc)])
-  @@index([challengeId])
   @@index([guestId])
 }
 
@@ -377,89 +364,6 @@ model PotTransaction {
 
   @@index([routeId, createdAt(sort: Desc)])
   @@index([registeredById])
-}
-
-// ========== GAMIFICATION MODELS ==========
-
-model Achievement {
-  id          String   @id @default(cuid())
-  userId      String
-  routeId     String
-  type        String // 'first_beer', 'speed_demon', 'social_butterfly', 'night_owl', 'early_bird', 'marathon_runner', 'bar_hopper'
-  title       String
-  description String
-  points      Int      @default(0)
-  earnedAt    DateTime @default(now())
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, routeId, type])
-  @@index([userId])
-  @@index([routeId])
-  @@index([earnedAt])
-}
-
-model Prediction {
-  id         String    @id @default(cuid())
-  userId     String
-  routeId    String
-  type       String // 'finish_time', 'total_beers', 'mvp', 'slowest_drinker', 'most_social'
-  prediction String // JSON string with prediction data
-  result     String? // Actual result when resolved
-  points     Int       @default(0)
-  isCorrect  Boolean?
-  createdAt  DateTime  @default(now())
-  resolvedAt DateTime?
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  route Route @relation(fields: [routeId], references: [id], onDelete: Cascade)
-
-  @@index([userId, routeId])
-  @@index([routeId])
-  @@index([createdAt])
-}
-
-model BarReaction {
-  id        String   @id @default(cuid())
-  userId    String
-  routeId   String
-  stopId    String
-  type      String // 'fire', 'heart', 'thumbs_up', 'party', 'star'
-  createdAt DateTime @default(now())
-
-  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  route Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  stop  RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, routeId, stopId, type])
-  @@index([routeId, stopId])
-  @@index([stopId])
-}
-
-model BarChallenge {
-  id          String    @id @default(cuid())
-  routeId     String
-  stopId      String
-  userId      String?   // Null = challenge for everyone
-  type        String    // 'photo', 'speed', 'specialty', 'social', 'hidden'
-  title       String
-  description String
-  points      Int       @default(50)
-  completed   Boolean   @default(false)
-  completedAt DateTime?
-  completedBy String?   // User ID who completed it
-  photoUrl    String?   // Photo proof URL
-  createdAt   DateTime  @default(now())
-
-  route  Route     @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  stop   RouteStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
-  user   User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  photos Photo[]   // Photos linked to this challenge
-
-  @@index([routeId, stopId])
-  @@index([userId, completed])
-  @@index([stopId, completed])
 }
 
 // ========== RATE LIMITING ==========

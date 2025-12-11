@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
             dateFilter.setDate(dateFilter.getDate() - 7);
         }
 
-        // Get users with their achievements count
+        // Get users with participation stats
         const users = await prisma.user.findMany({
             select: {
                 id: true,
@@ -40,16 +40,6 @@ export async function GET(request: NextRequest) {
                 image: true,
                 totalPoints: true,
                 level: true,
-                achievements: {
-                    where: dateFilter ? {
-                        earnedAt: {
-                            gte: dateFilter,
-                        },
-                    } : undefined,
-                    select: {
-                        points: true,
-                    },
-                },
                 participations: {
                     where: {
                         route: {
@@ -70,12 +60,8 @@ export async function GET(request: NextRequest) {
             take: 100, // Top 100 users
         });
 
-        // Calculate period-specific points if needed
+        // Build leaderboard
         const leaderboard = users.map(user => {
-            const periodPoints = period === 'all'
-                ? user.totalPoints
-                : user.achievements.reduce((sum, ach) => sum + ach.points, 0);
-
             // Get unique routes completed
             const routesCompleted = new Set(user.participations.map(p => p.routeId)).size;
 
@@ -83,14 +69,13 @@ export async function GET(request: NextRequest) {
                 userId: user.id,
                 userName: user.name || 'Usuario',
                 userImage: user.image,
-                totalPoints: periodPoints,
-                level: calculateLevel(periodPoints),
-                achievementsCount: user.achievements.length,
+                totalPoints: user.totalPoints,
+                level: calculateLevel(user.totalPoints),
                 routesCompleted,
             };
         })
-            .filter(user => user.totalPoints > 0) // Only users with points
-            .sort((a, b) => b.totalPoints - a.totalPoints); // Re-sort by period points
+            .filter(user => user.totalPoints > 0 || user.routesCompleted > 0) // Only users with activity
+            .sort((a, b) => b.totalPoints - a.totalPoints || b.routesCompleted - a.routesCompleted)
 
         return NextResponse.json({ leaderboard });
 
