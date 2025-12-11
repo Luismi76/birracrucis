@@ -71,7 +71,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     // Estado para crear edición directamente
     const [createEditionNow, setCreateEditionNow] = useState(true); // Por defecto marcado
     const [potEnabled, setPotEnabled] = useState(false);
-    const [potAmount, setPotAmount] = useState("");
+    const [potAmount, setPotAmount] = useState("20"); // 20€ por defecto
 
     // Estado de búsqueda
     const [radius, setRadius] = useState("800");
@@ -455,7 +455,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     // Nueva opción: crear edición directamente
                     createEditionNow: !isEditing && !isDiscovery && createEditionNow,
                     potEnabled: createEditionNow ? potEnabled : false,
-                    potAmountPerPerson: createEditionNow && potEnabled && potAmount ? parseFloat(potAmount) : null,
+                    // Si el bote está habilitado pero no se puso cantidad, usar 20€ por defecto
+                    potAmountPerPerson: createEditionNow && potEnabled ? (potAmount ? parseFloat(potAmount) : 20) : null,
                 }),
             });
 
