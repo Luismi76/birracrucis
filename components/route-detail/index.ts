@@ -1,4 +1,3 @@
-export { default as DrinkCounter } from "./DrinkCounter";
 export { default as RouteProgressHeader } from "./RouteProgressHeader";
 export { default as PaceIndicator } from "./PaceIndicator";
 export { default as PotWidget } from "./PotWidget";

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import SplashScreen from "./SplashScreen";
-import BackButtonHandler from "./BackButtonHandler";
 import BottomNavigation from "./BottomNavigation";
 import CookieConsent from "./CookieConsent";
 import InstallPWAPrompt from "./InstallPWAPrompt";
@@ -79,14 +78,12 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
 
   return (
     <QueryProvider>
-      <BackButtonHandler>
-        {children}
-        <BottomNavigation />
-        <CookieConsent />
-        <InstallPWAPrompt />
-        {/* Mostrar onboarding modal si es necesario */}
-        {onboardingChecked && needsOnboarding && <OnboardingModal />}
-      </BackButtonHandler>
+      {children}
+      <BottomNavigation />
+      <CookieConsent />
+      <InstallPWAPrompt />
+      {/* Mostrar onboarding modal si es necesario */}
+      {onboardingChecked && needsOnboarding && <OnboardingModal />}
     </QueryProvider>
   );
 }
