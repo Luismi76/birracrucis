@@ -21,7 +21,7 @@ import { useRouteStream } from "@/hooks/useRouteStream";
 import { usePot } from "@/hooks/usePot";
 import { useDrinkStats } from "@/hooks/useDrinkStats";
 import { useQueryClient } from "@tanstack/react-query";
-import { Beer, MapPin, Camera, Trophy, Users, UserPlus, Bell, Star } from "lucide-react";
+import { Beer, MapPin, Camera, Trophy, Users, UserPlus, Bell, Star, MessageCircle } from "lucide-react";
 import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
 import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, AchievementsToast, DrinkComparison, WeatherWidget, BarChallenge, PredictionsPanel, QuickReactions } from "@/components/route-detail";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
@@ -103,6 +103,7 @@ type RouteDetailClientProps = {
   isCreator?: boolean;
   creatorId?: string | null;
   onOpenShare?: () => void;
+  onOpenChat?: () => void;
   showAccessibilityPanel?: boolean;
   onCloseAccessibilityPanel?: () => void;
   isDiscovery?: boolean;
@@ -110,7 +111,7 @@ type RouteDetailClientProps = {
   actualEndTime?: string | null;
 };
 
-export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, creatorId, onOpenShare, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false, actualStartTime, actualEndTime }: RouteDetailClientProps) {
+export default function RouteDetailClient({ stops, routeId, routeName, routeDate, startTime, routeStatus, currentUserId, onPositionChange, onParticipantsChange, onProgressChange, isCreator = false, creatorId, onOpenShare, onOpenChat, showAccessibilityPanel, onCloseAccessibilityPanel, isDiscovery = false, actualStartTime, actualEndTime }: RouteDetailClientProps) {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
 
@@ -1163,12 +1164,29 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                     </button>
                   </div>
 
+                  {/* Chat del Grupo - PROMINENTE */}
+                  <button
+                    onClick={onOpenChat}
+                    className="w-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl p-4 flex items-center justify-between text-white shadow-lg hover:shadow-xl active:scale-[0.98] transition-all"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+                        <MessageCircle className="w-6 h-6" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-bold text-lg">Chat del Grupo</h3>
+                        <p className="text-sm text-amber-100">Habla con todos los participantes</p>
+                      </div>
+                    </div>
+                    <span className="text-2xl">💬</span>
+                  </button>
+
                   <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-between">
                     <div>
-                      <h3 className="font-bold text-slate-800">Enviar Avisos</h3>
-                      <p className="text-sm text-slate-500">Notifica a los participantes</p>
+                      <h3 className="font-bold text-slate-800">Enviar Aviso</h3>
+                      <p className="text-sm text-slate-500">Notificación rápida</p>
                     </div>
-                    <button onClick={() => setNotificationPickerOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-amber-500 text-amber-600 rounded-lg font-bold shadow-sm active:scale-95 transition-all hover:bg-amber-50">
+                    <button onClick={() => setNotificationPickerOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-white border-2 border-slate-300 text-slate-600 rounded-lg font-bold shadow-sm active:scale-95 transition-all hover:bg-slate-100">
                       <Bell className="w-5 h-5" /> Avisar
                     </button>
                   </div>

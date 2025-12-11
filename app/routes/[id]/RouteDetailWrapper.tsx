@@ -389,6 +389,7 @@ export default function RouteDetailWrapper({
           isCreator={isCreator}
           creatorId={creatorId}
           onOpenShare={openShareModal}
+          onOpenChat={() => setShowChat(true)}
           showAccessibilityPanel={showAccessibilityPanel}
           onCloseAccessibilityPanel={closeAccessibilityPanel}
           isDiscovery={isDiscovery}
