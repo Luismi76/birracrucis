@@ -5,9 +5,6 @@ export type { GeolocationPosition } from "./useGeolocation";
 export { useDrinks, useAddDrink } from "./useDrinks";
 export type { Drink } from "./useDrinks";
 
-export { useDrinkStats } from "./useDrinkStats";
-export type { DrinkStats } from "./useDrinkStats";
-
 export { useRatings, useAddRating } from "./useRatings";
 export type { Rating } from "./useRatings";
 

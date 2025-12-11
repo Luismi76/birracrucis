@@ -11,11 +11,5 @@ export { default as PotWidget } from "./PotWidget";
 export { default as ParticipantsAtBar } from "./ParticipantsAtBar";
 export { default as SmartNotifications, useSmartNotifications } from "./SmartNotifications";
 export { default as NextBarPreview } from "./NextBarPreview";
-export { default as AchievementsToast } from "./AchievementsToast";
-export { default as DrinkComparison } from "./DrinkComparison";
-export { default as WeatherWidget } from "./WeatherWidget";
-export { default as BarChallenge } from "./BarChallenge";
-export { default as PredictionsPanel } from "./PredictionsPanel";
-export { default as QuickReactions } from "./QuickReactions";
 
 export type { TabType } from "./RouteTabs";
