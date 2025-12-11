@@ -57,18 +57,16 @@ export default function PotManager({
     try {
       const res = await fetch(`/api/routes/${routeId}/pot`);
       if (!res.ok) {
-        // Si hay error del servidor, simplemente no mostramos el bote
-        console.warn("Pot API not available:", res.status);
+        console.warn("Pot API error:", res.status);
         setPotData(null);
         return;
       }
       const data = await res.json();
-      if (data.ok) {
-        console.log('[POT MANAGER] Fetched pot data:', data.pot);
-        console.log('[POT MANAGER] Transactions:', data.pot.transactions);
-        console.log('[POT MANAGER] Total Spent from API:', data.pot.totalSpent);
-        console.log('[POT MANAGER] Total Collected from API:', data.pot.totalCollected);
+      if (data.ok && data.pot) {
         setPotData(data.pot);
+      } else {
+        console.warn("Pot API returned error:", data.error);
+        setPotData(null);
       }
     } catch (err) {
       console.error("Error fetching pot:", err);
@@ -251,8 +249,12 @@ export default function PotManager({
     );
   }
 
-  // ... (Keep Not Configured Logic same as before, maybe stylized) ...
-  if (potData === null) return null;
+  // Si no hay datos del bote
+  if (potData === null) {
+    // El creador puede ver la opción de configurar aunque haya error
+    if (!isCreator) return null;
+    // Mostrar opción de configurar si eres creador
+  }
 
   if (!potData?.enabled) {
     if (!isCreator) return null;
