@@ -19,11 +19,10 @@ import ParticipantPicker from "@/components/ParticipantPicker";
 import NotificationActions from "@/components/NotificationActions";
 import { useRouteStream } from "@/hooks/useRouteStream";
 import { usePot } from "@/hooks/usePot";
-import { useDrinkStats } from "@/hooks/useDrinkStats";
 import { useQueryClient } from "@tanstack/react-query";
 import { Beer, MapPin, Camera, Trophy, Users, UserPlus, Bell, Star, MessageCircle } from "lucide-react";
 import { useUnplannedStopDetector } from "./hooks/useUnplannedStopDetector";
-import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview, DrinkComparison, WeatherWidget } from "@/components/route-detail";
+import { RouteProgressHeader, PaceIndicator, PotWidget, ParticipantsAtBar, SmartNotifications, useSmartNotifications, NextBarPreview } from "@/components/route-detail";
 import { useOfflineQueue } from "@/hooks/useOfflineQueue";
 import { useBatterySaver } from "@/hooks/useBatterySaver";
 import AccessibilityPanel from "@/components/AccessibilityPanel";
@@ -243,9 +242,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   // Estado del bote (TanStack Query)
   const { data: potData = { currentAmount: 0, targetAmount: 0, participantsCount: 0, paidCount: 0 } } = usePot(routeId);
-
-  // Estadísticas de bebidas (TanStack Query)
-  const { data: drinkStats = {} } = useDrinkStats(routeId);
 
   // Indice del bar actual (manual, no automatico)
   const [currentBarIndex, setCurrentBarIndex] = useState(() => {
@@ -760,20 +756,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     };
   }, [currentBarIndex, stops, position]);
 
-  // Preparar datos para comparativa de bebidas (drinkStats viene de useDrinkStats hook)
-  const participantsWithBeers = useMemo(() => {
-    return participants.map(p => {
-      // Get real drink count from stats, default to 0
-      const participantBeers = drinkStats[p.id] || 0;
-      return {
-        id: p.id,
-        name: p.name,
-        image: p.image,
-        beersCount: participantBeers,
-      };
-    });
-  }, [participants, drinkStats]);
-
   // Confetti al completar ruta
   const [showCompletionConfetti, setShowCompletionConfetti] = useState(false);
 
@@ -914,20 +896,6 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   }}
                 />
               )}
-
-              {/* DRINK COMPARISON & WEATHER - Grid 2 columnas */}
-              <div className="grid grid-cols-2 gap-3 items-start">
-                {/* DRINK COMPARISON */}
-                <DrinkComparison
-                  participants={participantsWithBeers}
-                  currentUserId={currentUserId}
-                />
-
-                {/* WEATHER WIDGET */}
-                {activeStop && (
-                  <WeatherWidget lat={activeStop.lat} lng={activeStop.lng} />
-                )}
-              </div>
 
               {/* ACCIONES PRINCIPALES */}
               <div className="flex flex-col gap-3 mb-2">
