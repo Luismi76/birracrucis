@@ -34,9 +34,25 @@ export default function Home() {
         <h1 className="text-4xl font-bold text-amber-900 mb-2 text-center">
           Birracrucis
         </h1>
-        <p className="text-amber-700 text-lg mb-8 text-center max-w-md">
-          Planifica tu ruta de bares perfecta y disfruta con amigos
+        <p className="text-amber-700 text-lg mb-6 text-center max-w-md">
+          Organiza rutas de bares con tus amigos
         </p>
+
+        {/* Features rápidas */}
+        <div className="flex gap-6 mb-8 text-center">
+          <div className="flex flex-col items-center">
+            <span className="text-3xl mb-1">🗺️</span>
+            <span className="text-xs text-amber-800 font-medium">Planifica</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-3xl mb-1">👥</span>
+            <span className="text-xs text-amber-800 font-medium">Invita</span>
+          </div>
+          <div className="flex flex-col items-center">
+            <span className="text-3xl mb-1">🍻</span>
+            <span className="text-xs text-amber-800 font-medium">Disfruta</span>
+          </div>
+        </div>
 
         {/* Botones */}
         <div className="flex flex-col gap-4 w-full max-w-xs">
