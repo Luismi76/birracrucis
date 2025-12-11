@@ -68,8 +68,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const [isDiscovery, setIsDiscovery] = useState(initialData?.isDiscovery || false);
     const [description, setDescription] = useState(initialData?.description || "");
 
-    // Estado para crear edición directamente
-    const [createEditionNow, setCreateEditionNow] = useState(true); // Por defecto marcado
+    // Estado para opciones de la ruta
     const [potEnabled, setPotEnabled] = useState(false);
     const [potAmount, setPotAmount] = useState("20"); // 20€ por defecto
 
@@ -452,11 +451,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     isPublic,
                     isDiscovery,
                     description,
-                    // Nueva opción: crear edición directamente
-                    createEditionNow: !isEditing && !isDiscovery && createEditionNow,
-                    potEnabled: createEditionNow ? potEnabled : false,
+                    // Siempre crear edición directamente (simplificación UX)
+                    createEditionNow: !isEditing && !isDiscovery,
+                    potEnabled: potEnabled,
                     // Si el bote está habilitado pero no se puso cantidad, usar 20€ por defecto
-                    potAmountPerPerson: createEditionNow && potEnabled ? (potAmount ? parseFloat(potAmount) : 20) : null,
+                    potAmountPerPerson: potEnabled ? (potAmount ? parseFloat(potAmount) : 20) : null,
                 }),
             });
 
@@ -477,15 +476,16 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                         inviteCode: data.route.inviteCode
                     });
                 } else if (data.edition && data.edition.inviteCode) {
-                    // Se creó plantilla + edición directamente
-                    toast.success("¡Ruta creada!");
+                    // Se creó la ruta directamente
+                    toast.success("¡Ruta creada! 🎉");
                     setCreatedRoute({
                         id: data.edition.id,
                         name: data.edition.name,
                         inviteCode: data.edition.inviteCode
                     });
                 } else {
-                    toast.success("Plantilla creada. Ahora crea una edición para usar la ruta.");
+                    // Fallback por si algo falla
+                    toast.success("Ruta guardada");
                     router.push("/routes");
                     router.refresh();
                 }
@@ -789,12 +789,10 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             orderedIds={orderedIds} selectedBars={selectedBars}
                             routeDistance={routeDistance} routeDuration={routeDuration}
                             isDiscovery={isDiscovery}
-                            createEditionNow={createEditionNow}
-                            onCreateEditionNowChange={isEditing ? undefined : setCreateEditionNow}
                             potEnabled={potEnabled}
-                            onPotEnabledChange={setPotEnabled}
+                            onPotEnabledChange={isEditing ? undefined : setPotEnabled}
                             potAmount={potAmount}
-                            onPotAmountChange={setPotAmount}
+                            onPotAmountChange={isEditing ? undefined : setPotAmount}
                         />
                     </div>
                 )}

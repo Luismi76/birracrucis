@@ -17,9 +17,7 @@ interface ReviewStepProps {
     routeDistance: number | null;
     routeDuration: number | null;
     isDiscovery?: boolean;
-    // Opción de crear edición directamente
-    createEditionNow?: boolean;
-    onCreateEditionNowChange?: (value: boolean) => void;
+    // Opciones de la ruta
     potEnabled?: boolean;
     onPotEnabledChange?: (value: boolean) => void;
     potAmount?: string;
@@ -40,8 +38,6 @@ export default function ReviewStep({
     routeDistance,
     routeDuration,
     isDiscovery,
-    createEditionNow = false,
-    onCreateEditionNowChange,
     potEnabled = false,
     onPotEnabledChange,
     potAmount = "",
@@ -135,59 +131,44 @@ export default function ReviewStep({
             </div>
 
 
-            {/* Opción: Crear edición ahora (solo si no es Discovery, porque Discovery ya crea edición) */}
-            {!isDiscovery && onCreateEditionNowChange && (
-                <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl border-2 border-amber-200 p-5 space-y-4">
-                    <label className="flex items-start gap-4 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={createEditionNow}
-                            onChange={(e) => onCreateEditionNowChange(e.target.checked)}
-                            className="w-6 h-6 mt-0.5 text-amber-500 rounded-lg border-2 border-amber-300"
-                        />
-                        <div className="flex-1">
-                            <div className="font-bold text-slate-800 text-lg">🚀 Crear edición lista para usar</div>
-                            <p className="text-sm text-slate-600 mt-1">
-                                Genera un código de invitación para compartir con tus amigos inmediatamente.
-                                Si no marcas esto, solo se creará una plantilla reutilizable.
-                            </p>
-                        </div>
-                    </label>
+            {/* Opciones adicionales: Bote común */}
+            {!isDiscovery && onPotEnabledChange && (
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-4">
+                    <div className="text-sm font-bold text-slate-700 uppercase tracking-wide">
+                        Opciones de la ruta
+                    </div>
 
-                    {/* Bote común (solo si crear edición está marcado) */}
-                    {createEditionNow && onPotEnabledChange && (
-                        <div className={`rounded-xl p-4 border-2 transition-all ml-10 ${potEnabled ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200'}`}>
-                            <label className="flex items-center gap-3 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    checked={potEnabled}
-                                    onChange={(e) => onPotEnabledChange(e.target.checked)}
-                                    className="w-5 h-5 text-emerald-500 rounded"
-                                />
-                                <div className="flex-1">
-                                    <div className="font-bold text-slate-800 flex items-center gap-2">
-                                        <Coins className="w-4 h-4 text-emerald-600" />
-                                        Bote Común
-                                    </div>
-                                    <div className="text-xs text-slate-500">Gestionar gastos compartidos</div>
+                    <div className={`rounded-xl p-4 border-2 transition-all ${potEnabled ? 'bg-emerald-50 border-emerald-300' : 'bg-white border-slate-200'}`}>
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={potEnabled}
+                                onChange={(e) => onPotEnabledChange(e.target.checked)}
+                                className="w-5 h-5 text-emerald-500 rounded"
+                            />
+                            <div className="flex-1">
+                                <div className="font-bold text-slate-800 flex items-center gap-2">
+                                    <Coins className="w-4 h-4 text-emerald-600" />
+                                    Bote Común
                                 </div>
-                                {potEnabled && onPotAmountChange && (
-                                    <div className="flex items-center gap-1">
-                                        <input
-                                            type="number"
-                                            step="1"
-                                            min="0"
-                                            value={potAmount}
-                                            onChange={(e) => onPotAmountChange(e.target.value)}
-                                            className="w-16 px-2 py-1 bg-white border border-emerald-300 rounded-lg text-center font-bold text-emerald-700"
-                                            placeholder="20"
-                                        />
-                                        <span className="text-emerald-700 font-bold">€</span>
-                                    </div>
-                                )}
-                            </label>
-                        </div>
-                    )}
+                                <div className="text-xs text-slate-500">Gestionar gastos compartidos del grupo</div>
+                            </div>
+                            {potEnabled && onPotAmountChange && (
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        type="number"
+                                        step="1"
+                                        min="0"
+                                        value={potAmount}
+                                        onChange={(e) => onPotAmountChange(e.target.value)}
+                                        className="w-16 px-2 py-1 bg-white border border-emerald-300 rounded-lg text-center font-bold text-emerald-700"
+                                        placeholder="20"
+                                    />
+                                    <span className="text-emerald-700 font-bold">€</span>
+                                </div>
+                            )}
+                        </label>
+                    </div>
                 </div>
             )}
 
