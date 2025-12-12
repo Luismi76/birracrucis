@@ -201,7 +201,7 @@ export default function CommunityTab() {
     }, [inView, hasMore, loading, page, debouncedSearch, fetchRoutes]);
 
     return (
-        <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
+        <div className="h-full flex flex-col">
             {/* Content Switch: Map vs List */}
             {showMap ? (
                 <div className="h-full w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative z-0">
