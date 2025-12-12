@@ -33,9 +33,10 @@ function RoutesContent() {
   }, [tabParam]);
 
   return (
-    <div className="max-w-3xl mx-auto p-4 pb-24 min-h-screen bg-slate-50/30">
+  return (
+    <div className="max-w-3xl mx-auto h-[100dvh] flex flex-col bg-slate-50/30 overflow-hidden">
       {/* Top Header */}
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex-none p-4 pb-2 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-800 tracking-tight">
             Hub de Rutas
@@ -48,50 +49,54 @@ function RoutesContent() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="bg-slate-100 p-1 rounded-xl flex mb-6 shadow-inner">
-        <button
-          onClick={() => handleTabChange("active")}
-          className={cn(
-            "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
-            activeTab === "active"
-              ? "bg-white text-slate-800 shadow-sm"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-          )}
-        >
-          <span>📍</span> <span className="hidden sm:inline">Mis Planes</span>
-          <span className="sm:hidden">Planes</span>
-        </button>
-        <button
-          onClick={() => handleTabChange("community")}
-          className={cn(
-            "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
-            activeTab === "community"
-              ? "bg-white text-purple-700 shadow-sm"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-          )}
-        >
-          <span>🌍</span> <span className="hidden sm:inline">Comunidad</span>
-          <span className="sm:hidden">Explorar</span>
-        </button>
-        <button
-          onClick={() => handleTabChange("history")}
-          className={cn(
-            "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
-            activeTab === "history"
-              ? "bg-white text-amber-700 shadow-sm"
-              : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
-          )}
-        >
-          <span>📜</span> <span className="hidden sm:inline">Historial</span>
-          <span className="sm:hidden">Pasado</span>
-        </button>
+      <div className="flex-none px-4 pb-2">
+        <div className="bg-slate-100 p-1 rounded-xl flex shadow-inner">
+          <button
+            onClick={() => handleTabChange("active")}
+            className={cn(
+              "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
+              activeTab === "active"
+                ? "bg-white text-slate-800 shadow-sm"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+            )}
+          >
+            <span>📍</span> <span className="hidden sm:inline">Mis Planes</span>
+            <span className="sm:hidden">Planes</span>
+          </button>
+          <button
+            onClick={() => handleTabChange("community")}
+            className={cn(
+              "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
+              activeTab === "community"
+                ? "bg-white text-purple-700 shadow-sm"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+            )}
+          >
+            <span>🌍</span> <span className="hidden sm:inline">Comunidad</span>
+            <span className="sm:hidden">Explorar</span>
+          </button>
+          <button
+            onClick={() => handleTabChange("history")}
+            className={cn(
+              "flex-1 py-2.5 px-3 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
+              activeTab === "history"
+                ? "bg-white text-amber-700 shadow-sm"
+                : "text-slate-500 hover:text-slate-700 hover:bg-slate-200/50"
+            )}
+          >
+            <span>📜</span> <span className="hidden sm:inline">Historial</span>
+            <span className="sm:hidden">Pasado</span>
+          </button>
+        </div>
       </div>
 
       {/* Tab Content Area */}
-      <div className="min-h-[400px]">
-        {activeTab === "active" && <ActiveRoutesTab />}
-        {activeTab === "community" && <CommunityTab />}
-        {activeTab === "history" && <HistoryTab />}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
+        <div className="min-h-full px-4 pb-24">
+          {activeTab === "active" && <ActiveRoutesTab />}
+          {activeTab === "community" && <CommunityTab />}
+          {activeTab === "history" && <HistoryTab />}
+        </div>
       </div>
 
     </div>

@@ -204,7 +204,7 @@ export default function CommunityTab() {
         <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
             {/* Content Switch: Map vs List */}
             {showMap ? (
-                <div className="h-[calc(100dvh-180px)] w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative z-0">
+                <div className="h-full w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative z-0">
 
                     {/* Floating Header Overlay */}
                     <div className="absolute top-4 left-4 right-4 z-10 flex gap-2 pointer-events-none">
