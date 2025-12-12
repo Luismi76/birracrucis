@@ -17,10 +17,12 @@ export async function GET(request: NextRequest) {
         const routes = await prisma.route.findMany({
             where: {
                 isPublic: true,
-                OR: [
-                    { name: { contains: search, mode: "insensitive" } },
-                    { stops: { some: { address: { contains: search, mode: "insensitive" } } } }
-                ]
+                ...(search ? {
+                    OR: [
+                        { name: { contains: search, mode: "insensitive" } },
+                        { stops: { some: { address: { contains: search, mode: "insensitive" } } } }
+                    ]
+                } : {})
             },
             take: limit,
             skip: offset,
