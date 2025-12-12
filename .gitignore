@@ -47,3 +47,4 @@ check-*.ts
 next-env.d.ts
 
 /lib/generated/prisma
+nul

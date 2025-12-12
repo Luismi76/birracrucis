@@ -34,6 +34,15 @@ export async function GET(request: NextRequest) {
                         image: true,
                     },
                 },
+                stops: {
+                    take: 1,
+                    select: {
+                        address: true,
+                    },
+                    orderBy: {
+                        order: 'asc',
+                    },
+                },
                 _count: {
                     select: {
                         stops: true,

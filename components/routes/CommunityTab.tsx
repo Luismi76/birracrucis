@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useInView } from "react-intersection-observer";
 import CloneRouteButton from "@/components/CloneRouteButton";
@@ -20,6 +20,9 @@ type PublicRoute = {
         stops: number;
         participants: number;
     };
+    stops?: {
+        address: string;
+    }[];
 };
 
 export default function CommunityTab() {
@@ -43,15 +46,54 @@ export default function CommunityTab() {
         return () => clearTimeout(timer);
     }, [search]);
 
+    // State for Accordion
+    const [openCity, setOpenCity] = useState<string | null>(null);
+
+    // Helper to extract city
+    const getCityFromAddress = (address: string) => {
+        if (!address) return "Otras Ubicaciones";
+        const parts = address.split(',');
+        let city = parts[parts.length - 1].trim();
+
+        // Remove ZIP code if present (5 digits in Spain)
+        city = city.replace(/\b\d{5}\b/g, '').trim();
+
+        // Remove country if present
+        if (city.toLowerCase() === 'españa' || city.toLowerCase() === 'spain') {
+            city = parts[parts.length - 2]?.trim() || city;
+            city = city.replace(/\b\d{5}\b/g, '').trim();
+        }
+
+        return city || "Otras Ubicaciones";
+    };
+
+    // Group routes by city
+    const groupedRoutes = useMemo(() => {
+        return routes.reduce((acc, route) => {
+            const address = route.stops?.[0]?.address || "";
+            const city = getCityFromAddress(address);
+            if (!acc[city]) acc[city] = [];
+            acc[city].push(route);
+            return acc;
+        }, {} as Record<string, PublicRoute[]>);
+    }, [routes]);
+
+    // Set default open city when routes load if none selected
+    useEffect(() => {
+        if (!openCity && Object.keys(groupedRoutes).length > 0) {
+            setOpenCity(Object.keys(groupedRoutes)[0]);
+        }
+    }, [groupedRoutes, openCity]);
+
     const fetchRoutes = useCallback(async (pageNum: number, searchQuery: string, reset: boolean = false) => {
         try {
             setLoading(true);
-            const res = await fetch(`/api/routes/community?limit=20&offset=${pageNum * 20}&search=${encodeURIComponent(searchQuery)}`);
+            const res = await fetch(`/api/routes/community?limit=50&offset=${pageNum * 50}&search=${encodeURIComponent(searchQuery)}`);
             if (!res.ok) throw new Error("Error loading routes");
 
             const newRoutes = await res.json();
 
-            if (newRoutes.length < 20) setHasMore(false);
+            if (newRoutes.length < 50) setHasMore(false);
 
             if (reset) {
                 setRoutes(newRoutes);
@@ -104,87 +146,114 @@ export default function CommunityTab() {
                 />
             </div>
 
-            <div className="space-y-4">
-                {routes.map((route) => {
-                    // Generar datos "sociales" deterministas basados en el ID
-                    const hash = route.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                    const rating = (3.5 + (hash % 15) / 10).toFixed(1); // 3.5 - 5.0
-                    const reviews = 5 + (hash % 50);
-                    const variants = [
-                        { bg: "from-amber-200 to-orange-100", icon: "🍺", tag: "Clásica" },
-                        { bg: "from-purple-200 to-indigo-100", icon: "🕺", tag: "Fiesta" },
-                        { bg: "from-emerald-200 to-teal-100", icon: "💸", tag: "Económica" },
-                        { bg: "from-rose-200 to-pink-100", icon: "📸", tag: "Turismo" },
-                        { bg: "from-blue-200 to-cyan-100", icon: "🌊", tag: "Chill" },
-                    ];
-                    const variant = variants[hash % variants.length];
-
-                    return (
-                        <div key={route.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 hover:shadow-md transition-all group overflow-hidden relative">
-                            {/* Gradient Background Decoration */}
-                            <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${variant.bg} opacity-50 blur-2xl rounded-full translate-x-10 -translate-y-10 group-hover:scale-150 transition-transform duration-700`} />
-
-                            <div className="flex justify-between items-start gap-3 relative z-10">
-                                <div className="shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-3xl shadow-inner border border-slate-100">
-                                    {variant.icon}
-                                </div>
-
-                                <div className="flex-1 min-w-0 pt-1">
-                                    <h3 className="text-lg font-bold text-slate-800 line-clamp-1 group-hover:text-purple-600 transition-colors">
-                                        {route.name}
-                                    </h3>
-
-                                    <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-xs font-bold text-amber-500 flex items-center gap-0.5">
-                                            ⭐ {rating} <span className="text-slate-300 font-normal">({reviews})</span>
-                                        </span>
-                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full uppercase tracking-wide">
-                                            {variant.tag}
-                                        </span>
-                                    </div>
-
-                                    {route.description && (
-                                        <p className="text-slate-500 text-sm mt-2 line-clamp-2 leading-relaxed opacity-80 italic">"{route.description}"</p>
-                                    )}
-
-                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-50 text-xs text-slate-500">
-                                        <div className="flex items-center gap-1.5">
-                                            {route.creator?.image ? (
-                                                <img src={route.creator.image} alt="" className="w-5 h-5 rounded-full" />
-                                            ) : (
-                                                <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">👤</div>
-                                            )}
-                                            <span className="font-medium truncate max-w-[100px]">{route.creator?.name || "Anónimo"}</span>
-                                        </div>
-                                        <div className="flex items-center gap-3 ml-auto">
-                                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
-                                                🍻 <strong>{route._count.stops}</strong> <span className="hidden sm:inline">bares</span>
-                                            </span>
-                                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
-                                                👥 <strong>{route._count.participants}</strong> <span className="hidden sm:inline">participantes</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
+            <div className="space-y-4 pb-20">
+                {Object.entries(groupedRoutes).map(([city, cityRoutes]) => (
+                    <div key={city} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
+                        <button
+                            onClick={() => setOpenCity(openCity === city ? null : city)}
+                            className={`w-full flex items-center justify-between p-4 transition-colors ${openCity === city ? 'bg-purple-50 text-purple-900 border-b border-purple-100' : 'hover:bg-slate-50 text-slate-700'}`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="text-xl">📍</span>
+                                <span className="font-bold">{city}</span>
+                                <span className="px-2 py-0.5 bg-white/50 text-xs font-medium rounded-full border border-slate-200/50">
+                                    {cityRoutes.length}
+                                </span>
                             </div>
+                            <span className={`transform transition-transform text-slate-400 ${openCity === city ? 'rotate-180' : ''}`}>
+                                ▼
+                            </span>
+                        </button>
 
-                            <div className="mt-4 flex gap-2">
-                                <button
-                                    onClick={() => {
-                                        setSelectedRouteId(route.id);
-                                        setSelectedRouteData(route);
-                                    }}
-                                    className="flex-1 py-2.5 bg-slate-50 text-slate-700 font-bold rounded-xl hover:bg-slate-100 transition-colors flex items-center justify-center gap-2 group-hover:bg-white group-hover:shadow-sm group-hover:border group-hover:border-slate-100"
-                                >
-                                    Ver Detalles
-                                </button>
-                                <div className="shrink-0 w-12">
-                                    <CloneRouteButton routeId={route.id} routeName={route.name} variant="icon" />
-                                </div>
+                        {/* Accordion Content */}
+                        <div
+                            className={`transition-all duration-300 ease-in-out overflow-hidden ${openCity === city ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'}`}
+                        >
+                            <div className="p-4 space-y-4">
+                                {cityRoutes.map((route) => {
+                                    // Generar datos "sociales" deterministas basados en el ID
+                                    const hash = route.id.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                                    const rating = (3.5 + (hash % 15) / 10).toFixed(1); // 3.5 - 5.0
+                                    const reviews = 5 + (hash % 50);
+                                    const variants = [
+                                        { bg: "from-amber-200 to-orange-100", icon: "🍺", tag: "Clásica" },
+                                        { bg: "from-purple-200 to-indigo-100", icon: "🕺", tag: "Fiesta" },
+                                        { bg: "from-emerald-200 to-teal-100", icon: "💸", tag: "Económica" },
+                                        { bg: "from-rose-200 to-pink-100", icon: "📸", tag: "Turismo" },
+                                        { bg: "from-blue-200 to-cyan-100", icon: "🌊", tag: "Chill" },
+                                    ];
+                                    const variant = variants[hash % variants.length];
+
+                                    return (
+                                        <div key={route.id} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 hover:shadow-md transition-all group overflow-hidden relative">
+                                            {/* Gradient Background Decoration */}
+                                            <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${variant.bg} opacity-50 blur-2xl rounded-full translate-x-10 -translate-y-10 group-hover:scale-150 transition-transform duration-700`} />
+
+                                            <div className="flex justify-between items-start gap-3 relative z-10">
+                                                <div className="shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center text-3xl shadow-inner border border-slate-100">
+                                                    {variant.icon}
+                                                </div>
+
+                                                <div className="flex-1 min-w-0 pt-1">
+                                                    <h3 className="text-lg font-bold text-slate-800 line-clamp-1 group-hover:text-purple-600 transition-colors">
+                                                        {route.name}
+                                                    </h3>
+
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs font-bold text-amber-500 flex items-center gap-0.5">
+                                                            ⭐ {rating} <span className="text-slate-300 font-normal">({reviews})</span>
+                                                        </span>
+                                                        <span className="text-[10px] font-bold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full uppercase tracking-wide">
+                                                            {variant.tag}
+                                                        </span>
+                                                    </div>
+
+                                                    {route.description && (
+                                                        <p className="text-slate-500 text-sm mt-2 line-clamp-2 leading-relaxed opacity-80 italic">"{route.description}"</p>
+                                                    )}
+
+                                                    <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                                                        <div className="flex items-center gap-1.5">
+                                                            {route.creator?.image ? (
+                                                                <img src={route.creator.image} alt="" className="w-5 h-5 rounded-full" />
+                                                            ) : (
+                                                                <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center text-[10px]">👤</div>
+                                                            )}
+                                                            <span className="font-medium truncate max-w-[100px]">{route.creator?.name || "Anónimo"}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-3 ml-auto">
+                                                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
+                                                                🍻 <strong>{route._count.stops}</strong> <span className="hidden sm:inline">bares</span>
+                                                            </span>
+                                                            <span className="flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-md">
+                                                                👥 <strong>{route._count.participants}</strong> <span className="hidden sm:inline">participantes</span>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-4 flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedRouteId(route.id);
+                                                        setSelectedRouteData(route);
+                                                    }}
+                                                    className="flex-1 py-2.5 bg-white text-slate-700 font-bold rounded-xl shadow-sm hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 border border-slate-100"
+                                                >
+                                                    Ver Detalles
+                                                </button>
+                                                <div className="shrink-0 w-12">
+                                                    <CloneRouteButton routeId={route.id} routeName={route.name} variant="icon" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
-                    );
-                })}
+                    </div>
+                ))}
 
                 {routes.length === 0 && !loading && (
                     <div className="text-center py-12 text-slate-400">
