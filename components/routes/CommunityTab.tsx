@@ -56,15 +56,30 @@ export default function CommunityTab() {
         // 1. Try to extract from Address
         if (route.stops?.[0]?.address) {
             const parts = route.stops[0].address.split(',');
-            city = parts[parts.length - 1].trim();
 
-            // Remove ZIP code if present (5 digits in Spain)
-            city = city.replace(/\b\d{5}\b/g, '').trim();
+            // Filter out numeric parts (street numbers) and empty strings
+            const validParts = parts
+                .map(p => p.trim())
+                .filter(p => p.length > 0 && !/^\d+$/.test(p));
 
-            // Remove country if present
-            if (city.toLowerCase() === 'españa' || city.toLowerCase() === 'spain') {
-                city = parts[parts.length - 2]?.trim() || city;
-                city = city.replace(/\b\d{5}\b/g, '').trim();
+            if (validParts.length > 0) {
+                let candidate = validParts[validParts.length - 1];
+
+                // Handle Country
+                if ((candidate.toLowerCase() === 'españa' || candidate.toLowerCase() === 'spain') && validParts.length > 1) {
+                    candidate = validParts[validParts.length - 2];
+                }
+
+                // Clean Zip Code (5 digits)
+                candidate = candidate.replace(/\b\d{5}\b/g, '').trim();
+
+                // Check if it looks like a street (starts with C., Calle, Av, etc)
+                // If the "City" candidate is actually the street, reject it to trigger fallback
+                const isStreet = /^(c\.|calle|av|avda|pz|plaza|plaza|pl\.|paseo|po)\s/i.test(candidate);
+
+                if (!isStreet && candidate.length > 1) {
+                    city = candidate;
+                }
             }
         }
 
@@ -73,13 +88,9 @@ export default function CommunityTab() {
             const nameParts = route.name.split(':');
             const candidate = nameParts[0].trim();
 
-            // Remove common emojis manually or via simple regex for efficiency
-            // Keeping it simple: remove non-alphanumeric chars at start (like flags)
-            // But allow spaces.
-            // Example: "🇪🇸 Madrid" -> "Madrid"
-            // "La Puebla de los Infantes" -> "La Puebla de los Infantes"
-            city = candidate.replace(/^[\p{Emoji}\u2000-\u3300]\s*/gu, '') // modern browsers
-                .replace(/[^\w\s\u00C0-\u00FF]/g, '') // stricter fallback
+            // "🇪🇸 Madrid" -> "Madrid"
+            city = candidate.replace(/^[\p{Emoji}\u2000-\u3300]\s*/gu, '')
+                .replace(/[^\w\s\u00C0-\u00FF]/g, '')
                 .trim();
         }
 
