@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 export default function BottomNavigation() {
@@ -24,7 +24,11 @@ export default function BottomNavigation() {
   }
 
   // No mostrar dentro de una ruta activa (tiene su propia navegacion) O en la comunidad (mapa full screen)
-  if ((pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/history")) || pathname === "/routes/community") {
+  // Usamos searchParams para detectar el tab "community"
+  const searchParams = useSearchParams();
+  const isCommunityTab = searchParams.get("tab") === "community";
+
+  if ((pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/history")) || pathname === "/routes/community" || isCommunityTab) {
     return null;
   }
 
