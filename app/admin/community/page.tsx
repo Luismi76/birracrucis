@@ -168,66 +168,68 @@ export default function AdminCommunityPage() {
                     />
                 </div>
 
-                <div className="bg-white rounded-xl shadow overflow-hidden border border-slate-200">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-100 text-slate-600 text-sm uppercase">
-                            <tr>
-                                <th className="p-4 border-b">Ruta</th>
-                                <th className="p-4 border-b">Creador</th>
-                                <th className="p-4 border-b">Ubicación Detectada</th>
-                                <th className="p-4 border-b text-center">Estado</th>
-                                <th className="p-4 border-b text-right">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {routes.map(route => {
-                                const city = getCity(route);
-                                return (
-                                    <tr key={route.id} className="hover:bg-slate-50">
-                                        <td className="p-4">
-                                            <div className="font-bold text-slate-800">{route.name}</div>
-                                            <div className="text-xs text-slate-400 font-mono truncate max-w-xs">{route.id}</div>
-                                            {route.description && <div className="text-xs text-slate-500 mt-1 italic line-clamp-1">{route.description}</div>}
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="text-sm text-slate-700">{route.creator?.name || "Anónimo"}</div>
-                                            <div className="text-xs text-slate-400">{route.creator?.email}</div>
-                                        </td>
-                                        <td className="p-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-bold ${city === "Otras" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
-                                                {city}
-                                            </span>
-                                            {route.stops && route.stops.length > 0 && (
-                                                <div className="text-[10px] text-slate-400 mt-1 truncate max-w-[150px]" title={route.stops[0].address}>
-                                                    {route.stops[0].address}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="p-4 text-center">
-                                            <button
-                                                onClick={() => togglePublic(route.id, route.isPublic)}
-                                                className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${route.isPublic ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
-                                            >
-                                                {route.isPublic ? 'PÚBLICA' : 'PRIVADA'}
-                                            </button>
-                                        </td>
-                                        <td className="p-4 text-right space-x-2">
-                                            <button
-                                                onClick={() => deleteRoute(route.id)}
-                                                className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded"
-                                                title="Eliminar permanentemente"
-                                            >
-                                                🗑️
-                                            </button>
-                                        </td>
-                                    </tr>
-                                )
-                            })}
-                        </tbody>
-                    </table>
-                    {routes.length === 0 && (
-                        <div className="p-8 text-center text-slate-400">No se encontraron rutas.</div>
-                    )}
+                <div className="bg-white rounded-xl shadow overflow-hidden border border-slate-200 flex flex-col">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[800px]">
+                            <thead className="bg-slate-100 text-slate-600 text-sm uppercase">
+                                <tr>
+                                    <th className="p-4 border-b sticky left-0 bg-slate-100 z-10 w-1/3">Ruta</th>
+                                    <th className="p-4 border-b">Creador</th>
+                                    <th className="p-4 border-b">Ubicación</th>
+                                    <th className="p-4 border-b text-center">Estado</th>
+                                    <th className="p-4 border-b text-right sticky right-0 bg-slate-100 z-10">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {routes.map(route => {
+                                    const city = getCity(route);
+                                    return (
+                                        <tr key={route.id} className="hover:bg-slate-50">
+                                            <td className="p-4 sticky left-0 bg-white z-10 border-r border-slate-100">
+                                                <div className="font-bold text-slate-800">{route.name}</div>
+                                                <div className="text-xs text-slate-400 font-mono truncate max-w-xs">{route.id}</div>
+                                                {route.description && <div className="text-xs text-slate-500 mt-1 italic line-clamp-1">{route.description}</div>}
+                                            </td>
+                                            <td className="p-4">
+                                                <div className="text-sm text-slate-700">{route.creator?.name || "Anónimo"}</div>
+                                                <div className="text-xs text-slate-400">{route.creator?.email}</div>
+                                            </td>
+                                            <td className="p-4">
+                                                <span className={`px-2 py-1 rounded text-xs font-bold ${city === "Otras" ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
+                                                    {city}
+                                                </span>
+                                                {route.stops && route.stops.length > 0 && (
+                                                    <div className="text-[10px] text-slate-400 mt-1 truncate max-w-[150px]" title={route.stops[0].address}>
+                                                        {route.stops[0].address}
+                                                    </div>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <button
+                                                    onClick={() => togglePublic(route.id, route.isPublic)}
+                                                    className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${route.isPublic ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}
+                                                >
+                                                    {route.isPublic ? 'PÚBLICA' : 'PRIVADA'}
+                                                </button>
+                                            </td>
+                                            <td className="p-4 text-right space-x-2 sticky right-0 bg-white z-10 border-l border-slate-100 shadow-sm">
+                                                <button
+                                                    onClick={() => deleteRoute(route.id)}
+                                                    className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded bg-white shadow-sm border border-red-100"
+                                                    title="Eliminar permanentemente"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    )
+                                })}
+                            </tbody>
+                        </table>
+                        {routes.length === 0 && (
+                            <div className="p-8 text-center text-slate-400">No se encontraron rutas.</div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
