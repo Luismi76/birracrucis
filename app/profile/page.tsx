@@ -52,16 +52,27 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await fetch("/api/user/profile");
-      if (res.ok) {
-        const data = await res.json();
+      const [profileRes, adminRes] = await Promise.all([
+        fetch("/api/user/profile"),
+        fetch("/api/admin/check")
+      ]);
+
+      if (profileRes.ok) {
+        const data = await profileRes.json();
         if (data.ok) {
           setProfileData(data);
         }
       }
+
+      if (adminRes.ok) {
+        const adminData = await adminRes.json();
+        setIsAdmin(adminData.isAdmin);
+      }
+
     } catch (err) {
       console.error("Error fetching profile:", err);
     } finally {
@@ -391,8 +402,8 @@ export default function ProfilePage() {
                 onClick={() => updateSetting("autoCheckinEnabled", !profileData.settings.autoCheckinEnabled)}
                 disabled={savingSettings}
                 className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.autoCheckinEnabled
-                    ? "bg-amber-500"
-                    : "bg-slate-300"
+                  ? "bg-amber-500"
+                  : "bg-slate-300"
                   } ${savingSettings ? "opacity-50" : ""}`}
               >
                 <span
@@ -414,8 +425,8 @@ export default function ProfilePage() {
                 onClick={() => updateSetting("notificationsEnabled", !profileData.settings.notificationsEnabled)}
                 disabled={savingSettings}
                 className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.notificationsEnabled
-                    ? "bg-amber-500"
-                    : "bg-slate-300"
+                  ? "bg-amber-500"
+                  : "bg-slate-300"
                   } ${savingSettings ? "opacity-50" : ""}`}
               >
                 <span
@@ -430,50 +441,30 @@ export default function ProfilePage() {
         {/* Notificaciones Push */}
         <PushNotificationManager />
 
-        {/* Privacidad y Datos */}
-        <PrivacySettings />
-
-        {/* Ayuda */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <span className="text-xl">❓</span>
-            Ayuda
-          </h3>
-
-          <div className="space-y-2">
+        {/* Admin Panel Link */}
+        {isAdmin && (
+          <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-slate-800">
+            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <span className="text-xl">🛡️</span>
+              Administración
+            </h3>
             <Link
-              href="/guia"
-              className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+              href="/admin/community"
+              className="flex items-center justify-between p-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="text-xl">📖</span>
+                <span className="text-xl">🔧</span>
                 <div>
-                  <p className="font-medium text-slate-800">Guia de uso</p>
-                  <p className="text-xs text-slate-500">Aprende a usar Birracrucis</p>
+                  <p className="font-medium">Panel de Comunidad</p>
+                  <p className="text-xs text-slate-400">Moderación de rutas</p>
                 </div>
               </div>
-              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
-
-            <a
-              href="mailto:luismi669@gmail.com"
-              className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">✉️</span>
-                <div>
-                  <p className="font-medium text-slate-800">Contacto</p>
-                  <p className="text-xs text-slate-500">luismi669@gmail.com</p>
-                </div>
-              </div>
-              <svg className="w-5 h-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
           </div>
-        </div>
+        )}
 
       </div>
 
