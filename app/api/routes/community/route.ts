@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
                     take: 1,
                     select: {
                         address: true,
+                        lat: true,
+                        lng: true,
                     },
                     orderBy: {
                         order: 'asc',
