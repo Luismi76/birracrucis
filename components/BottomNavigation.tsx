@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 
 export default function BottomNavigation() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
 
   // No mostrar en paginas de auth o si no hay sesion
@@ -25,7 +26,6 @@ export default function BottomNavigation() {
 
   // No mostrar dentro de una ruta activa (tiene su propia navegacion) O en la comunidad (mapa full screen)
   // Usamos searchParams para detectar el tab "community"
-  const searchParams = useSearchParams();
   const isCommunityTab = searchParams.get("tab") === "community";
 
   if ((pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/history")) || pathname === "/routes/community" || isCommunityTab) {
