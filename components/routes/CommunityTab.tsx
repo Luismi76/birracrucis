@@ -49,6 +49,26 @@ export default function CommunityTab() {
     // State for Accordion
     const [openCity, setOpenCity] = useState<string | null>(null);
 
+    // Normalization map for neighborhoods -> cities
+    const CITY_NORMALIZATIONS: Record<string, string> = {
+        'triana': 'Sevilla',
+        'alameda': 'Sevilla',
+        'la latina': 'Madrid',
+        'malasaña': 'Madrid',
+        'chueca': 'Madrid',
+        'lavapiés': 'Madrid',
+        'el born': 'Barcelona',
+        'gótico': 'Barcelona',
+        'raval': 'Barcelona',
+        'gràcia': 'Barcelona',
+        'el tubo': 'Zaragoza',
+        'ruzafa': 'Valencia',
+        'carmen': 'Valencia',
+        'bcn': 'Barcelona',
+        'mad': 'Madrid',
+        'sev': 'Sevilla'
+    };
+
     // Helper to extract city
     const getCityFromRoute = (route: PublicRoute) => {
         let city = "";
@@ -94,8 +114,12 @@ export default function CommunityTab() {
                 .trim();
         }
 
-        // Normalizations
-        if (city?.toUpperCase() === 'BCN') return 'Barcelona';
+        // Apply Normalizations (Barrios -> Cities, Abbreviations)
+        if (city) {
+            const normalized = CITY_NORMALIZATIONS[city.toLowerCase()];
+            if (normalized) return normalized;
+        }
+
         if (!city || city.length < 2) return "Otras Ubicaciones";
 
         return city;
