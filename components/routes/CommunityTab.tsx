@@ -50,28 +50,50 @@ export default function CommunityTab() {
     const [openCity, setOpenCity] = useState<string | null>(null);
 
     // Helper to extract city
-    const getCityFromAddress = (address: string) => {
-        if (!address) return "Otras Ubicaciones";
-        const parts = address.split(',');
-        let city = parts[parts.length - 1].trim();
+    const getCityFromRoute = (route: PublicRoute) => {
+        let city = "";
 
-        // Remove ZIP code if present (5 digits in Spain)
-        city = city.replace(/\b\d{5}\b/g, '').trim();
+        // 1. Try to extract from Address
+        if (route.stops?.[0]?.address) {
+            const parts = route.stops[0].address.split(',');
+            city = parts[parts.length - 1].trim();
 
-        // Remove country if present
-        if (city.toLowerCase() === 'españa' || city.toLowerCase() === 'spain') {
-            city = parts[parts.length - 2]?.trim() || city;
+            // Remove ZIP code if present (5 digits in Spain)
             city = city.replace(/\b\d{5}\b/g, '').trim();
+
+            // Remove country if present
+            if (city.toLowerCase() === 'españa' || city.toLowerCase() === 'spain') {
+                city = parts[parts.length - 2]?.trim() || city;
+                city = city.replace(/\b\d{5}\b/g, '').trim();
+            }
         }
 
-        return city || "Otras Ubicaciones";
+        // 2. Fallback: Extract from Name (Format: "City: Name" or "Emoji City: Name")
+        if ((!city || city.length < 2) && route.name.includes(':')) {
+            const nameParts = route.name.split(':');
+            const candidate = nameParts[0].trim();
+
+            // Remove common emojis manually or via simple regex for efficiency
+            // Keeping it simple: remove non-alphanumeric chars at start (like flags)
+            // But allow spaces.
+            // Example: "🇪🇸 Madrid" -> "Madrid"
+            // "La Puebla de los Infantes" -> "La Puebla de los Infantes"
+            city = candidate.replace(/^[\p{Emoji}\u2000-\u3300]\s*/gu, '') // modern browsers
+                .replace(/[^\w\s\u00C0-\u00FF]/g, '') // stricter fallback
+                .trim();
+        }
+
+        // Normalizations
+        if (city?.toUpperCase() === 'BCN') return 'Barcelona';
+        if (!city || city.length < 2) return "Otras Ubicaciones";
+
+        return city;
     };
 
     // Group routes by city
     const groupedRoutes = useMemo(() => {
         return routes.reduce((acc, route) => {
-            const address = route.stops?.[0]?.address || "";
-            const city = getCityFromAddress(address);
+            const city = getCityFromRoute(route);
             if (!acc[city]) acc[city] = [];
             acc[city].push(route);
             return acc;
