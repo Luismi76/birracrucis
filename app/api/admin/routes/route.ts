@@ -3,8 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUser } from "@/lib/auth-helpers";
 
 // Helper to verify admin access
-async function checkAdmin() {
-    const user = await getAuthenticatedUser();
+async function checkAdmin(req: NextRequest) {
+    const user = await getAuthenticatedUser(req);
     if (!user || !user.email) return null;
 
     const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(e => e.trim()) || [];
@@ -15,7 +15,7 @@ async function checkAdmin() {
 }
 
 export async function GET(req: NextRequest) {
-    const user = await checkAdmin();
+    const user = await checkAdmin(req);
     if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-    const user = await checkAdmin();
+    const user = await checkAdmin(req);
     if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -102,7 +102,7 @@ export async function PATCH(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-    const user = await checkAdmin();
+    const user = await checkAdmin(req);
     if (!user) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
