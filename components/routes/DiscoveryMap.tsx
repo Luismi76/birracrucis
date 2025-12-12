@@ -80,7 +80,6 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
     const [zoom, setZoom] = useState(6); // Start zoomed out (Spain view)
-    const [selectedRoute, setSelectedRoute] = useState<PublicRoute | null>(null);
     const [selectedCluster, setSelectedCluster] = useState<{ lat: number, lng: number, count: number } | null>(null);
 
     // 1. Process Routes with approximate coordinates
@@ -192,7 +191,6 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
                 onLoad={(m) => setMap(m)}
                 onZoomChanged={() => map && setZoom(map.getZoom() || 6)}
                 onClick={() => {
-                    setSelectedRoute(null);
                     setSelectedCluster(null);
                 }}
             >
@@ -208,6 +206,13 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
                             className="flex flex-col items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95"
                             onClick={(e) => {
                                 e.stopPropagation();
+
+                                // If single route in cluster, open it directly
+                                if (cluster.members.length === 1) {
+                                    onRouteSelect(cluster.members[0].id);
+                                    return;
+                                }
+
                                 // Zoom in to this cluster
                                 map?.panTo({ lat: cluster.lat, lng: cluster.lng });
                                 const targetZoom = zoom < 8 ? 10 : 15;
@@ -252,35 +257,13 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
                             }}
                             onClick={(e) => {
                                 e.stop();
-                                setSelectedRoute(route);
+                                onRouteSelect(route.id);
                             }}
                         />
                     );
                 })}
 
-                {/* Info Window for Individual Route */}
-                {selectedRoute && (
-                    <InfoWindow
-                        position={{
-                            lat: (selectedRoute.stops?.[0] as any)?.lat,
-                            lng: (selectedRoute.stops?.[0] as any)?.lng
-                        }}
-                        onCloseClick={() => setSelectedRoute(null)}
-                    >
-                        <div className="max-w-[200px] p-1">
-                            <h3 className="font-bold text-sm mb-1">{selectedRoute.name}</h3>
-                            {selectedRoute.description && (
-                                <p className="text-xs text-slate-500 mb-2 line-clamp-2">{selectedRoute.description}</p>
-                            )}
-                            <button
-                                onClick={() => onRouteSelect(selectedRoute.id)}
-                                className="w-full bg-purple-600 text-white text-xs py-1.5 rounded font-medium hover:bg-purple-700"
-                            >
-                                Ver Detalles
-                            </button>
-                        </div>
-                    </InfoWindow>
-                )}
+
 
             </GoogleMap>
 
