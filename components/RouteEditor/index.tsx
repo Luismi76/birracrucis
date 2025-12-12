@@ -546,7 +546,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     };
 
     return (
-        <div className="flex flex-col h-[100dvh] bg-slate-50 font-sans text-slate-900">
+        <div className="flex flex-col h-[100dvh] bg-slate-50 font-sans text-slate-900 overflow-hidden">
             {/* Success/Share Overlay for Discovery Mode */}
             {createdRoute && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -618,7 +618,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             </div>
 
             {/* Main Content Area */}
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 min-h-0 overflow-hidden relative">
                 {/* Step 0: Info */}
                 {currentStep === 0 && (
                     <div className="max-w-2xl mx-auto p-6 md:p-12 h-full overflow-y-auto">
@@ -798,7 +798,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 )}
             </div>
 
-            {/* Footer Navigation */}
+            {/* Footer Navigation - Ocultar cuando hay modal de éxito */}
+            {!createdRoute && (
             <div className="bg-white border-t px-6 py-4 shadow-lg z-20">
                 <div className="max-w-4xl mx-auto flex gap-4">
                     {currentStep > 0 && (
@@ -835,6 +836,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     )}
                 </div>
             </div>
+            )}
         </div>
     );
 }

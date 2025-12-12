@@ -624,16 +624,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         toast.error('Error al actualizar el bote');
       }
 
-      // GAMIFICATION: Registrar consumo en sistema de gamificación
+      // Registrar consumo en sistema de gamificación
       if (currentUserId) {
         try {
-          const { recordBeerConsumption, awardAchievement } = await import('@/lib/gamification-helpers');
-
-          // Registrar consumo del usuario actual
+          const { recordBeerConsumption } = await import('@/lib/gamification-helpers');
           await recordBeerConsumption(routeId, currentUserId, stopId, 1);
-
-          // Intentar otorgar logro de primera cerveza (falla silenciosamente si ya existe)
-          await awardAchievement(routeId, currentUserId, 'first_beer');
         } catch (gamificationError) {
           // No fallar si gamificación falla, solo log
           console.error('Gamification error:', gamificationError);
@@ -827,12 +822,20 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         {/* DEV TOOLS - Solo en desarrollo */}
         {activeTab === 'route' && process.env.NODE_ENV === 'development' && (
           <DevLocationControl
-            activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng } : undefined}
+            activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng, plannedRounds: activeStop.plannedRounds } : undefined}
+            stops={stops.map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, plannedRounds: s.plannedRounds }))}
             onSetPosition={(pos) => {
               setPosition(pos);
               setAccuracy(5);
-              toast.success(`Teletransportado a ${activeStop?.name} 📍`);
+              const stopName = stops.find(s => s.lat === pos.lat && s.lng === pos.lng)?.name || 'ubicación';
+              toast.success(`Teletransportado a ${stopName} 📍`);
             }}
+            rounds={rounds}
+            onSetRounds={(stopId, count) => {
+              setRounds(prev => ({ ...prev, [stopId]: count }));
+              toast.success(`Rondas ajustadas a ${count}`);
+            }}
+            currentBarIndex={currentBarIndex}
           />
         )}
       </div>
@@ -858,64 +861,154 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               actualEndTime={actualEndTime}
             />
           ) : (
-            /* RUTA ACTIVA: Mostrar acciones y controles */
-            <div className="p-4 pt-1 space-y-4">
-              {/* WIDGETS EN GRID 2 COLUMNAS */}
-              <div className="grid grid-cols-2 gap-3 items-start">
-                {/* POT WIDGET */}
-                <PotWidget
-                  currentAmount={potData.currentAmount}
-                  targetAmount={potData.targetAmount}
-                  participantsCount={potData.participantsCount}
-                  paidCount={potData.paidCount}
-                  roundsRemaining={Math.max(0, Math.ceil((potData.targetAmount - potData.currentAmount) / (barPrices[activeStop.id]?.beer || DEFAULT_BEER_PRICE)))}
-                  defaultersCount={potData.participantsCount - potData.paidCount}
-                  onClick={() => setActiveTab('group')}
-                />
+            /* RUTA ACTIVA: Diseño simplificado y claro */
+            (() => {
+              const currentRounds = rounds[activeStop.id] || 0;
+              const plannedRounds = activeStop.plannedRounds || 0;
+              // Solo consideramos completado si hay rondas planificadas Y se han alcanzado
+              const roundsCompleted = plannedRounds > 0 && currentRounds >= plannedRounds;
+              const isOverTime = timeInCurrentBar > (activeStop.stayDuration * 1.5);
+              const minutesOver = timeInCurrentBar - activeStop.stayDuration;
 
-                {/* PARTICIPANTS AT BAR */}
-                <ParticipantsAtBar
-                  participants={participantsWithDistance}
-                  barName={activeStop.name}
-                />
-              </div>
+              return (
+                <div className="p-4 pt-1 space-y-3">
+                  {/* CABECERA DEL BAR ACTUAL */}
+                  <div className="text-center pb-2">
+                    <div className="flex items-center justify-center gap-2 text-xs text-slate-500 mb-1">
+                      <span className={`font-bold ${roundsCompleted ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        Bar {currentBarIndex + 1} de {stops.length}
+                      </span>
+                    </div>
+                    <h2 className="text-xl font-black text-slate-800 dark:text-white truncate px-4">
+                      {activeStop.name}
+                    </h2>
 
-              {/* PACE INDICATOR - Full width */}
-              <PaceIndicator minutesAhead={calculatePace()} />
-
-              {/* NEXT BAR PREVIEW */}
-              {nextBarData && (
-                <NextBarPreview
-                  barName={nextBarData.barName}
-                  address={nextBarData.address}
-                  distance={nextBarData.distance}
-                  estimatedArrival={nextBarData.estimatedArrival}
-                  googlePlaceId={nextBarData.googlePlaceId}
-                  onViewOnMap={() => {
-                    setMapFocusLocation({ lat: nextBarData.lat, lng: nextBarData.lng });
-                  }}
-                />
-              )}
-
-              {/* ACCIONES PRINCIPALES */}
-              <div className="flex flex-col gap-3 mb-2">
-                {!canCheckIn ? (
-                  /* ESTADO: EN CAMINO */
-                  <div className="space-y-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    {/* Indicador de distancia */}
-                    {position && activeStop && (() => {
-                      const distMeters = distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng);
-                      const timeMinutes = Math.ceil(distMeters / 80); // ~80m/min walking speed
-                      return (
-                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-2.5 text-center">
-                          <p className="text-xs text-blue-600 dark:text-blue-400 font-semibold">
-                            📍 A {Math.round(distMeters)}m · {timeMinutes} min caminando
+                    {/* Barra de progreso de rondas + Info bote */}
+                    <div className="mt-2 px-6">
+                      <div className="flex items-center gap-3">
+                        {/* Progreso rondas */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  roundsCompleted
+                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                                    : 'bg-gradient-to-r from-amber-400 to-amber-500'
+                                }`}
+                                style={{ width: `${Math.min(100, (currentRounds / plannedRounds) * 100)}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs font-bold whitespace-nowrap ${
+                              roundsCompleted ? 'text-emerald-600' : 'text-slate-600 dark:text-slate-300'
+                            }`}>
+                              {currentRounds}/{plannedRounds} {roundsCompleted && '✓'}
+                            </span>
+                          </div>
+                          <p className={`text-[10px] mt-0.5 ${roundsCompleted ? 'text-emerald-600 font-semibold' : 'text-slate-400'}`}>
+                            {!roundsCompleted
+                              ? `${plannedRounds - currentRounds} rondas restantes`
+                              : '¡Objetivo cumplido!'}
                           </p>
                         </div>
-                      );
-                    })()}
 
-                    {/* Botón de navegación */}
+                        {/* Separador */}
+                        <div className="h-8 w-px bg-slate-200 dark:bg-slate-600" />
+
+                        {/* Info bote compacta */}
+                        <button
+                          onClick={() => setActiveTab('group')}
+                          className="flex flex-col items-center px-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-lg py-1 transition-colors"
+                        >
+                          <span className="text-lg">💰</span>
+                          <span className={`text-xs font-bold ${potData.currentAmount > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            {potData.currentAmount > 0 ? `${potData.currentAmount.toFixed(0)}€` : 'Sin bote'}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Estado: Estás aquí + tiempo */}
+                    {canCheckIn ? (
+                      <div className="flex items-center justify-center gap-2 mt-2">
+                        <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                          <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                          Estás aquí
+                        </span>
+                        {timeInCurrentBar > 0 && (
+                          <span className={`text-xs ${isOverTime ? 'text-orange-500 font-semibold' : 'text-slate-400'}`}>
+                            {timeInCurrentBar} min {isOverTime && `(+${minutesOver} min)`}
+                          </span>
+                        )}
+                      </div>
+                    ) : position && (
+                      <div className="text-xs text-blue-600 mt-2">
+                        📍 A {Math.round(distanceInMeters(position.lat, position.lng, activeStop.lat, activeStop.lng))}m
+                      </div>
+                    )}
+                  </div>
+
+                  {/* BANNER RONDAS COMPLETADAS + IR AL SIGUIENTE */}
+                  {roundsCompleted && nextBarData && canCheckIn && (
+                    <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 border-2 border-emerald-200 dark:border-emerald-700 rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🎯</span>
+                        <div>
+                          <p className="font-bold text-emerald-800 dark:text-emerald-200">¡Rondas completadas!</p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                            Siguiente: {nextBarData.barName} ({Math.round(nextBarData.distance)}m)
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          const url = `https://www.google.com/maps/dir/?api=1&destination=${nextBarData.lat},${nextBarData.lng}&travelmode=walking`;
+                          window.open(url, '_blank');
+                        }}
+                        className="w-full py-3 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold shadow-lg shadow-emerald-200/50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                        <MapPin className="w-5 h-5" />
+                        <span>Ir al siguiente bar</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* BANNER ÚLTIMO BAR - FINALIZAR RUTA */}
+                  {canFinishRoute && canCheckIn && (
+                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-2 border-purple-200 dark:border-purple-700 rounded-2xl p-4 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">🏆</span>
+                        <div>
+                          <p className="font-bold text-purple-800 dark:text-purple-200">¡Último bar completado!</p>
+                          <p className="text-xs text-purple-600 dark:text-purple-400">
+                            Habéis completado {stops.length} bares y todas las rondas
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={handleFinishRoute}
+                        className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-bold shadow-lg shadow-purple-200/50 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                      >
+                        <Trophy className="w-5 h-5" />
+                        <span>🎉 Finalizar Ruta</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ACCIÓN PRINCIPAL */}
+                  {canCheckIn ? (
+                    <button
+                      onClick={() => activeStop && handleAddRound(activeStop.id)}
+                      className={`w-full py-4 text-white rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3 ${
+                        roundsCompleted
+                          ? 'bg-slate-400 dark:bg-slate-600 shadow-slate-200/50'
+                          : 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-200/50'
+                      }`}
+                    >
+                      <Beer className="w-6 h-6" />
+                      <span>{roundsCompleted ? 'Una ronda más' : 'Añadir Ronda'}</span>
+                    </button>
+                  ) : (
                     <button
                       onClick={() => {
                         if (activeStop) {
@@ -923,126 +1016,67 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                           window.open(url, '_blank');
                         }
                       }}
-                      className="w-full py-3.5 bg-gradient-to-r from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-200 dark:shadow-blue-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      className="w-full py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl font-bold text-lg shadow-lg shadow-blue-200/50 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
                     >
-                      <MapPin className="w-5 h-5" />
+                      <MapPin className="w-6 h-6" />
                       <span>Navegar al Bar</span>
                     </button>
+                  )}
 
-                    {/* Indicador de auto check-in */}
-                    <div className="text-center">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        ⚡ Check-in automático activado
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  /* ESTADO: EN EL BAR */
-                  <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300">
-                    {/* Indicador de llegada */}
-                    <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-2 text-center">
-                      <p className="text-xs text-green-600 dark:text-green-400 font-semibold">
-                        ✅ En {activeStop.name}
-                      </p>
-                    </div>
-
-                    {/* Botón Principal: AÑADIR RONDA */}
+                  {/* ACCIONES SECUNDARIAS */}
+                  <div className="grid grid-cols-4 gap-2">
                     <button
-                      onClick={() => activeStop && handleAddRound(activeStop.id)}
-                      className="py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 dark:from-amber-600 dark:to-amber-700 text-white rounded-2xl font-bold shadow-lg shadow-amber-200 dark:shadow-amber-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      onClick={() => photoCaptureRef.current?.trigger()}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition-all"
                     >
-                      <Beer className="w-5 h-5" />
-                      <div className="flex flex-col items-start">
-                        <span className="text-base">Añadir Ronda</span>
-                        <span className="text-xs text-amber-100">Registra tu consumición</span>
-                      </div>
+                      <Camera className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300">Foto</span>
                     </button>
-
-                    {/* Grid 1x4 de Acciones Rápidas (más compacto) */}
-                    <div className="grid grid-cols-2 gap-2">
-                      {/* Valorar */}
-                      <button
-                        onClick={() => setActiveTab('ratings')}
-                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
-                      >
-                        <Star className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Valorar</div>
-                      </button>
-
-                      {/* Grupo */}
-                      <button
-                        onClick={() => setActiveTab('group')}
-                        className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
-                      >
-                        <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                        <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Grupo</div>
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setActiveTab('ratings')}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition-all"
+                    >
+                      <Star className="w-5 h-5 text-amber-500" />
+                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300">Valorar</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab('group')}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition-all"
+                    >
+                      <Users className="w-5 h-5 text-blue-500" />
+                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300">Grupo</span>
+                    </button>
+                    <button
+                      onClick={() => setNotificationPickerOpen(true)}
+                      className="p-2.5 bg-slate-50 dark:bg-slate-700 rounded-xl flex flex-col items-center gap-1 active:scale-95 transition-all"
+                    >
+                      <Bell className="w-5 h-5 text-orange-500" />
+                      <span className="text-[10px] font-medium text-slate-600 dark:text-slate-300">Avisar</span>
+                    </button>
                   </div>
-                )}
 
-                {/* BOTONES SIEMPRE VISIBLES */}
-                <div className="grid grid-cols-3 gap-2 mt-2">
-                  {/* Foto */}
-                  <button
-                    onClick={() => photoCaptureRef.current?.trigger()}
-                    className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
-                  >
-                    <Camera className="w-5 h-5 text-slate-700 dark:text-slate-200" />
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Foto</div>
-                  </button>
-
-                  {/* Avisar */}
-                  <button
-                    onClick={() => setNotificationPickerOpen(true)}
-                    className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-amber-300 hover:bg-amber-50 dark:hover:bg-slate-600"
-                  >
-                    <Bell className="w-5 h-5 text-amber-500 dark:text-amber-400" />
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Avisar</div>
-                  </button>
-
-                  {/* Ranking */}
-                  <button
-                    onClick={() => setRankingOpen(true)}
-                    className="p-3 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl flex flex-col items-center justify-center gap-1.5 active:scale-95 transition-all hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-slate-600"
-                  >
-                    <Trophy className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                    <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Ranking</div>
-                  </button>
+                  {/* SIGUIENTE BAR (oculto solo cuando mostramos el banner de completado) */}
+                  {nextBarData && !(roundsCompleted && canCheckIn) && (
+                    <button
+                      onClick={() => setMapFocusLocation({ lat: nextBarData.lat, lng: nextBarData.lng })}
+                      className="w-full p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl flex items-center gap-3 active:scale-[0.98] transition-all"
+                    >
+                      <div className="w-8 h-8 bg-slate-200 dark:bg-slate-600 rounded-full flex items-center justify-center text-sm font-bold text-slate-600 dark:text-slate-300">
+                        {currentBarIndex + 2}
+                      </div>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm font-bold text-slate-800 dark:text-white truncate">{nextBarData.barName}</div>
+                        <div className="text-xs text-slate-500">{Math.round(nextBarData.distance)}m • {Math.ceil(nextBarData.distance / 80)} min</div>
+                      </div>
+                      <MapPin className="w-4 h-4 text-slate-400" />
+                    </button>
+                  )}
                 </div>
-              </div>
-
-              {/* Google Place Info */}
-              <div className="mb-2">
-                <BarPlaceInfo placeId={activeStop.googlePlaceId} name={activeStop.name} />
-              </div>
-
-              {/* Compact Price Display - Only when at bar */}
-              {canCheckIn && (
-                <div className="animate-in fade-in slide-in-from-bottom-2 duration-200">
-                  <button
-                    onClick={() => setPricePickerOpen({ type: 'beer', stopId: activeStop.id })}
-                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 active:scale-95 transition-all"
-                  >
-                    <div className="flex items-center justify-center gap-3 text-xs">
-                      <span className="font-semibold text-slate-600 dark:text-slate-400">💰 Precios:</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-100">
-                        🍺 {barPrices[activeStop.id]?.beer?.toFixed(2) || DEFAULT_BEER_PRICE.toFixed(2)}€
-                      </span>
-                      <span className="text-slate-400 dark:text-slate-500">|</span>
-                      <span className="font-bold text-slate-800 dark:text-slate-100">
-                        🍴 {barPrices[activeStop.id]?.tapa?.toFixed(2) || DEFAULT_TAPA_PRICE.toFixed(2)}€
-                      </span>
-                      <span className="text-slate-500 dark:text-slate-400 text-[10px]">(tap para editar)</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-            </div>
+              );
+            })()
           )}
         </div>
-      )
-      }
+      )}
 
       {/* 3. CONTENIDO DE TABS */}
       {

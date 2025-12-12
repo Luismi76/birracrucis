@@ -131,8 +131,8 @@ export default function ReviewStep({
             </div>
 
 
-            {/* Opciones adicionales: Bote común */}
-            {!isDiscovery && onPotEnabledChange && (
+            {/* Opciones adicionales: Bote común - siempre visible en rutas nuevas */}
+            {!isDiscovery && onPotEnabledChange && onPotAmountChange && (
                 <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 space-y-4">
                     <div className="text-sm font-bold text-slate-700 uppercase tracking-wide">
                         Opciones de la ruta

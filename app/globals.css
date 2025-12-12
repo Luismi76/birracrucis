@@ -625,3 +625,35 @@
     opacity: 0;
   }
 }
+
+@keyframes fillLogo {
+  0% {
+    height: 10%;
+    opacity: 1;
+  }
+
+  50% {
+    height: 100%;
+    opacity: 1;
+  }
+
+  90% {
+    height: 100%;
+    opacity: 1;
+  }
+
+  100% {
+    height: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes fillGlass {
+  0% {
+    height: 0%;
+  }
+
+  100% {
+    height: 90%;
+  }
+}

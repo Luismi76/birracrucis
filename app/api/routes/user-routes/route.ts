@@ -40,7 +40,8 @@ export async function GET(req: NextRequest) {
                 creatorId: userId,
                 isTemplate: false,
                 status: "pending",
-                date: { gte: now },
+                // Eliminamos la restricción de fecha estricta para que aparezcan las rutas manuales de hoy
+                // date: { gte: now },
             },
             include: {
                 stops: {

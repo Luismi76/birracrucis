@@ -202,7 +202,7 @@ export async function POST(req: NextRequest) {
           templateId: route.id,
           inviteCode: editionInviteCode,
           status: "pending",
-          potEnabled: body.potEnabled ?? false,
+          potEnabled: body.potEnabled === true,
           potAmountPerPerson: body.potAmountPerPerson ?? null,
           stops: {
             create: route.stops.map(s => ({

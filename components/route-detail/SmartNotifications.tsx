@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { Bell, Clock, Target, DollarSign } from "lucide-react";
 
 type NotificationType =
     | "participant_nearby"
@@ -26,8 +25,16 @@ export default function SmartNotifications({
     notifications,
     onDismiss,
 }: SmartNotificationsProps) {
+    // Track which notification types we've already shown to prevent duplicates
+    const shownRef = useRef<Set<NotificationType>>(new Set());
+
     useEffect(() => {
         notifications.forEach((notification, index) => {
+            // Skip if we've already shown this notification type
+            if (shownRef.current.has(notification.type)) {
+                return;
+            }
+
             const icon = getIcon(notification.type);
             const duration = getDuration(notification.type);
 
@@ -41,6 +48,9 @@ export default function SmartNotifications({
                     }
                     : undefined,
             });
+
+            // Mark as shown
+            shownRef.current.add(notification.type);
         });
     }, [notifications, onDismiss]);
 
