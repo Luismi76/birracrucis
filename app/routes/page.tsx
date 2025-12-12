@@ -90,12 +90,23 @@ function RoutesContent() {
       </div>
 
       {/* Tab Content Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden relative">
-        <div className="min-h-full px-4 pb-24">
-          {activeTab === "active" && <ActiveRoutesTab />}
-          {activeTab === "community" && <CommunityTab />}
-          {activeTab === "history" && <HistoryTab />}
-        </div>
+      {/* Tab Content Area */}
+      <div className="flex-1 overflow-hidden relative">
+        {activeTab === "active" && (
+          <div className="h-full overflow-y-auto px-4 pb-24">
+            <ActiveRoutesTab />
+          </div>
+        )}
+        {activeTab === "community" && (
+          <div className="h-full w-full">
+            <CommunityTab />
+          </div>
+        )}
+        {activeTab === "history" && (
+          <div className="h-full overflow-y-auto px-4 pb-24">
+            <HistoryTab />
+          </div>
+        )}
       </div>
 
     </div>
