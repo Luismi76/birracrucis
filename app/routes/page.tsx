@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import UserMenu from "@/components/UserMenu";
@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 
 type Tab = "active" | "community" | "history";
 
-export default function RoutesPage() {
+function RoutesContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const tabParam = searchParams.get("tab") as Tab;
@@ -95,5 +95,13 @@ export default function RoutesPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function RoutesPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-center">Cargando...</div>}>
+      <RoutesContent />
+    </Suspense>
   );
 }
