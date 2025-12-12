@@ -8,6 +8,7 @@ import CloneRouteButton from "@/components/CloneRouteButton";
 type PublicRoute = {
     id: string;
     name: string;
+    description: string | null;
     creator: {
         name: string | null;
         image: string | null;
