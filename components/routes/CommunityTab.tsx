@@ -72,52 +72,66 @@ export default function CommunityTab() {
     // Helper to extract city
     const getCityFromRoute = (route: PublicRoute) => {
         let city = "";
+        const address = route.stops?.[0]?.address;
 
-        // 1. Try to extract from Address
-        if (route.stops?.[0]?.address) {
-            const parts = route.stops[0].address.split(',');
+        // 1. Priority: Check if address contains a known major city in the suffix (last 50 chars)
+        // This avoids "Calle Sevilla, Madrid" issues by looking at the end where City usually is.
+        if (address) {
+            const suffix = address.slice(-50).toLowerCase();
+            const MAJOR_CITIES = ['Sevilla', 'Madrid', 'Barcelona', 'Valencia', 'Zaragoza', 'Málaga', 'Bilbao', 'Granada', 'Córdoba', 'Alicante'];
 
-            // Filter out numeric parts (street numbers) and empty strings
+            for (const majorCity of MAJOR_CITIES) {
+                if (suffix.includes(majorCity.toLowerCase())) {
+                    return majorCity;
+                }
+            }
+        }
+
+        // 2. Try to extract from Address parsing (for smaller cities/towns)
+        if (address) {
+            const parts = address.split(',');
+            // Filter out numeric parts and street prefixes
             const validParts = parts
                 .map(p => p.trim())
                 .filter(p => p.length > 0 && !/^\d+$/.test(p));
 
             if (validParts.length > 0) {
                 let candidate = validParts[validParts.length - 1];
-
-                // Handle Country
+                // Remove Country
                 if ((candidate.toLowerCase() === 'españa' || candidate.toLowerCase() === 'spain') && validParts.length > 1) {
                     candidate = validParts[validParts.length - 2];
                 }
-
-                // Clean Zip Code (5 digits)
+                // Clean Zip Code
                 candidate = candidate.replace(/\b\d{5}\b/g, '').trim();
 
-                // Check if it looks like a street (starts with C., Calle, Av, etc)
-                // If the "City" candidate is actually the street, reject it to trigger fallback
+                // Reject Street names
                 const isStreet = /^(c\.|calle|av|avda|pz|plaza|plaza|pl\.|paseo|po)\s/i.test(candidate);
-
                 if (!isStreet && candidate.length > 1) {
                     city = candidate;
                 }
             }
         }
 
-        // 2. Fallback: Extract from Name (Format: "City: Name" or "Emoji City: Name")
+        // 3. Fallback: Parse from Name
         if ((!city || city.length < 2) && route.name.includes(':')) {
             const nameParts = route.name.split(':');
             const candidate = nameParts[0].trim();
-
-            // "🇪🇸 Madrid" -> "Madrid"
             city = candidate.replace(/^[\p{Emoji}\u2000-\u3300]\s*/gu, '')
                 .replace(/[^\w\s\u00C0-\u00FF]/g, '')
                 .trim();
         }
 
-        // Apply Normalizations (Barrios -> Cities, Abbreviations)
+        // 4. Final Normalization (Barrios -> Cities, Abbreviations)
+        // Use partial matching (includes) to catch things like "Alameda de Hércules" -> "alameda" -> "Sevilla"
         if (city) {
-            const normalized = CITY_NORMALIZATIONS[city.toLowerCase()];
-            if (normalized) return normalized;
+            const lowerCity = city.toLowerCase();
+            if (lowerCity === 'bcn') return 'Barcelona'; // Explicit check for BCN shortcode
+
+            for (const [key, mappedCity] of Object.entries(CITY_NORMALIZATIONS)) {
+                if (lowerCity.includes(key)) {
+                    return mappedCity;
+                }
+            }
         }
 
         if (!city || city.length < 2) return "Otras Ubicaciones";
