@@ -4,7 +4,10 @@ import { getAuthenticatedUser } from "@/lib/auth-helpers";
 
 // Helper to verify admin access
 async function checkAdmin(req: NextRequest) {
-    const user = await getAuthenticatedUser(req);
+    const auth = await getAuthenticatedUser(req);
+    if (!auth.ok) return null;
+
+    const { user } = auth;
     if (!user || !user.email) return null;
 
     const adminEmails = process.env.ADMIN_EMAILS?.split(',').map(e => e.trim()) || [];
