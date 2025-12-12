@@ -1,7 +1,7 @@
 "use client";
 
 import { GoogleMap, Marker, useLoadScript, OverlayView, InfoWindow } from "@react-google-maps/api";
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
 import CloneRouteButton from "@/components/CloneRouteButton";
 
@@ -99,6 +99,66 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
         // But `PublicRoute` type in `CommunityTab` didn't have lat/lng in stops.
         return routes;
     }, [routes]);
+
+    // Auto-fit bounds when routes change (e.g. after search)
+    useEffect(() => {
+        if (map && validRoutes.length > 0) {
+            const bounds = new google.maps.LatLngBounds();
+            let hasPoints = false;
+
+            validRoutes.forEach(r => {
+                const stop = r.stops?.[0] as any;
+                if (stop && stop.lat && stop.lng) {
+                    bounds.extend({ lat: stop.lat, lng: stop.lng });
+                    hasPoints = true;
+                }
+            });
+
+            if (hasPoints) {
+                // If only one point, avoid zooming in too much
+                if (validRoutes.length === 1) {
+                    const stop = (validRoutes[0].stops?.[0] as any);
+                    map.setCenter({ lat: stop.lat, lng: stop.lng });
+                    map.setZoom(12);
+                } else {
+                    map.fitBounds(bounds);
+                }
+            }
+        }
+    }, [map, validRoutes]);
+
+    // Auto-fit bounds when routes change (e.g. after search)
+    useEffect(() => {
+        if (map && validRoutes.length > 0) {
+            const bounds = new google.maps.LatLngBounds();
+            let hasPoints = false;
+
+            validRoutes.forEach(r => {
+                const stop = r.stops?.[0] as any;
+                if (stop && stop.lat && stop.lng) {
+                    bounds.extend({ lat: stop.lat, lng: stop.lng });
+                    hasPoints = true;
+                }
+            });
+
+            if (hasPoints) {
+                // If only one point, avoid zooming in too much
+                if (validRoutes.length === 1) {
+                    const stop = (validRoutes[0].stops?.[0] as any);
+                    map.setCenter({ lat: stop.lat, lng: stop.lng });
+                    map.setZoom(12);
+                } else {
+                    map.fitBounds(bounds);
+                    // Optional: limit max zoom after fitBounds?
+                    // google.maps.event.addListenerOnce(map, 'bounds_changed', () => { ... })
+                }
+            }
+        } else if (map && validRoutes.length === 0) {
+            // Optional: Reset to default center if no results?
+            // map.panTo(defaultCenter);
+            // map.setZoom(6);
+        }
+    }, [map, validRoutes]);
 
 
     // 2. Custom Clustering Logic based on Zoom
