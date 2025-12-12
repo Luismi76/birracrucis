@@ -9,26 +9,20 @@ export default function BottomNavigation() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
 
-  // No mostrar en paginas de auth o si no hay sesion
-  if (!session || pathname.startsWith("/auth") || pathname.startsWith("/admin")) {
+  // Whitelist approach: Only show on specific main pages
+  const allowedPaths = ["/routes", "/profile", "/leaderboard"];
+
+  const isAllowed = allowedPaths.includes(pathname);
+
+  if (!isAllowed) {
     return null;
   }
 
-  // No mostrar en la landing page
-  if (pathname === "/") {
-    return null;
-  }
+  // Special cases to HIDE even if allowed:
 
-  // No mostrar en creacion/edicion de rutas (tienen su propia UI completa)
-  if (pathname === "/routes/new" || pathname.includes("/edit")) {
-    return null;
-  }
-
-  // No mostrar dentro de una ruta activa (tiene su propia navegacion) O en la comunidad (mapa full screen)
-  // Usamos searchParams para detectar el tab "community"
+  // 1. Hide in Community Tab (map view needs full screen)
   const isCommunityTab = searchParams.get("tab") === "community";
-
-  if ((pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/history")) || pathname === "/routes/community" || isCommunityTab) {
+  if (isCommunityTab) {
     return null;
   }
 
