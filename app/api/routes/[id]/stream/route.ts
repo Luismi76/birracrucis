@@ -230,9 +230,23 @@ export async function GET(
             // Usar setInterval con bloqueo para mantener la conexión viva
             const interval = setInterval(sendUpdate, 3000);
 
+            // Vercel Hobby/Pro timeout workaround:
+            // Close stream gracefully before the hard timeout (usually 10s or 60s)
+            // preventing "Task timed out" error logs.
+            // Client (EventSource) will automatically reconnect.
+            const closeTimer = setTimeout(() => {
+                try {
+                    controller.close();
+                } catch (e) {
+                    // ignore if already closed
+                }
+                clearInterval(interval);
+            }, 25000); // 25 seconds (safe for Vercel default 30-60s limit)
+
             // Cleanup
             req.signal.addEventListener("abort", () => {
                 clearInterval(interval);
+                clearTimeout(closeTimer);
             });
         },
     });
