@@ -9,7 +9,7 @@ export default function BottomNavigation() {
   const { data: session } = useSession();
 
   // No mostrar en paginas de auth o si no hay sesion
-  if (!session || pathname.startsWith("/auth")) {
+  if (!session || pathname.startsWith("/auth") || pathname.startsWith("/admin")) {
     return null;
   }
 
