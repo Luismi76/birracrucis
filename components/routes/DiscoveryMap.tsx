@@ -186,7 +186,7 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
             <GoogleMap
                 mapContainerStyle={mapContainerStyle}
                 center={defaultCenter}
-                zoom={6}
+                zoom={zoom}
                 options={mapOptions}
                 onLoad={(m) => setMap(m)}
                 onZoomChanged={() => map && setZoom(map.getZoom() || 6)}

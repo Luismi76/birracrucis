@@ -202,39 +202,41 @@ export default function CommunityTab() {
 
     return (
         <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
-            {/* Header Section for Tabs context */}
-            <div className="flex justify-end mb-4">
-                {/* View Toggle */}
-                <div className="flex bg-white p-1 rounded-lg border border-purple-100 shadow-sm shrink-0">
-                    <button
-                        onClick={() => setShowMap(false)}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${!showMap ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
-                    >
-                        📋 Lista
-                    </button>
-                    <button
-                        onClick={() => setShowMap(true)}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${showMap ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}
-                    >
-                        🗺️ Mapa
-                    </button>
-                </div>
-            </div>
-
-            <div className="relative">
-                <span className="absolute left-3 top-3.5 text-slate-400">🔍</span>
-                <input
-                    type="text"
-                    placeholder={showMap ? "Buscar zona (ej: Madrid)..." : "Buscar planes (ej: tapeo, despedida...)"}
-                    className="w-full pl-10 p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none shadow-sm"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                />
-            </div>
-
             {/* Content Switch: Map vs List */}
             {showMap ? (
-                <div className="h-[600px] w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative z-0">
+                <div className="h-[calc(100vh-180px)] w-full rounded-2xl overflow-hidden border border-slate-200 shadow-sm relative z-0">
+
+                    {/* Floating Header Overlay */}
+                    <div className="absolute top-4 left-4 right-4 z-10 flex gap-2 pointer-events-none">
+                        <div className="flex-1 pointer-events-auto shadow-lg rounded-xl overflow-hidden">
+                            <div className="relative">
+                                <span className="absolute left-3 top-3.5 text-slate-400">🔍</span>
+                                <input
+                                    type="text"
+                                    placeholder="Buscar zona..."
+                                    className="w-full pl-10 p-3 bg-white/95 backdrop-blur-sm border-0 focus:ring-0 outline-none text-sm font-medium"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex bg-white/95 backdrop-blur-sm p-1 rounded-xl shadow-lg shrink-0 pointer-events-auto h-[46px] items-center">
+                            <button
+                                onClick={() => setShowMap(false)}
+                                className="px-3 py-1.5 rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                            >
+                                📋
+                            </button>
+                            <button
+                                onClick={() => setShowMap(true)}
+                                className="px-3 py-1.5 rounded-lg text-sm font-bold bg-purple-100 text-purple-700 shadow-sm"
+                            >
+                                🗺️
+                            </button>
+                        </div>
+                    </div>
+
                     <DiscoveryMap
                         routes={routes}
                         onRouteSelect={(routeId) => {
@@ -248,6 +250,33 @@ export default function CommunityTab() {
                 </div>
             ) : (
                 <div className="space-y-4 pb-20">
+                    {/* Standard Header for List View */}
+                    <div className="flex gap-2 mb-2">
+                        <div className="relative flex-1">
+                            <span className="absolute left-3 top-3.5 text-slate-400">🔍</span>
+                            <input
+                                type="text"
+                                placeholder="Buscar planes..."
+                                className="w-full pl-10 p-3 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none shadow-sm"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex bg-white p-1 rounded-xl border border-slate-200 shadow-sm shrink-0 items-center">
+                            <button
+                                onClick={() => setShowMap(false)}
+                                className="px-3 py-2 rounded-lg text-sm font-bold bg-purple-100 text-purple-700 shadow-sm"
+                            >
+                                📋
+                            </button>
+                            <button
+                                onClick={() => setShowMap(true)}
+                                className="px-3 py-2 rounded-lg text-sm font-bold text-slate-500 hover:bg-slate-50"
+                            >
+                                🗺️
+                            </button>
+                        </div>
+                    </div>
                     {Object.entries(groupedRoutes).map(([city, cityRoutes]) => (
                         <div key={city} className="bg-white rounded-2xl overflow-hidden border border-slate-100 shadow-sm">
                             <button
