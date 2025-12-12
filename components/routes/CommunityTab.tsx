@@ -43,7 +43,7 @@ export default function CommunityTab() {
     const [selectedRouteData, setSelectedRouteData] = useState<any>(undefined);
 
     // Map Toggle State
-    const [showMap, setShowMap] = useState(false);
+    const [showMap, setShowMap] = useState(true);
 
     // Debounce search
     const [debouncedSearch, setDebouncedSearch] = useState(search);
@@ -203,18 +203,9 @@ export default function CommunityTab() {
     return (
         <div className="space-y-6 animate-in slide-in-from-right-4 fade-in duration-300">
             {/* Header Section for Tabs context */}
-            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 className="font-bold text-purple-800 flex items-center gap-2">
-                        <span>🌍</span> Explora el Mundo
-                    </h2>
-                    <p className="text-sm text-purple-600 mt-1">
-                        Encuentra rutas creadas por otros usuarios, clónalas y hazlas tuyas.
-                    </p>
-                </div>
-
+            <div className="flex justify-end mb-4">
                 {/* View Toggle */}
-                <div className="flex bg-white p-1 rounded-lg border border-purple-100 shadow-sm shrink-0 self-start md:self-center">
+                <div className="flex bg-white p-1 rounded-lg border border-purple-100 shadow-sm shrink-0">
                     <button
                         onClick={() => setShowMap(false)}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${!showMap ? 'bg-purple-100 text-purple-700 shadow-sm' : 'text-slate-500 hover:bg-slate-50'}`}

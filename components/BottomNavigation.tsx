@@ -23,8 +23,8 @@ export default function BottomNavigation() {
     return null;
   }
 
-  // No mostrar dentro de una ruta activa (tiene su propia navegacion)
-  if (pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/history")) {
+  // No mostrar dentro de una ruta activa (tiene su propia navegacion) O en la comunidad (mapa full screen)
+  if ((pathname.match(/^\/routes\/[^/]+$/) && !pathname.includes("/history")) || pathname === "/routes/community") {
     return null;
   }
 
