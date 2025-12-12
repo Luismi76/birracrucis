@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 type AdminRoute = {
     id: string;
@@ -110,25 +111,42 @@ export default function AdminCommunityPage() {
     }, [status, search]);
 
     const togglePublic = async (id: string, currentStatus: boolean) => {
-        if (!confirm(`¿Cambiar estado a ${currentStatus ? 'Privado' : 'Público'}?`)) return;
+        // Optimistic UI update could be done here, but let's stick to safe wait
+        const toastId = toast.loading("Actualizando...");
         try {
-            await fetch('/api/admin/routes', {
+            const res = await fetch('/api/admin/routes', {
                 method: 'PATCH',
                 body: JSON.stringify({ id, isPublic: !currentStatus }),
             });
+
+            if (!res.ok) throw new Error("Error al actualizar");
+
+            toast.success("Estado actualizado", { id: toastId });
             fetchRoutes();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al actualizar estado", { id: toastId });
+        }
     };
 
     const deleteRoute = async (id: string) => {
         if (!confirm("⚠️ ¿Estás seguro de eliminar esta ruta permanentemente?")) return;
+
+        const toastId = toast.loading("Eliminando...");
         try {
-            await fetch('/api/admin/routes', {
+            const res = await fetch('/api/admin/routes', {
                 method: 'DELETE',
                 body: JSON.stringify({ id }),
             });
+
+            if (!res.ok) throw new Error("Error al eliminar");
+
+            toast.success("Ruta eliminada", { id: toastId });
             fetchRoutes();
-        } catch (e) { console.error(e); }
+        } catch (e) {
+            console.error(e);
+            toast.error("Error al eliminar ruta", { id: toastId });
+        }
     };
 
     if (status === "loading" || loading) return <div className="p-8">Cargando panel...</div>;
