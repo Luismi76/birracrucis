@@ -33,7 +33,6 @@ function RoutesContent() {
   }, [tabParam]);
 
   return (
-  return (
     <div className="max-w-3xl mx-auto h-[100dvh] flex flex-col bg-slate-50/30 overflow-hidden">
       {/* Top Header */}
       <div className="flex-none p-4 pb-2 flex justify-between items-center">
