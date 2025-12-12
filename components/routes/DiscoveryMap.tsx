@@ -156,100 +156,119 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
     if (!isLoaded) return <div className="p-4 text-center">Cargando mapa...</div>;
 
     return (
-        <GoogleMap
-            mapContainerStyle={mapContainerStyle}
-            center={defaultCenter}
-            zoom={6}
-            options={mapOptions}
-            onLoad={(m) => setMap(m)}
-            onZoomChanged={() => map && setZoom(map.getZoom() || 6)}
-            onClick={() => {
-                setSelectedRoute(null);
-                setSelectedCluster(null);
-            }}
-        >
-            {/* CLUSTERS (Zoom < 13) */}
-            {!showIndividualMarkers && clusters.map((cluster, i) => (
-                <OverlayView
-                    key={`cluster-${i}`}
-                    position={{ lat: cluster.lat, lng: cluster.lng }}
-                    mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-                    getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -(height / 2) })}
-                >
-                    <div
-                        className="flex flex-col items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            // Zoom in to this cluster
-                            map?.panTo({ lat: cluster.lat, lng: cluster.lng });
-                            const targetZoom = zoom < 8 ? 10 : 15;
-                            map?.setZoom(targetZoom);
-                        }}
+        <div className="relative w-full h-full">
+            <GoogleMap
+                mapContainerStyle={mapContainerStyle}
+                center={defaultCenter}
+                zoom={6}
+                options={mapOptions}
+                onLoad={(m) => setMap(m)}
+                onZoomChanged={() => map && setZoom(map.getZoom() || 6)}
+                onClick={() => {
+                    setSelectedRoute(null);
+                    setSelectedCluster(null);
+                }}
+            >
+                {/* CLUSTERS (Zoom < 13) */}
+                {!showIndividualMarkers && clusters.map((cluster, i) => (
+                    <OverlayView
+                        key={`cluster-${i}`}
+                        position={{ lat: cluster.lat, lng: cluster.lng }}
+                        mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
+                        getPixelPositionOffset={(width, height) => ({ x: -(width / 2), y: -(height / 2) })}
                     >
-                        {/* Circle Badge */}
-                        <div className={`
+                        <div
+                            className="flex flex-col items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                // Zoom in to this cluster
+                                map?.panTo({ lat: cluster.lat, lng: cluster.lng });
+                                const targetZoom = zoom < 8 ? 10 : 15;
+                                map?.setZoom(targetZoom);
+                            }}
+                        >
+                            {/* Circle Badge */}
+                            <div className={`
                             flex items-center justify-center rounded-full shadow-xl border-4 border-white text-white font-bold
                             ${cluster.members.length > 10 ? 'w-16 h-16 bg-purple-600 text-xl' : 'w-12 h-12 bg-amber-500 text-base'}
                         `}>
-                            {cluster.members.length}
-                        </div>
-
-                        {/* Optional Label (Area Name?) - Could imply from members */}
-                        {zoom >= 8 && (
-                            <div className="mt-1 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-xs font-bold text-slate-700 shadow-sm">
-                                {cluster.members.length} plan{cluster.members.length !== 1 ? 'es' : ''}
+                                {cluster.members.length}
                             </div>
-                        )}
-                    </div>
-                </OverlayView>
-            ))}
 
-            {/* INDIVIDUAL MARKERS (Zoom >= 13) */}
-            {showIndividualMarkers && validRoutes.map((route) => {
-                const stop = route.stops?.[0] as any;
-                if (!stop || !stop.lat) return null;
+                            {/* Optional Label (Area Name?) - Could imply from members */}
+                            {zoom >= 8 && (
+                                <div className="mt-1 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-xs font-bold text-slate-700 shadow-sm">
+                                    {cluster.members.length} plan{cluster.members.length !== 1 ? 'es' : ''}
+                                </div>
+                            )}
+                        </div>
+                    </OverlayView>
+                ))}
 
-                return (
-                    <Marker
-                        key={route.id}
-                        position={{ lat: stop.lat, lng: stop.lng }}
-                        icon={{
-                            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+                {/* INDIVIDUAL MARKERS (Zoom >= 13) */}
+                {showIndividualMarkers && validRoutes.map((route) => {
+                    const stop = route.stops?.[0] as any;
+                    if (!stop || !stop.lat) return null;
+
+                    return (
+                        <Marker
+                            key={route.id}
+                            position={{ lat: stop.lat, lng: stop.lng }}
+                            icon={{
+                                url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
                                 <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
                                     <circle cx="20" cy="20" r="18" fill="#fff" stroke="#9333ea" stroke-width="2"/>
                                     <text x="20" y="26" font-size="20" text-anchor="middle">🍺</text>
                                 </svg>
                             `)}`,
-                            scaledSize: new google.maps.Size(40, 40),
-                        }}
-                        onClick={() => setSelectedRoute(route)}
-                    />
-                );
-            })}
+                                scaledSize: new google.maps.Size(40, 40),
+                            }}
+                            onClick={(e) => {
+                                e.stop();
+                                setSelectedRoute(route);
+                            }}
+                        />
+                    );
+                })}
 
-            {/* Info Window for Individual Route */}
-            {selectedRoute && (
-                <InfoWindow
-                    position={{
-                        lat: (selectedRoute.stops?.[0] as any)?.lat,
-                        lng: (selectedRoute.stops?.[0] as any)?.lng
+                {/* Info Window for Individual Route */}
+                {selectedRoute && (
+                    <InfoWindow
+                        position={{
+                            lat: (selectedRoute.stops?.[0] as any)?.lat,
+                            lng: (selectedRoute.stops?.[0] as any)?.lng
+                        }}
+                        onCloseClick={() => setSelectedRoute(null)}
+                    >
+                        <div className="max-w-[200px] p-1">
+                            <h3 className="font-bold text-sm mb-1">{selectedRoute.name}</h3>
+                            {selectedRoute.description && (
+                                <p className="text-xs text-slate-500 mb-2 line-clamp-2">{selectedRoute.description}</p>
+                            )}
+                            <button
+                                onClick={() => onRouteSelect(selectedRoute.id)}
+                                className="w-full bg-purple-600 text-white text-xs py-1.5 rounded font-medium hover:bg-purple-700"
+                            >
+                                Ver Detalles
+                            </button>
+                        </div>
+                    </InfoWindow>
+                )}
+
+            </GoogleMap>
+
+            {/* Back to Overview Button */}
+            {zoom > 7 && (
+                <button
+                    onClick={() => {
+                        map?.setZoom(6);
+                        map?.panTo(defaultCenter);
                     }}
-                    onCloseClick={() => setSelectedRoute(null)}
+                    className="absolute top-4 left-4 bg-white text-slate-700 px-4 py-2 rounded-full shadow-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-50 border border-slate-200 z-10"
                 >
-                    <div className="max-w-[200px] p-1">
-                        <h3 className="font-bold text-sm mb-1">{selectedRoute.name}</h3>
-                        {selectedRoute.description && (
-                            <p className="text-xs text-slate-500 mb-2 line-clamp-2">{selectedRoute.description}</p>
-                        )}
-                        <button
-                            onClick={() => onRouteSelect(selectedRoute.id)}
-                            className="w-full bg-purple-600 text-white text-xs py-1.5 rounded font-medium hover:bg-purple-700"
-                        >
-                            Ver Detalles
-                        </button>
-                    </div>
-                </InfoWindow>
+                    <span>🔙</span> Ver todo
+                </button>
             )}
-        </GoogleMap>
+        </div>
     );
 }
