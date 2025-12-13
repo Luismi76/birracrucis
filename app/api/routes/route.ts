@@ -36,7 +36,9 @@ export async function POST(req: NextRequest) {
 
     if (!validationResult.success) {
       // Formatear errores de Zod para devolver mensaje legible
-      const errorMessages = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('\n');
+      const errorMessages = validationResult.error.issues
+  .map(err => `${err.path.join('.')}: ${err.message}`)
+  .join('\n');
       return NextResponse.json(
         { ok: false, error: `Datos inválidos:\n${errorMessages}` },
         { status: 400 }
