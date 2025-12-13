@@ -3,29 +3,9 @@
 import { GoogleMap, Marker, DirectionsRenderer, DirectionsService, InfoWindow, useLoadScript, OverlayView } from "@react-google-maps/api";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
-
-type Stop = {
-    id: string;
-    name: string;
-    address: string | null;
-    lat: number;
-    lng: number;
-    plannedRounds: number;
-    actualRounds: number;
-    maxRounds: number | null;
-    googlePlaceId?: string | null;
-};
-
-type Participant = {
-    odId: string;
-    id: string; // Ensure id is present
-    name: string | null;
-    image: string | null;
-    lat: number;
-    lng: number;
-    lastSeenAt: string | null;
-    isGuest?: boolean;
-};
+import { Stop, Participant } from "./RouteDetailMap/types";
+import { BarTooltip } from "./RouteDetailMap/BarTooltip";
+import { ParticipantMarkers } from "./RouteDetailMap/ParticipantMarkers";
 
 type RouteDetailMapProps = {
     stops: Stop[];
@@ -39,80 +19,6 @@ type RouteDetailMapProps = {
 
 function isValidCoordinate(lat: number, lng: number) {
     return typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
-}
-
-// Componente para tooltip fijo del bar
-function BarTooltip({ stop, index }: { stop: Stop; index: number }) {
-    const [placeDetails, setPlaceDetails] = useState<{
-        photo?: string;
-        rating?: number;
-    } | null>(null);
-
-    useEffect(() => {
-        if (!stop.googlePlaceId) return;
-
-        const service = new google.maps.places.PlacesService(document.createElement('div'));
-        service.getDetails(
-            {
-                placeId: stop.googlePlaceId,
-                fields: ['photos', 'rating']
-            },
-            (place, status) => {
-                if (status === google.maps.places.PlacesServiceStatus.OK && place) {
-                    setPlaceDetails({
-                        photo: place.photos?.[0]?.getUrl({ maxWidth: 80, maxHeight: 60 }),
-                        rating: place.rating
-                    });
-                }
-            }
-        );
-    }, [stop.googlePlaceId]);
-
-    const getStatusColor = () => {
-        if (stop.actualRounds >= stop.plannedRounds) return "bg-green-500";
-        if (stop.actualRounds > 0) return "bg-amber-500";
-        return "bg-slate-400";
-    };
-
-    return (
-        <div className="bg-white rounded-lg shadow-lg p-2 min-w-[140px] max-w-[180px] border-2 border-slate-200">
-            {/* Número del bar */}
-            <div className={`absolute -top-2 -left-2 w-6 h-6 rounded-full ${getStatusColor()} text-white flex items-center justify-center text-xs font-bold border-2 border-white`}>
-                {index + 1}
-            </div>
-
-            {/* Imagen de Google Places */}
-            {placeDetails?.photo && (
-                <img
-                    src={placeDetails.photo}
-                    alt={stop.name}
-                    className="w-full h-14 object-cover rounded mb-1"
-                />
-            )}
-
-            {/* Nombre del bar */}
-            <h4 className="font-bold text-xs text-slate-800 truncate mb-1">
-                {stop.name}
-            </h4>
-
-            {/* Rating */}
-            {placeDetails?.rating && (
-                <div className="flex items-center gap-1 mb-1">
-                    <span className="text-amber-500 text-xs">⭐</span>
-                    <span className="text-xs font-semibold text-slate-700">
-                        {placeDetails.rating.toFixed(1)}
-                    </span>
-                </div>
-            )}
-
-            {/* Rondas */}
-            <div className="text-[10px] text-slate-600">
-                <span className="font-semibold">{stop.actualRounds}</span>
-                <span className="text-slate-400">/{stop.plannedRounds}</span>
-                <span className="ml-1">rondas</span>
-            </div>
-        </div>
-    );
 }
 
 const mapContainerStyle = {
@@ -134,30 +40,6 @@ const mapOptions = {
         },
     ],
 };
-
-const CLUSTER_RADIUS_METERS = 10;
-
-function getDistanceFromLatLonInM(lat1: number, lon1: number, lat2: number, lon2: number) {
-    var R = 6371; // Radius of the earth in km
-    var dLat = deg2rad(lat2 - lat1);
-    var dLon = deg2rad(lon2 - lon1);
-    var a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        ;
-    var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    var d = R * c; // Distance in m
-    return d * 1000;
-}
-
-function deg2rad(deg: number) {
-    return deg * (Math.PI / 180)
-}
-
-const PARTICIPANT_COLORS = [
-    "#ef4444", "#f97316", "#eab308", "#22c55e", "#06b6d4", "#3b82f6", "#8b5cf6", "#ec4899",
-];
 
 export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick, isRouteComplete = false, creatorId, focusLocation }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
@@ -271,32 +153,6 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
     `;
         return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
     };
-
-
-    // Agrupamiento simple (Clustering)
-    const clusters = useMemo(() => {
-        const activeParticipants = participants.filter(p => p.lat !== 0 && p.lng !== 0 && p.lastSeenAt);
-        const grouped: { lat: number, lng: number, members: Participant[] }[] = [];
-
-        activeParticipants.forEach(p => {
-            let added = false;
-            for (const group of grouped) {
-                if (getDistanceFromLatLonInM(p.lat, p.lng, group.lat, group.lng) <= CLUSTER_RADIUS_METERS) {
-                    group.members.push(p);
-                    // Recalcular centro del grupo
-                    group.lat = group.members.reduce((sum, m) => sum + m.lat, 0) / group.members.length;
-                    group.lng = group.members.reduce((sum, m) => sum + m.lng, 0) / group.members.length;
-                    added = true;
-                    break;
-                }
-            }
-            if (!added) {
-                grouped.push({ lat: p.lat, lng: p.lng, members: [p] });
-            }
-        });
-
-        return grouped;
-    }, [participants]);
 
     // Abrir Google Maps para navegación
     const handleGetDirections = (stop: Stop) => {
@@ -474,67 +330,12 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
                     />
                 )}
 
-                {/* Marcadores de participantes (OverlayView para soporte de avatares) */}
-                {clusters.map((cluster, i) => {
-                    const isGroup = cluster.members.length > 1;
-                    const firstMember = cluster.members[0];
-
-                    return (
-                        <OverlayView
-                            key={isGroup ? `cluster-${i}` : `participant-${firstMember.id}`}
-                            position={{ lat: cluster.lat, lng: cluster.lng }}
-                            mapPaneName={OverlayView.OVERLAY_MOUSE_TARGET}
-                            getPixelPositionOffset={(width, height) => ({
-                                x: -(width / 2),
-                                y: -(height / 2),
-                            })}
-                        >
-                            <div
-                                className={`relative flex items-center justify-center rounded-full shadow-lg cursor-pointer transition-transform hover:scale-110 active:scale-95 ${isGroup ? "w-11 h-11 bg-amber-500 text-white" : "w-11 h-11 bg-white"
-                                    }`}
-                                style={{
-                                    border: isGroup ? "3px solid white" : `3px solid ${PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length]}`,
-                                    zIndex: isGroup ? 200 : 100 + i // Ensure consistent z-index type
-                                }}
-                                onClick={(e) => {
-                                    e.stopPropagation(); // Prevent map click
-                                    if (isGroup) {
-                                        map?.panTo({ lat: cluster.lat, lng: cluster.lng });
-                                        map?.setZoom((map.getZoom() || 14) + 2);
-                                    }
-                                }}
-                            >
-                                {isGroup ? (
-                                    <span className="font-bold text-sm">+{cluster.members.length}</span>
-                                ) : (
-                                    <>
-                                        {firstMember.image ? (
-                                            <img
-                                                src={firstMember.image}
-                                                alt={firstMember.name || "User"}
-                                                className="w-full h-full rounded-full object-cover p-[2px]"
-                                            />
-                                        ) : (
-                                            <span
-                                                className="font-bold text-lg"
-                                                style={{ color: PARTICIPANT_COLORS[i % PARTICIPANT_COLORS.length] }}
-                                            >
-                                                {firstMember.name ? firstMember.name.charAt(0).toUpperCase() : "?"}
-                                            </span>
-                                        )}
-                                    </>
-                                )}
-
-                                {/* Etiqueta de nombre al hacer hover (opcional, simplificado) */}
-                                {!isGroup && (
-                                    <div className="absolute -bottom-6 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap pointer-events-none transition-opacity">
-                                        {firstMember.name}
-                                    </div>
-                                )}
-                            </div>
-                        </OverlayView>
-                    );
-                })}
+                {/* Marcadores de participantes (delegados a subcomponente) */}
+                <ParticipantMarkers
+                    participants={participants}
+                    map={map}
+                    onParticipantClick={onParticipantClick}
+                />
 
                 {/* Info Window */}
                 {selectedStop && (
@@ -620,3 +421,4 @@ export default function RouteDetailMap({ stops, userPosition, participants = [],
         </div>
     );
 }
+

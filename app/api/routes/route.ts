@@ -1,37 +1,10 @@
 // app/api/routes/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser, getUserIds } from "@/lib/auth-helpers";
+import { getCurrentUser } from "@/lib/auth-helpers";
 import { nanoid } from "nanoid";
 import { prisma } from "@/lib/prisma";
 import { rateLimit, getClientIdentifier, RATE_LIMIT_CONFIGS, rateLimitExceededResponse } from "@/lib/rate-limit";
-
-type StopInput = {
-  name: string;
-  address?: string;
-  lat: number;
-  lng: number;
-  plannedRounds?: number;
-  maxRounds?: number | null;
-  googlePlaceId?: string | null;
-  stayDuration?: number; // minutos de estancia en el bar
-};
-
-type CreateRouteBody = {
-  name: string;
-  date?: string | null;
-  stops: StopInput[];
-  // Campos de configuración de tiempo
-  startMode?: "manual" | "scheduled" | "all_present";
-  startTime?: string | null; // ISO string
-  hasEndTime?: boolean;
-  endTime?: string | null; // ISO string
-  isPublic?: boolean;
-  isDiscovery?: boolean;
-  // Opción para crear edición directamente
-  createEditionNow?: boolean;
-  potEnabled?: boolean;
-  potAmountPerPerson?: number | null;
-};
+import { createRouteSchema } from "@/lib/validations/route";
 
 // Genera un código de invitación único (8 caracteres, alfanumérico)
 function generateInviteCode(): string {
@@ -56,54 +29,39 @@ export async function POST(req: NextRequest) {
       userId = auth.user.id;
     }
 
-    const body = (await req.json()) as CreateRouteBody;
-    const { name, date, stops, startMode, startTime, hasEndTime, endTime, isDiscovery } = body;
+    const json = await req.json();
 
-    // Validation: Name is required. Stops are required unless it's a discovery route.
-    if (!name || !Array.isArray(stops) || (stops.length === 0 && !isDiscovery)) {
+    // VALIDACIÓN CON ZOD
+    const validationResult = createRouteSchema.safeParse(json);
+
+    if (!validationResult.success) {
+      // Formatear errores de Zod para devolver mensaje legible
+      const errorMessages = validationResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('\n');
       return NextResponse.json(
-        { ok: false, error: "Datos inválidos: name y stops (mínimo 1 para rutas no-discovery) son obligatorios." },
+        { ok: false, error: `Datos inválidos:\n${errorMessages}` },
         { status: 400 }
       );
     }
 
-    // Validar coordenadas de cada stop
-    const invalidStops: string[] = [];
-    stops.forEach((stop, index) => {
-      const { lat, lng, name: stopName } = stop;
-
-      if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
-        invalidStops.push(`Stop #${index + 1} "${stopName}": coordenadas inválidas`);
-      } else if (lat === 0 && lng === 0) {
-        invalidStops.push(`Stop #${index + 1} "${stopName}": coordenadas no pueden ser 0,0`);
-      } else if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        invalidStops.push(`Stop #${index + 1} "${stopName}": coordenadas fuera de rango`);
-      }
-    });
-
-    if (invalidStops.length > 0) {
-      return NextResponse.json(
-        { ok: false, error: `Coordenadas inválidas:\n${invalidStops.join('\n')}` },
-        { status: 400 }
-      );
-    }
+    const body = validationResult.data;
+    const { name, date, stops, startMode, startTime, hasEndTime, endTime } = body;
 
     // Las plantillas NO tienen inviteCode - solo las ediciones
     const route = await prisma.route.create({
       data: {
         name,
-        date: (date && !isNaN(Date.parse(date))) ? new Date(date) : null,
+        date: date || null,
         creatorId: userId || null,
         // Public visibility
-        isPublic: body.isPublic ?? false,
-        isDiscovery: body.isDiscovery ?? false,
+        isPublic: body.isPublic,
+        isDiscovery: body.isDiscovery,
         // Template system - new routes are templates by default
         isTemplate: true,
         // Campos de tiempo
-        startMode: startMode ?? "manual",
-        startTime: startTime ? new Date(startTime) : null,
-        hasEndTime: hasEndTime ?? false,
-        endTime: endTime ? new Date(endTime) : null,
+        startMode: startMode,
+        startTime: startTime || null,
+        hasEndTime: hasEndTime,
+        endTime: endTime || null,
         stops: {
           create: stops.map((s, index) => ({
             name: s.name,
@@ -111,10 +69,10 @@ export async function POST(req: NextRequest) {
             lat: s.lat,
             lng: s.lng,
             order: index,
-            plannedRounds: s.plannedRounds ?? 1,
-            maxRounds: s.maxRounds ?? null,
-            googlePlaceId: s.googlePlaceId ?? null,
-            stayDuration: s.stayDuration ?? 30,
+            plannedRounds: s.plannedRounds,
+            maxRounds: s.maxRounds,
+            googlePlaceId: s.googlePlaceId,
+            stayDuration: s.stayDuration,
           })),
         },
         // Si hay usuario, agregarlo como participante automáticamente
@@ -186,24 +144,24 @@ export async function POST(req: NextRequest) {
         attCheck++;
       }
 
-      // Validar fecha: usar la del body si es válida, sino usar hoy
-      const editionDate = (date && !isNaN(Date.parse(date))) ? new Date(date) : new Date();
+      // Validar fecha: usar la del body (ya parseada por Zod) si existe, sino usar hoy
+      const editionDate = date || new Date();
 
       const edition = await prisma.route.create({
         data: {
           name: route.name,
           date: editionDate,
           creatorId: userId,
-          startMode: startMode ?? "manual",
-          startTime: startTime ? new Date(startTime) : null,
-          hasEndTime: hasEndTime ?? false,
-          endTime: endTime ? new Date(endTime) : null,
+          startMode: startMode,
+          startTime: startTime || null,
+          hasEndTime: hasEndTime,
+          endTime: endTime || null,
           isTemplate: false,
           templateId: route.id,
           inviteCode: editionInviteCode,
           status: "pending",
-          potEnabled: body.potEnabled === true,
-          potAmountPerPerson: body.potAmountPerPerson ?? null,
+          potEnabled: body.potEnabled,
+          potAmountPerPerson: body.potAmountPerPerson,
           stops: {
             create: route.stops.map(s => ({
               name: s.name,
