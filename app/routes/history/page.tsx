@@ -1,14 +1,21 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
+import HistoryList from "@/components/HistoryList";
+import { notFound } from "next/navigation";
+import { Metadata } from "next";
 import UserMenu from "@/components/UserMenu";
 
 export const dynamic = "force-dynamic";
 
-export default async function RouteHistoryPage() {
-  const session = await getServerSession(authOptions);
+export const metadata: Metadata = {
+  title: "Historial de Rutas | Birracrucis",
+  description: "Consulta tus rutas pasadas y estadísticas.",
+};
+
+export default async function HistoryPage() {
+  const session = await auth();
 
   if (!session?.user?.email) {
     redirect("/auth/signin");

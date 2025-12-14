@@ -1,9 +1,10 @@
+
 // app/routes/[id]/page.tsx
 import { Metadata } from "next";
 import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
 import RouteDetailWrapper from "./RouteDetailWrapper";
 
 type RoutePageProps = {
@@ -33,7 +34,7 @@ export async function generateMetadata({ params }: RoutePageProps): Promise<Meta
 
   return {
     title: `${route.name} - Birracrucis`,
-    description: `Únete a la ruta "${route.name}" el ${dateStr}. Planifica, bebe y disfruta con tus amigos.`,
+    description: `Únete a la ruta "${route.name}" el ${dateStr}.Planifica, bebe y disfruta con tus amigos.`,
     openGraph: {
       title: `${route.name} - Birracrucis`,
       description: `Únete a la ruta "${route.name}" el ${dateStr}.`,
@@ -53,7 +54,7 @@ export default async function RouteDetailPage({ params }: RoutePageProps) {
 
   // Obtener sesión y ruta en paralelo
   const [session, route] = await Promise.all([
-    getServerSession(authOptions),
+    auth(),
     prisma.route.findUnique({
       where: { id },
       select: {

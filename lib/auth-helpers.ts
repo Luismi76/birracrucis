@@ -1,7 +1,7 @@
-import { getServerSession } from "next-auth";
+
+import { auth } from "@/lib/auth";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { authOptions } from "@/lib/auth";
 
 export type AuthenticatedUser = {
   type: "user";
@@ -32,7 +32,7 @@ export type AuthenticatedResult =
  *
  * Uso:
  * ```ts
- * const auth = await getCurrentUser(req);
+  * const auth = await getCurrentUser(req);
  * if (!auth.ok) {
  *   return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
  * }
@@ -42,7 +42,7 @@ export type AuthenticatedResult =
  * ```
  */
 export async function getCurrentUser(req: NextRequest): Promise<AuthResult> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   // Usuario autenticado
   if (session?.user?.email) {
@@ -94,7 +94,7 @@ export async function getCurrentUser(req: NextRequest): Promise<AuthResult> {
  * Útil para endpoints que requieren cuenta registrada
  */
 export async function getAuthenticatedUser(req: NextRequest): Promise<AuthenticatedResult> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
   if (!session?.user?.email) {
     return { ok: false, error: "No autenticado", status: 401 };

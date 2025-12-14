@@ -1,51 +1,50 @@
-import { NextAuthOptions } from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials";
+
+import NextAuth from "next-auth";
+import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
 
-export const authOptions: NextAuthOptions = {
-  // Usamos el adapter para persistir usuarios, pero mantenemos session JWT
+export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID || "",
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
       allowDangerousEmailAccountLinking: true,
     }),
-    // CredentialsProvider solo disponible en desarrollo
-    ...(process.env.NODE_ENV === "development" ? [
-      CredentialsProvider({
-        name: "Modo Desarrollo",
-        credentials: {
-          username: { label: "Username", type: "text", placeholder: "dev" },
-          password: { label: "Password", type: "password" }
-        },
-        async authorize() {
-          const email = "test@birracrucis.com";
-          const dbUser = await prisma.user.findUnique({
-            where: { email }
-          });
+    Credentials({
+      name: "Modo Desarrollo",
+      credentials: {
+        username: { label: "Username", type: "text", placeholder: "dev" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (process.env.NODE_ENV !== "development") return null;
 
-          if (dbUser) {
-            return {
-              id: dbUser.id,
-              name: dbUser.name,
-              email: dbUser.email,
-              image: dbUser.image
-            };
-          }
+        const email = "test@birracrucis.com";
+        const dbUser = await prisma.user.findUnique({
+          where: { email }
+        });
 
+        if (dbUser) {
           return {
-            id: "dev-user-123",
-            name: "Usuario de Prueba",
-            email: email,
-            image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+            id: dbUser.id,
+            name: dbUser.name,
+            email: dbUser.email,
+            image: dbUser.image
           };
         }
-      }),
-    ] : []),
+
+        return {
+          id: "dev-user-123",
+          name: "Usuario de Prueba",
+          email: email,
+          image: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+        };
+      }
+    }),
   ],
   session: {
     strategy: "jwt",
@@ -57,6 +56,7 @@ export const authOptions: NextAuthOptions = {
       if (user.email) {
         console.log("New user created in DB:", user.email);
         try {
+          // @ts-ignore - name might be missing in type but present in runtime
           await sendWelcomeEmail(user.email, user.name || "Amante de la cerveza");
         } catch (error) {
           console.error("Error sending welcome email in event:", error);
@@ -94,7 +94,7 @@ export const authOptions: NextAuthOptions = {
                   token_type: account.token_type,
                   scope: account.scope,
                   id_token: account.id_token,
-                  session_state: account.session_state,
+                  session_state: account.session_state as string,
                 }
               });
             }
@@ -115,7 +115,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (session.user) {
+      if (session.user && token) {
         session.user.id = token.id as string || token.sub || "";
       }
       return session;
@@ -125,4 +125,4 @@ export const authOptions: NextAuthOptions = {
     signIn: "/auth/signin",
     error: "/auth/error",
   },
-};
+});

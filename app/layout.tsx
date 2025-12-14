@@ -15,6 +15,7 @@ import { Toaster } from "sonner";
 // });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXTAUTH_URL || "http://localhost:3000"),
   title: "Birracrucis - Planifica tu ruta de bares",
   description: "Planifica la ruta de bares perfecta con tus amigos. Organiza quedadas, sigue el progreso en tiempo real y comparte fotos de la noche.",
   keywords: ["ruta de bares", "quedadas", "amigos", "cerveza", "tapas", "planificador", "app"],
