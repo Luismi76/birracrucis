@@ -108,15 +108,16 @@ model RouteStop {
 - ✅ Guardar coordenadas validadas
 - ✅ Calcular distancias precisas
 - ✅ Detectar proximidad a locales
-- ✅ Simulación para testing
+- ✅ Simulación para testing (solo desarrollo)
 - ✅ Manejo robusto de errores
+- ✅ **Autenticación Completa** (Google + Dev)
+- ✅ **Subida de Fotos** por parada
+- ✅ **Leaderboard** (Ranking de usuarios)
 
 ### Pendientes
-- ⏳ Fotos compartidas por local
-- ⏳ Gamificación (puntos, medallas, sellos)
-- ⏳ Sincronización multiusuario en tiempo real
-- ⏳ Selector de posición en mapa (drop-pin)
-- ⏳ Sistema de autenticación
+- ⏳ Sincronización multiusuario en tiempo real (WebSockets)
+- ⏳ Compartir rutas entre usuarios (Social)
+- ⏳ Selector de posición en mapa mejorado
 - ⏳ Compartir rutas entre usuarios
 
 ---

@@ -17,7 +17,8 @@ import DevLocationControl from "@/components/DevLocationControl";
 import RankingView from "@/components/RankingView";
 import ParticipantPicker from "@/components/ParticipantPicker";
 import NotificationActions from "@/components/NotificationActions";
-import { useRouteStream } from "@/hooks/useRouteStream";
+// import { useRouteStream } from "@/hooks/useRouteStream"; // SSE Deprecado por Pusher
+import { useRouteEvents } from "@/hooks/useRouteEvents";
 import { usePot } from "@/hooks/usePot";
 import { useQueryClient } from "@tanstack/react-query";
 import { Beer, MapPin, Camera, Trophy, Users, UserPlus, Bell, Star, MessageCircle } from "lucide-react";
@@ -172,36 +173,61 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     onParticipantsChange?.(data);
   }, [onParticipantsChange]);
 
-  const handleNudgesUpdate = useCallback((nudges: any[]) => {
+  const handleNudgesUpdate = useCallback((nudge: any) => {
     const shownNudges = getShownNudges();
+    // Skip if already shown or invalid ID (Pusher sends objects directly, not arrays)
+    if (!nudge.id || shownNudges.has(nudge.id)) {
+      return;
+    }
 
-    nudges.forEach(n => {
-      // Skip if already shown
-      if (shownNudges.has(n.id)) {
-        return;
-      }
-
-      // Mark as shown
-      addShownNudge(n.id);
-
-      toast(`🔔 ${n.sender.name || 'Alguien'} dice:`, {
-        description: n.message,
-        duration: 5000,
-        action: {
-          label: "Ver",
-          onClick: () => console.log("Nudge clicked"),
-        },
-      });
-      vibrate([200, 100, 200]);
+    addShownNudge(nudge.id);
+    toast(`🔔 ${nudge.senderName || 'Alguien'} dice:`, {
+      description: nudge.message,
+      duration: 5000,
+      action: {
+        label: "Ver",
+        onClick: () => console.log("Nudge clicked"),
+      },
     });
+    vibrate([200, 100, 200]);
   }, [routeId]);
 
-  useRouteStream({
+  // Manejador de actualizaciones de ubicación vía Pusher
+  const handleLocationUpdate = useCallback((event: any) => {
+    // event: { participantId, userId, lat, lng, at }
+    setParticipants(prev => {
+      return prev.map(p => {
+        // Actualizar si coincide ID (User ID o Guest ID o Participant ID)
+        const isMatch = p.id === event.participantId || (event.userId && p.id === event.userId) || (p.odId === event.participantId);
+        if (isMatch) {
+          return {
+            ...p,
+            lat: event.lat,
+            lng: event.lng,
+            lastSeenAt: event.at,
+            isActive: true // Revive participant if needed
+          };
+        }
+        return p;
+      });
+    });
+  }, []);
+
+  // Reemplazando useRouteStream (SSE) con useRouteEvents (Pusher)
+  // useRouteStream({
+  //   routeId,
+  //   enabled: true,
+  //   onParticipants: handleParticipantsUpdate,
+  //   onNudges: handleNudgesUpdate,
+  // });
+
+  const { isConnected: isPusherConnected } = useRouteEvents({
     routeId,
-    enabled: true,
-    onParticipants: handleParticipantsUpdate,
-    onNudges: handleNudgesUpdate,
+    onLocationUpdate: handleLocationUpdate,
+    onNudge: handleNudgesUpdate,
+    // onCheckIn: handleCheckInUpdate // TODO: Implementar check-ins visibles
   });
+
   const AUTOCHECKIN_RADIUS = 30; // metros
 
   // Price picker modal
@@ -796,6 +822,7 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 2. MAPA (Content) */}
       <div className="flex-1 relative overflow-hidden">
+
         <RouteDetailMap
           stops={stops}
           userPosition={position}
@@ -825,7 +852,11 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
             activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng, plannedRounds: activeStop.plannedRounds } : undefined}
             stops={stops.map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, plannedRounds: s.plannedRounds }))}
             onSetPosition={(pos) => {
+              // Si la prop es onSetPosition, la usamos directamente para setPosition
+              // Pero también queremos centrar el mapa, así que usamos ambos
               setPosition(pos);
+              setMapFocusLocation(pos); // Esto centrará el mapa
+
               setAccuracy(5);
               const stopName = stops.find(s => s.lat === pos.lat && s.lng === pos.lng)?.name || 'ubicación';
               toast.success(`Teletransportado a ${stopName} 📍`);
@@ -836,6 +867,12 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
               toast.success(`Rondas ajustadas a ${count}`);
             }}
             currentBarIndex={currentBarIndex}
+            onTriggerCheckIn={() => {
+              if (activeStop) {
+                setManualArrivals(prev => new Set(prev).add(activeStop.id));
+                toast.success("Check-in forzado habilitado");
+              }
+            }}
           />
         )}
       </div>
@@ -891,17 +928,15 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-2 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
                               <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                  roundsCompleted
-                                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
-                                    : 'bg-gradient-to-r from-amber-400 to-amber-500'
-                                }`}
+                                className={`h-full rounded-full transition-all duration-300 ${roundsCompleted
+                                  ? 'bg-gradient-to-r from-emerald-400 to-emerald-500'
+                                  : 'bg-gradient-to-r from-amber-400 to-amber-500'
+                                  }`}
                                 style={{ width: `${Math.min(100, (currentRounds / plannedRounds) * 100)}%` }}
                               />
                             </div>
-                            <span className={`text-xs font-bold whitespace-nowrap ${
-                              roundsCompleted ? 'text-emerald-600' : 'text-slate-600 dark:text-slate-300'
-                            }`}>
+                            <span className={`text-xs font-bold whitespace-nowrap ${roundsCompleted ? 'text-emerald-600' : 'text-slate-600 dark:text-slate-300'
+                              }`}>
                               {currentRounds}/{plannedRounds} {roundsCompleted && '✓'}
                             </span>
                           </div>
@@ -999,11 +1034,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
                   {canCheckIn ? (
                     <button
                       onClick={() => activeStop && handleAddRound(activeStop.id)}
-                      className={`w-full py-4 text-white rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3 ${
-                        roundsCompleted
-                          ? 'bg-slate-400 dark:bg-slate-600 shadow-slate-200/50'
-                          : 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-200/50'
-                      }`}
+                      className={`w-full py-4 text-white rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3 ${roundsCompleted
+                        ? 'bg-slate-400 dark:bg-slate-600 shadow-slate-200/50'
+                        : 'bg-gradient-to-r from-amber-500 to-orange-500 shadow-amber-200/50'
+                        }`}
                     >
                       <Beer className="w-6 h-6" />
                       <span>{roundsCompleted ? 'Una ronda más' : 'Añadir Ronda'}</span>

@@ -120,6 +120,25 @@ export async function POST(
       data: { lastLat: lat, lastLng: lng, lastSeenAt: new Date() },
     });
 
+    // Notificar por Pusher (Fire & Forget para no bloquear response)
+    // El payload debe coincidir con lo que espera el frontend (ver ParticipantsList/RouteDetail)
+    const pusherPayload = {
+      participantId: participantId,
+      userId: userId || null,     // Para ignorar mis propios eventos si quiero
+      lat,
+      lng,
+      at: new Date().toISOString() // timestamp
+    };
+
+    // Importación dinámica para evitar problemas de cold start en serverless si falla conexión
+    const { pusherServer } = await import('@/lib/pusher');
+    try {
+      await pusherServer.trigger(`route-${routeId}`, "location-update", pusherPayload);
+    } catch (pusherError) {
+      console.error("Error enviando evento Pusher:", pusherError);
+      // No fallamos la request si falla el realtime, es "enhancement"
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Error en POST /api/routes/[id]/participants:", error);

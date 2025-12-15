@@ -34,6 +34,22 @@ export async function POST(
       },
     });
 
+    // Notify via Pusher
+    const { pusherServer } = await import('@/lib/pusher');
+    try {
+      await pusherServer.trigger(`route-${routeId}`, "nudge", {
+        id: nudge.id,
+        message: nudge.message,
+        senderId: nudge.senderId || nudge.senderGuestId,
+        senderName: nudge.sender?.name || "Alguien",
+        targetUserId: nudge.targetUserId,
+        targetGuestId: nudge.targetGuestId,
+        createdAt: nudge.createdAt.toISOString()
+      });
+    } catch (e) {
+      console.error("Pusher error:", e);
+    }
+
     return NextResponse.json({ ok: true, nudge });
   } catch (error) {
     console.error("Error en POST /api/routes/[id]/nudge:", error);

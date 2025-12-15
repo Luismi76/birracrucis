@@ -22,70 +22,37 @@ const DEFAULT_OPTIONS: Required<CompressOptions> = {
  * @param options Opciones de compresión
  * @returns Promise con el dataURL de la imagen comprimida
  */
+import imageCompression from 'browser-image-compression';
+
+/**
+ * Comprime una imagen manteniendo la relación de aspecto usando browser-image-compression
+ * @param file Archivo de imagen original
+ * @param options Opciones de compresión
+ * @returns Promise con el dataURL de la imagen comprimida
+ */
 export async function compressImage(
     file: File,
     options: CompressOptions = {}
 ): Promise<string> {
     const opts = { ...DEFAULT_OPTIONS, ...options };
 
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-
-        reader.onload = (e) => {
-            const img = new Image();
-
-            img.onload = () => {
-                // Calcular dimensiones manteniendo proporción
-                let { width, height } = img;
-                const ratio = width / height;
-
-                if (width > opts.maxWidth) {
-                    width = opts.maxWidth;
-                    height = width / ratio;
-                }
-
-                if (height > opts.maxHeight) {
-                    height = opts.maxHeight;
-                    width = height * ratio;
-                }
-
-                // Crear canvas y comprimir
-                const canvas = document.createElement("canvas");
-                canvas.width = width;
-                canvas.height = height;
-
-                const ctx = canvas.getContext("2d");
-                if (!ctx) {
-                    reject(new Error("No se pudo crear contexto de canvas"));
-                    return;
-                }
-
-                // Usar mejor calidad de interpolación
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = "high";
-
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Convertir a dataURL
-                const mimeType = opts.format === "webp" ? "image/webp" : "image/jpeg";
-                const dataUrl = canvas.toDataURL(mimeType, opts.quality);
-
-                resolve(dataUrl);
-            };
-
-            img.onerror = () => {
-                reject(new Error("Error al cargar imagen"));
-            };
-
-            img.src = e.target?.result as string;
+    try {
+        const compressionOptions = {
+            maxSizeMB: 1, // Default limit, can be adjusted
+            maxWidthOrHeight: Math.max(opts.maxWidth, opts.maxHeight),
+            useWebWorker: true,
+            initialQuality: opts.quality,
+            fileType: opts.format === 'webp' ? 'image/webp' : 'image/jpeg',
         };
 
-        reader.onerror = () => {
-            reject(new Error("Error al leer archivo"));
-        };
+        const compressedFile = await imageCompression(file, compressionOptions);
 
-        reader.readAsDataURL(file);
-    });
+        return await imageCompression.getDataUrlFromFile(compressedFile);
+    } catch (error) {
+        console.warn("Error con browser-image-compression, usando fallback canvas:", error);
+        // Fallback simple o re-throw
+        throw error;
+    }
 }
 
 /**

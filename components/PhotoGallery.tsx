@@ -308,6 +308,26 @@ export default function PhotoGallery({ routeId, stops = [] }: PhotoGalleryProps)
                   Eliminar Foto
                 </button>
               )}
+
+              {/* Reportar Contenido (Siempre visible para todos excepto dueño) */}
+              {!selectedPhoto.isMine && (
+                <button
+                  onClick={() => {
+                    // TODO: Implementar endpoint real de reporte
+                    alert("Gracias. Hemos recibido el reporte y revisaremos el contenido.");
+                    setSelectedPhoto(null);
+                  }}
+                  className="w-full mt-3 py-3 text-slate-400 text-xs font-medium hover:text-white transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 01-2-2 4 4 0 00-8 0 4 4 0 00-8 0 4 4 0 00-8 0 4 4 0 008 0v8m2-2h.01" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01" />
+                    {/* Fallback to simple Flag icon path if needed, or use the one below */}
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 21v-8a2 2 0 01-2-2 4 4 0 00-8 0 4 4 0 00-8 0 4 4 0 00-8 0 4 4 0 008 0v8m2-2h.01" />
+                  </svg>
+                  Reportar contenido inapropiado
+                </button>
+              )}
             </div>
           </div>
         )

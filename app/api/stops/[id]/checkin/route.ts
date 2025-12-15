@@ -26,6 +26,18 @@ export async function POST(
             },
         });
 
+        // Notify via Pusher (Check-in / New Round)
+        const { pusherServer } = await import('@/lib/pusher');
+        try {
+            await pusherServer.trigger(`route-${updatedStop.routeId}`, "check-in", {
+                stopId: id,
+                stopName: updatedStop.name, // Asegurarse de que el nombre esté disponible
+                actualRounds: updatedStop.actualRounds,
+            });
+        } catch (e) {
+            console.error("Pusher error:", e);
+        }
+
         return NextResponse.json({ ok: true, stop: updatedStop });
     } catch (error) {
         console.error("Error Check-in stop:", error);
