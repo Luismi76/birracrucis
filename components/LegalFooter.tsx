@@ -22,6 +22,9 @@ export default function LegalFooter() {
       <p className="mt-2">
         &copy; {new Date().getFullYear()} Birracrucis. Bebe con responsabilidad.
       </p>
+      <p className="mt-1 text-[10px] text-slate-400">
+        &copy; 2025 Luis Miguel. Todos los derechos reservados.
+      </p>
     </footer>
   );
 }
