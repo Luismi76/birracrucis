@@ -50,6 +50,29 @@ export function useRouteEvents({ routeId, onLocationUpdate, onNudge, onCheckIn }
             onCheckIn?.(data);
         });
 
+        channel.bind("badge-earned", async (data: any) => {
+            // Importación dinámica para evitar problemas de SSR si fuera necesario
+            const confetti = (await import('canvas-confetti')).default;
+
+            // Sonido de logro (si el navegador lo permite)
+            // const audio = new Audio('/sounds/achievement.mp3');
+            // audio.play().catch(() => {});
+
+            // Confetti
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                zIndex: 9999
+            });
+
+            toast.success(`¡Logro Desbloqueado! 🏆`, {
+                description: `${data.badgeName}: ${data.badgeDescription}`,
+                duration: 5000,
+                className: "bg-amber-100 border-amber-300 text-amber-900"
+            });
+        });
+
         // 3. Cleanup
         return () => {
             pusherClient.unsubscribe(channelName);

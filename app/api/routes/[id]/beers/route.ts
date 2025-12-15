@@ -183,6 +183,18 @@ export async function POST(
         }
 
         // Devolver el último drink creado para compatibilidad
+
+        // Gamification Trigger
+        if (effectiveUserId) {
+            console.log(`[API] Triggering gamification for user ${effectiveUserId} on route ${routeId}`);
+            const { checkAndAwardBadges } = await import('@/lib/gamification');
+            checkAndAwardBadges(effectiveUserId, "ROUND_ADDED", routeId)
+                .then(badges => console.log(`[API] Gamification result: ${JSON.stringify(badges)}`))
+                .catch(e => console.error("Gamification error:", e));
+        } else {
+            console.log("[API] No effectiveUserId for gamification");
+        }
+
         return NextResponse.json({
             consumption: drinks[drinks.length - 1],
             count: drinks.length

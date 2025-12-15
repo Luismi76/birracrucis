@@ -55,6 +55,7 @@ model User {
   receivedNudges       Nudge[]            @relation("NudgeTarget")
   participations       Participant[]
   photos               Photo[]
+  potTransactions      PotTransaction[]
   pushSubscriptions    PushSubscription[]
   rounds               Round[]
   createdRoutes        Route[]            @relation("RouteCreator")
@@ -62,7 +63,6 @@ model User {
   sessions             Session[]
   skipVotes            SkipVote[]
   badges               UserBadge[]
-  potTransactions      PotTransaction[]
 }
 
 model VerificationToken {
@@ -78,26 +78,26 @@ model Route {
   name               String
   date               DateTime?
   createdAt          DateTime          @default(now())
-  inviteCode         String?           @unique
-  startMode          String            @default("manual")
-  startTime          DateTime?
+  actualEndTime      DateTime?
+  actualStartTime    DateTime?
+  creatorId          String?
+  description        String?
   endTime            DateTime?
   hasEndTime         Boolean           @default(false)
-  status             String            @default("pending")
-  actualStartTime    DateTime?
-  actualEndTime      DateTime?
+  inviteCode         String?           @unique
   isPublic           Boolean           @default(false)
-  description        String?
+  isTemplate         Boolean           @default(false)
   originalRouteId    String?
-  creatorId          String?
-  requiresApproval   Boolean           @default(false)
-  potEnabled         Boolean           @default(false)
   potAmountPerPerson Float?
+  potEnabled         Boolean           @default(false)
   potTotalCollected  Float             @default(0)
   potTotalSpent      Float             @default(0)
-  isTemplate         Boolean           @default(false)
-  isDiscovery        Boolean           @default(false)
+  requiresApproval   Boolean           @default(false)
+  startMode          String            @default("manual")
+  startTime          DateTime?
+  status             String            @default("pending")
   templateId         String?
+  isDiscovery        Boolean           @default(false)
   barRatings         BarRating[]
   drinks             Drink[]
   invitations        Invitation[]
@@ -123,27 +123,28 @@ model Route {
 }
 
 model RouteStop {
-  id               String            @id @default(cuid())
-  routeId          String
-  name             String
-  address          String
-  lat              Float
-  lng              Float
-  order            Int
-  plannedRounds    Int
-  maxRounds        Int?
-  actualRounds     Int               @default(0)
-  googlePlaceId    String?
-  stayDuration     Int               @default(30)
-  walkTimeToNext   Int?
-  arrivedAt        DateTime?
-  departedAt       DateTime?
-  ratings          BarRating[]
-  drinks           Drink[]
-  photos           Photo[]
-  rounds           Round[]
-  route            Route             @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  skipVotes        SkipVote[]
+  id             String      @id @default(cuid())
+  routeId        String
+  name           String
+  address        String
+  lat            Float
+  lng            Float
+  order          Int
+  plannedRounds  Int
+  maxRounds      Int?
+  actualRounds   Int         @default(0)
+  googlePlaceId  String?
+  arrivedAt      DateTime?
+  departedAt     DateTime?
+  stayDuration   Int         @default(30)
+  walkTimeToNext Int?
+  beerPrice      Float?      // Precio de la cerveza en este bar
+  ratings        BarRating[]
+  drinks         Drink[]
+  photos         Photo[]
+  rounds         Round[]
+  route          Route       @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  skipVotes      SkipVote[]
 
   @@index([routeId, order])
 }
@@ -180,17 +181,17 @@ model Round {
 }
 
 model Photo {
-  id          String        @id @default(cuid())
-  routeId     String
-  stopId      String?
-  userId      String?
-  guestId     String?
-  url         String
-  caption     String?
-  createdAt   DateTime      @default(now())
-  route       Route         @relation(fields: [routeId], references: [id], onDelete: Cascade)
-  stop        RouteStop?    @relation(fields: [stopId], references: [id])
-  user        User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String     @id @default(cuid())
+  routeId   String
+  stopId    String?
+  userId    String?
+  url       String
+  caption   String?
+  createdAt DateTime   @default(now())
+  guestId   String?
+  route     Route      @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  stop      RouteStop? @relation(fields: [stopId], references: [id])
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([routeId, createdAt(sort: Desc)])
   @@index([guestId])
@@ -351,27 +352,24 @@ model PotContribution {
 }
 
 model PotTransaction {
-  id             String   @id @default(cuid())
-  routeId        String
-  amount         Float
-  description    String?
-  createdAt      DateTime @default(now())
-  // Quién registró el gasto (auditoría)
-  registeredById String?
+  id               String   @id @default(cuid())
+  routeId          String
+  amount           Float
+  description      String?
+  createdAt        DateTime @default(now())
+  registeredById   String?
   registeredByName String?
-  registeredBy   User?    @relation(fields: [registeredById], references: [id], onDelete: SetNull)
-  route          Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  registeredBy     User?    @relation(fields: [registeredById], references: [id])
+  route            Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
 
   @@index([routeId, createdAt(sort: Desc)])
   @@index([registeredById])
 }
 
-// ========== RATE LIMITING ==========
-
 model RateLimit {
-  id         String   @id
-  count      Int      @default(1)
-  resetAt    DateTime
+  id      String   @id
+  count   Int      @default(1)
+  resetAt DateTime
 
   @@index([resetAt])
 }

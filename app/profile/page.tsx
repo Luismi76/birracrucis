@@ -16,7 +16,8 @@ type Badge = {
   name: string;
   description: string;
   icon: string;
-  earnedAt: string;
+  earnedAt?: string;
+  isEarned?: boolean;
 };
 
 type Settings = {
@@ -51,6 +52,7 @@ export default function ProfilePage() {
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<'progress' | 'settings'>('progress');
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -268,202 +270,234 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* Tabs Navigation */}
+      <div className="flex border-b bg-white sticky top-0 z-10">
+        <button
+          onClick={() => setActiveTab('progress')}
+          className={`flex-1 py-3 text-sm font-bold transition-colors ${activeTab === 'progress'
+            ? 'text-amber-600 border-b-2 border-amber-600'
+            : 'text-slate-500 hover:text-slate-700'
+            }`}
+        >
+          Progreso
+        </button>
+        <button
+          onClick={() => setActiveTab('settings')}
+          className={`flex-1 py-3 text-sm font-bold transition-colors ${activeTab === 'settings'
+            ? 'text-amber-600 border-b-2 border-amber-600'
+            : 'text-slate-500 hover:text-slate-700'
+            }`}
+        >
+          Ajustes
+        </button>
+      </div>
+
       <div className="max-w-2xl mx-auto px-4 py-6 pb-24 space-y-6">
-        {/* Badges */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <span className="text-xl">🏆</span>
-            Logros ({profile.badges.length})
-          </h3>
 
-          {profile.badges.length === 0 ? (
-            <div className="text-center py-6 text-slate-400">
-              <p className="text-4xl mb-2">🎯</p>
-              <p>Aun no tienes logros</p>
-              <p className="text-sm">Participa en rutas para desbloquearlos!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {profile.badges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-xl p-3 border border-yellow-200"
-                >
-                  <span className="text-3xl block mb-1">{badge.icon}</span>
-                  <p className="font-bold text-slate-800 text-sm">{badge.name}</p>
-                  <p className="text-xs text-slate-500">{badge.description}</p>
-                  <p className="text-xs text-amber-600 mt-1">
-                    {new Date(badge.earnedAt).toLocaleDateString("es-ES")}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {activeTab === 'progress' && (
+          <>
+            {/* Level/Experience (Ahora arriba para protagonismo) */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="text-xl">🎮</span>
+                Nivel
+              </h3>
+              {(() => {
+                const xp =
+                  stats.routesCreated * 50 +
+                  stats.routesParticipated * 20 +
+                  stats.completedRoutes * 30 +
+                  stats.barsVisited * 10 +
+                  stats.totalDrinks * 5 +
+                  stats.drinksPaid * 15 +
+                  stats.totalPhotos * 10 +
+                  stats.totalRatings * 5;
 
-        {/* Stats Grid */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <span className="text-xl">📊</span>
-            Estadisticas
-          </h3>
+                const level = Math.floor(xp / 100) + 1;
+                const xpInLevel = xp % 100;
+                const xpForNext = 100;
 
-          <div className="grid grid-cols-2 gap-3">
-            {statCards.map((stat) => (
-              <div
-                key={stat.label}
-                className={`${stat.color} rounded-xl p-3 text-center`}
-              >
-                <span className="text-2xl block">{stat.icon}</span>
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-xs">{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+                const titles = ["Novato", "Aprendiz", "Aficionado", "Entusiasta", "Experto", "Maestro", "Leyenda", "Dios de la Birra"];
+                const title = titles[Math.min(level - 1, titles.length - 1)];
 
-        {/* Level/Experience (calculado) */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <span className="text-xl">🎮</span>
-            Nivel de Cervecero
-          </h3>
-
-          {(() => {
-            const xp =
-              stats.routesCreated * 50 +
-              stats.routesParticipated * 20 +
-              stats.completedRoutes * 30 +
-              stats.barsVisited * 10 +
-              stats.totalDrinks * 5 +
-              stats.drinksPaid * 15 +
-              stats.totalPhotos * 10 +
-              stats.totalRatings * 5;
-
-            const level = Math.floor(xp / 100) + 1;
-            const xpInLevel = xp % 100;
-            const xpForNext = 100;
-
-            const titles = [
-              "Novato",
-              "Aprendiz",
-              "Aficionado",
-              "Entusiasta",
-              "Experto",
-              "Maestro",
-              "Leyenda",
-              "Dios de la Birra",
-            ];
-            const title = titles[Math.min(level - 1, titles.length - 1)];
-
-            return (
-              <div>
-                <div className="flex items-center justify-between mb-2">
+                return (
                   <div>
-                    <p className="text-3xl font-bold text-amber-600">Nivel {level}</p>
-                    <p className="text-slate-600">{title}</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="text-3xl font-bold text-amber-600">Nivel {level}</p>
+                        <p className="text-slate-600">{title}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm text-slate-500">XP Total</p>
+                        <p className="text-xl font-bold text-slate-800">{xp}</p>
+                      </div>
+                    </div>
+                    <div className="h-4 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500"
+                        style={{ width: `${(xpInLevel / xpForNext) * 100}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 text-center">
+                      {xpInLevel} / {xpForNext} XP para el siguiente nivel
+                    </p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm text-slate-500">XP Total</p>
-                    <p className="text-xl font-bold text-slate-800">{xp}</p>
-                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Badges - Carousel Horizontal */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm overflow-hidden">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🏆</span>
+                  Logros ({profile.badges.length})
                 </div>
-                <div className="h-4 bg-slate-200 rounded-full overflow-hidden">
+                <span className="text-xs text-slate-400 font-normal">Desliza para ver más →</span>
+              </h3>
+
+              {profile.badges.length === 0 ? (
+                <div className="text-center py-6 text-slate-400">
+                  <p>No se encontraron badges, algo anda mal.</p>
+                </div>
+              ) : (
+                <div className="flex overflow-x-auto pb-2 gap-3 snap-x scrollbar-hide -mx-2 px-2">
+                  {profile.badges.map((badge) => (
+                    <div
+                      key={badge.id}
+                      className={`flex-shrink-0 w-32 snap-center rounded-xl p-3 border flex flex-col items-center text-center transition-all ${badge.isEarned
+                        ? "bg-gradient-to-br from-yellow-50 to-amber-100 border-yellow-200 shadow-sm"
+                        : "bg-slate-50 border-slate-100 grayscale opacity-60"
+                        }`}
+                    >
+                      <span className="text-4xl block mb-2">{badge.icon}</span>
+                      <p className={`font-bold text-xs leading-tight mb-1 ${badge.isEarned ? "text-slate-800" : "text-slate-500"}`}>
+                        {badge.name}
+                      </p>
+                      {/* Description hidden on mobile card to save space, or truncation */}
+                      {badge.isEarned && (
+                        <p className="text-[10px] text-amber-600 font-medium mt-auto">
+                          ¡Conseguido!
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Stats Grid */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="text-xl">📊</span>
+                Estadisticas
+              </h3>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {statCards.map((stat) => (
                   <div
-                    className="h-full bg-gradient-to-r from-amber-400 to-orange-500 transition-all duration-500"
-                    style={{ width: `${(xpInLevel / xpForNext) * 100}%` }}
-                  />
+                    key={stat.label}
+                    className={`${stat.color} rounded-xl p-3 text-center flex flex-col items-center justify-center h-24`}
+                  >
+                    <span className="text-2xl mb-1">{stat.icon}</span>
+                    <p className="text-xl font-bold leading-none">{stat.value}</p>
+                    <p className="text-[10px] mt-1 opacity-80">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'settings' && (
+          <>
+            {/* Configuracion */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm">
+              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <span className="text-xl">⚙️</span>
+                Configuración
+              </h3>
+
+              <div className="space-y-4">
+                {/* Auto Check-in */}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-800">Check-in automático</p>
+                    <p className="text-xs text-slate-500">
+                      Registrar rondas al llegar
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => updateSetting("autoCheckinEnabled", !profileData.settings.autoCheckinEnabled)}
+                    disabled={savingSettings}
+                    className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.autoCheckinEnabled
+                      ? "bg-amber-500"
+                      : "bg-slate-300"
+                      } ${savingSettings ? "opacity-50" : ""}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${profileData.settings.autoCheckinEnabled ? "translate-x-5" : ""
+                        }`}
+                    />
+                  </button>
                 </div>
-                <p className="text-xs text-slate-500 mt-1 text-center">
-                  {xpInLevel} / {xpForNext} XP para el siguiente nivel
-                </p>
-              </div>
-            );
-          })()}
-        </div>
 
-        {/* Configuracion */}
-        <div className="bg-white rounded-2xl p-4 shadow-sm">
-          <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <span className="text-xl">⚙️</span>
-            Configuracion
-          </h3>
-
-          <div className="space-y-4">
-            {/* Auto Check-in */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="font-medium text-slate-800">Check-in automatico</p>
-                <p className="text-xs text-slate-500">
-                  Registrar rondas automaticamente cuando llegas a un bar
-                </p>
-              </div>
-              <button
-                onClick={() => updateSetting("autoCheckinEnabled", !profileData.settings.autoCheckinEnabled)}
-                disabled={savingSettings}
-                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.autoCheckinEnabled
-                  ? "bg-amber-500"
-                  : "bg-slate-300"
-                  } ${savingSettings ? "opacity-50" : ""}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${profileData.settings.autoCheckinEnabled ? "translate-x-5" : ""
-                    }`}
-                />
-              </button>
-            </div>
-
-            {/* Notificaciones */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="font-medium text-slate-800">Notificaciones</p>
-                <p className="text-xs text-slate-500">
-                  Recibir avisos de tus amigos y rutas
-                </p>
-              </div>
-              <button
-                onClick={() => updateSetting("notificationsEnabled", !profileData.settings.notificationsEnabled)}
-                disabled={savingSettings}
-                className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.notificationsEnabled
-                  ? "bg-amber-500"
-                  : "bg-slate-300"
-                  } ${savingSettings ? "opacity-50" : ""}`}
-              >
-                <span
-                  className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${profileData.settings.notificationsEnabled ? "translate-x-5" : ""
-                    }`}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Notificaciones Push */}
-        <PushNotificationManager />
-
-        {/* Admin Panel Link */}
-        {isAdmin && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-slate-800">
-            <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-              <span className="text-xl">🛡️</span>
-              Administración
-            </h3>
-            <Link
-              href="/admin/community"
-              className="flex items-center justify-between p-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-xl">🔧</span>
-                <div>
-                  <p className="font-medium">Panel de Comunidad</p>
-                  <p className="text-xs text-slate-400">Moderación de rutas</p>
+                {/* Notificaciones */}
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-800">Notificaciones</p>
+                    <p className="text-xs text-slate-500">
+                      Avisos de rutas y amigos
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => updateSetting("notificationsEnabled", !profileData.settings.notificationsEnabled)}
+                    disabled={savingSettings}
+                    className={`relative w-12 h-7 rounded-full transition-colors duration-200 ${profileData.settings.notificationsEnabled
+                      ? "bg-amber-500"
+                      : "bg-slate-300"
+                      } ${savingSettings ? "opacity-50" : ""}`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform duration-200 ${profileData.settings.notificationsEnabled ? "translate-x-5" : ""
+                        }`}
+                    />
+                  </button>
                 </div>
               </div>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
+            </div>
+
+            {/* Notificaciones Push */}
+            <PushNotificationManager />
+
+            {/* Privacidad y Legales */}
+            <PrivacySettings />
+
+            {/* Admin Panel Link */}
+            {isAdmin && (
+              <div className="bg-white rounded-2xl p-4 shadow-sm border-2 border-slate-800">
+                <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                  <span className="text-xl">🛡️</span>
+                  Administración
+                </h3>
+                <Link
+                  href="/admin/community"
+                  className="flex items-center justify-between p-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">🔧</span>
+                    <div>
+                      <p className="font-medium">Panel de Comunidad</p>
+                      <p className="text-xs text-slate-400">Moderación de rutas</p>
+                    </div>
+                  </div>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </Link>
+              </div>
+            )}
+          </>
         )}
 
       </div>

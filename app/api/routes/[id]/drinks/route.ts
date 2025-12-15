@@ -117,6 +117,16 @@ export async function POST(
       },
     });
 
+    // Gamification Trigger
+    // Gamification Trigger
+    if (userId) {
+      console.log(`[API-DRINKS] Triggering gamification for user ${userId} on route ${routeId}`);
+      const { checkAndAwardBadges } = await import('@/lib/gamification');
+      checkAndAwardBadges(userId, "ROUND_ADDED", routeId)
+        .then(badges => console.log(`[API-DRINKS] Gamification result: ${JSON.stringify(badges)}`))
+        .catch(e => console.error("Gamification error:", e));
+    }
+
     return NextResponse.json({ ok: true, drink }, { status: 201 });
   } catch (error) {
     console.error("Error en POST /api/routes/[id]/drinks:", error);

@@ -10,7 +10,8 @@ export default function BottomNavigation() {
   const { data: session } = useSession();
 
   // Whitelist approach: Only show on specific main pages
-  const allowedPaths = ["/routes", "/profile", "/leaderboard"];
+  // Usuario pidió quitarlo de /profile
+  const allowedPaths = ["/routes", "/leaderboard"];
 
   const isAllowed = allowedPaths.includes(pathname);
 
@@ -60,7 +61,7 @@ export default function BottomNavigation() {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-50">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 pb-safe z-30">
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href) && item.href !== "/routes/new");

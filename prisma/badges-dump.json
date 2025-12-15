@@ -1,0 +1,50 @@
+[
+  {
+    "id": "cmj74c2kk00001rrc5qgengke",
+    "code": "FIRST_ROUND",
+    "name": "Novato",
+    "description": "Has registrado tu primera ronda. ¡Salud!",
+    "icon": "🍺",
+    "createdAt": "2025-12-15T12:16:59.396Z"
+  },
+  {
+    "id": "cmj74c2kk00011rrcsz8dp9kc",
+    "code": "FIRST_ROUTE",
+    "name": "Caminante",
+    "description": "Has completado tu primera ruta.",
+    "icon": "🚶",
+    "createdAt": "2025-12-15T12:16:59.396Z"
+  },
+  {
+    "id": "cmj74c2kk00021rrcc5zqcx3u",
+    "code": "FIRST_PHOTO",
+    "name": "Paparazzi",
+    "description": "Has subido tu primera foto.",
+    "icon": "📸",
+    "createdAt": "2025-12-15T12:16:59.396Z"
+  },
+  {
+    "id": "cmj74c2kk00031rrc0zgrpmzq",
+    "code": "TEN_ROUTES",
+    "name": "Rey de la Fiesta",
+    "description": "Has completado 10 rutas. ¡Eres una leyenda!",
+    "icon": "👑",
+    "createdAt": "2025-12-15T12:16:59.396Z"
+  },
+  {
+    "id": "cmj74c2kk00041rrcilea46mh",
+    "code": "NIGHT_OWL",
+    "name": "Búho Nocturno",
+    "description": "Registrar una ronda después de las 2:00 AM",
+    "icon": "🦉",
+    "createdAt": "2025-12-15T12:16:59.396Z"
+  },
+  {
+    "id": "cmj74c2kk00051rrcx1q33pie",
+    "code": "EARLY_BIRD",
+    "name": "Madrugador",
+    "description": "Empezar una ruta antes de las 12:00 PM",
+    "icon": "☀️",
+    "createdAt": "2025-12-15T12:16:59.396Z"
+  }
+]

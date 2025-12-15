@@ -404,6 +404,21 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
     fetchUserSettings();
   }, [session]);
 
+  // Sincronizar precios guardados en DB con estado local
+  useEffect(() => {
+    if (stops.length > 0) {
+      const prices: Record<string, { beer: number; tapa: number }> = {};
+      stops.forEach((s: any) => {
+        if (s.beerPrice) {
+          prices[s.id] = { beer: s.beerPrice, tapa: DEFAULT_TAPA_PRICE };
+        }
+      });
+      if (Object.keys(prices).length > 0) {
+        setBarPrices(prev => ({ ...prev, ...prices }));
+      }
+    }
+  }, [stops]);
+
   useEffect(() => {
     if (!autoCheckinEnabled || !position || !activeStop || isRouteComplete) return;
     if (autoCheckinStopsRef.current.has(activeStop.id)) return;
@@ -433,6 +448,10 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ arrivedAt: new Date().toISOString() }),
+      }).then(() => {
+        // Prompt for beer price after successful check-in
+        setPendingPriceStopId(activeStop.id);
+        setShowPricePicker(true);
       }).catch(console.error);
     }
   }, [position, activeStop, autoCheckinEnabled, isRouteComplete]);
@@ -493,6 +512,31 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
   // Manual override for "At Bar" state
   const [manualArrivals, setManualArrivals] = useState<Set<string>>(new Set());
+  const [showPricePicker, setShowPricePicker] = useState(false);
+  const [pendingPriceStopId, setPendingPriceStopId] = useState<string | null>(null);
+
+  const handleUpdatePrice = async (price: number) => {
+    if (!pendingPriceStopId) return;
+
+    // Actualizar estado local
+    setBarPrices(prev => ({
+      ...prev,
+      [pendingPriceStopId]: { ...prev[pendingPriceStopId], beer: price }
+    }));
+
+    // Persistir en servidor
+    try {
+      await fetch(`/api/stops/${pendingPriceStopId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ beerPrice: price }),
+      });
+      toast.success("Precio actualizado");
+    } catch (err) {
+      console.error("Error saving price:", err);
+      toast.error("Error guardando el precio");
+    }
+  };
 
   // Consider at bar if:
   // 1. GPS says close enough (< RADIUS) OR
@@ -1264,6 +1308,16 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
         )
       }
 
+      {/* Price Picker Modal */}
+      <PricePicker
+        isOpen={showPricePicker}
+        onClose={() => setShowPricePicker(false)}
+        onSelect={handleUpdatePrice}
+        currentPrice={pendingPriceStopId && barPrices[pendingPriceStopId]?.beer ? barPrices[pendingPriceStopId].beer : DEFAULT_BEER_PRICE}
+        title="Precio de la Cerveza"
+        icon="🍺"
+      />
     </div >
   );
 }
+

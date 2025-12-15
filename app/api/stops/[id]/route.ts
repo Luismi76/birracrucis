@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 type PatchBody = {
   delta?: number; // +1 o -1 (o cualquier delta) para actualizar rondas
   arrivedAt?: string; // ISO string para actualizar tiempo de llegada
+  beerPrice?: number; // Precio de la cerveza
 };
 
 export async function PATCH(
@@ -61,7 +62,19 @@ export async function PATCH(
       return NextResponse.json({ ok: true, stop: updated });
     }
 
-    return NextResponse.json({ ok: false, error: "Debe proporcionar 'delta' o 'arrivedAt'" }, { status: 400 });
+    // Si viene beerPrice, actualizamos el precio
+    if (body.beerPrice !== undefined) {
+      if (typeof body.beerPrice !== "number") {
+        return NextResponse.json({ ok: false, error: "El precio debe ser un número" }, { status: 400 });
+      }
+      const updated = await prisma.routeStop.update({
+        where: { id },
+        data: { beerPrice: body.beerPrice },
+      });
+      return NextResponse.json({ ok: true, stop: updated });
+    }
+
+    return NextResponse.json({ ok: false, error: "Debe proporcionar 'delta', 'arrivedAt' o 'beerPrice'" }, { status: 400 });
   } catch (error) {
     console.error("Error en PATCH /api/stops/[id]:", error);
     return NextResponse.json({ ok: false, error: (error as Error).message }, { status: 500 });

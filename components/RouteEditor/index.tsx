@@ -69,8 +69,9 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     const [description, setDescription] = useState(initialData?.description || "");
 
     // Estado para opciones de la ruta
-    const [potEnabled, setPotEnabled] = useState(false);
-    const [potAmount, setPotAmount] = useState("20"); // 20€ por defecto
+    // Estado para opciones de la ruta
+    const [potEnabled, setPotEnabled] = useState(initialData?.potEnabled || false);
+    const [potAmount, setPotAmount] = useState(initialData?.potAmountPerPerson?.toString() || "20"); // 20€ por defecto
 
     // Estado de búsqueda
     const [radius, setRadius] = useState("800");
@@ -791,9 +792,9 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                             routeDistance={routeDistance} routeDuration={routeDuration}
                             isDiscovery={isDiscovery}
                             potEnabled={potEnabled}
-                            onPotEnabledChange={isEditing ? undefined : setPotEnabled}
+                            onPotEnabledChange={setPotEnabled}
                             potAmount={potAmount}
-                            onPotAmountChange={isEditing ? undefined : setPotAmount}
+                            onPotAmountChange={setPotAmount}
                         />
                     </div>
                 )}

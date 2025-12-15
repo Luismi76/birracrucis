@@ -1,9 +1,8 @@
 "use client";
 
-import { GoogleMap, Marker, useLoadScript, OverlayView, InfoWindow } from "@react-google-maps/api";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { GoogleMap, Marker, useLoadScript, OverlayView } from "@react-google-maps/api";
+import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
-import CloneRouteButton from "@/components/CloneRouteButton";
 
 type PublicRoute = {
     id: string;
@@ -15,7 +14,8 @@ type PublicRoute = {
     } | null;
     stops?: {
         address: string;
-        lat?: number; // Might not be populated in list view, need to ensure API returns it or use fallback
+        lat?: number;
+        lng?: number;
     }[];
     _count: {
         stops: number;
@@ -26,6 +26,8 @@ type PublicRoute = {
 type DiscoveryMapProps = {
     routes: PublicRoute[];
     onRouteSelect: (routeId: string) => void;
+    searchSignature?: string;
+    onResetFilter?: () => void;
 };
 
 // Map Settings
@@ -43,6 +45,7 @@ const mapOptions = {
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: true,
+    gestureHandling: "cooperative", // Helps with scroll interactions and warnings
     styles: [
         {
             featureType: "poi",
@@ -72,7 +75,7 @@ function deg2rad(deg: number) {
     return deg * (Math.PI / 180);
 }
 
-export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProps) {
+export default function DiscoveryMap({ routes, onRouteSelect, searchSignature, onResetFilter }: DiscoveryMapProps) {
     const { isLoaded, loadError } = useLoadScript({
         id: "google-maps-script",
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
@@ -80,75 +83,91 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
     });
 
     const [map, setMap] = useState<google.maps.Map | null>(null);
-    const [zoom, setZoom] = useState(6); // Start zoomed out (Spain view)
-    const [selectedCluster, setSelectedCluster] = useState<{ lat: number, lng: number, count: number } | null>(null);
-
-    // 1. Process Routes with approximate coordinates
-    // We assume the API returns at least one stop OR we geocode based on city name?
-    // For specific coordinates in `CommunityTab.tsx` data, we need `stops` to include `lat/lng`.
-    // Currently `CommunityTab` fetch only selects `address`. We might need to fetch coordinates or rely on the fact that existing routes usually have them.
-    // If we only have address, we can't plot easily without calling geocoding API $$$ which is bad.
-    // OPTIMIZATION: We really should modify the API to return the first stop's Lat/Lng. I'll assume passing coordinates is possible/done.
-
-    // NOTE: This component expects routes to actually have `stops[0].lat/lng` or similar. 
-    // IF NOT AVAILABLE, we might fall back to a hardcoded city map? No, let's assume valid data for now.
+    const [zoom, setZoom] = useState(5); // Start zoomed out (Spain/Peninsula View)
+    // Remove unused selectedCluster state if not used for Modal, or keep if future use
+    // const [selectedCluster, setSelectedCluster] = useState<{ lat: number, lng: number, count: number } | null>(null);
 
     const validRoutes = useMemo(() => {
-        // Fallback for missing coordinates (Simulate for now if missing, but should be fixed in API)
-        // Since we know the seeds have real lat/lng in DB, we just need to ensure API returns/we use it.
-        // But `PublicRoute` type in `CommunityTab` didn't have lat/lng in stops.
         return routes;
     }, [routes]);
 
-    // Auto-fit bounds when routes change (e.g. after search)
+    const hasFittedBounds = useRef(false);
+
+    // 1. Reset bounds lock when search changes
     useEffect(() => {
-        if (map && validRoutes.length > 0) {
-            const bounds = new google.maps.LatLngBounds();
-            let hasPoints = false;
+        hasFittedBounds.current = false;
+    }, [searchSignature]);
 
-            validRoutes.forEach(r => {
-                const stop = r.stops?.[0] as any;
-                if (stop && stop.lat && stop.lng) {
-                    bounds.extend({ lat: stop.lat, lng: stop.lng });
-                    hasPoints = true;
-                }
-            });
+    // 2. Auto-fit bounds logic
+    useEffect(() => {
+        if (!map) return;
 
-            if (hasPoints) {
-                // If only one point, avoid zooming in too much
-                if (validRoutes.length === 1) {
-                    const stop = (validRoutes[0].stops?.[0] as any);
-                    map.setCenter({ lat: stop.lat, lng: stop.lng });
-                    map.setZoom(12);
-                } else {
-                    map.fitBounds(bounds);
-                }
-            }
+        // CHECK: If search became empty (user cleared it), reset to general view
+        if ((!searchSignature || searchSignature.trim() === "") && hasFittedBounds.current === false) {
+            map.panTo(defaultCenter);
+            map.setZoom(5);
+            hasFittedBounds.current = true;
+            return;
         }
-    }, [map, validRoutes]);
+
+        if (validRoutes.length > 0 && !hasFittedBounds.current) {
+
+            const isSearchActive = searchSignature && searchSignature.trim().length > 0;
+
+            // Slight delay to ensure map is ready
+            const timer = setTimeout(() => {
+                const bounds = new google.maps.LatLngBounds();
+                let hasPoints = false;
+
+                validRoutes.forEach(r => {
+                    const stop = r.stops?.[0] as any;
+                    if (stop && typeof stop.lat === 'number' && typeof stop.lng === 'number') {
+                        bounds.extend({ lat: stop.lat, lng: stop.lng });
+                        hasPoints = true;
+                    }
+                });
+
+                if (hasPoints) {
+                    google.maps.event.trigger(map, 'resize');
+                    hasFittedBounds.current = true;
+
+                    // SMART FIT LOGIC:
+                    // 1. Calculate the perfect view for ALL routes.
+                    map.fitBounds(bounds);
+
+                    // 2. CONSTRAINT: If NOT searching (Initial Load), prevent Zoom In.
+                    // This satisfies "Show all routes" (FitBounds) AND "Don't lock me in" (Zoom Cap).
+                    // If routes are only in Sevilla, fitBounds goes to Zoom 13. We force it back to 6.
+                    // If routes are in NY and Madrid, fitBounds goes to Zoom 2. We keep it as is.
+                    if (!isSearchActive) {
+                        const listener = google.maps.event.addListenerOnce(map, "idle", () => {
+                            const currentZoom = map.getZoom();
+                            if (currentZoom && currentZoom > 6) {
+                                map.setZoom(6);
+                                // Optional: Center might be correct (Sevilla), but View is Regional.
+                            }
+                        });
+                    } else {
+                        // If searching specific term, allow closer zoom (e.g. 13)
+                        if (validRoutes.length === 1) {
+                            map.setZoom(13);
+                        }
+                    }
+                }
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [map, validRoutes, searchSignature]);
 
 
-    // 2. Custom Clustering Logic based on Zoom
+    // 3. Clustering Logic
     const clusters = useMemo(() => {
-        // Logic:
-        // Zoom < 8: Country View (Group mostly by City/Province)
-        // Zoom 8 - 13: Area View (Neighborhoods)
-        // Zoom > 13: Individual Markers (Specific Bars/Start Points)
-
         const radius = zoom < 8 ? CLUSTER_RADIUS_METERS_LOW_ZOOM : zoom < 13 ? CLUSTER_RADIUS_METERS_MED_ZOOM : 0;
-
-        if (radius === 0) return []; // No clustering, show individual markers
+        if (radius === 0) return [];
 
         const groups: { lat: number, lng: number, members: PublicRoute[] }[] = [];
 
-        // We need coordinates. If we don't have them in the props yet, this will fail.
-        // Assuming we will fix API to return `lat/lng` of first stop.
-
         validRoutes.forEach(r => {
-            // HACK: Use stop[0] coordinate if available, otherwise ignore
-            // In the `CommunityTab` component's `routes` state, we currently define `stops?: { address: string }[]`.
-            // We need to extend this type and API response.
-            // For now, let's pretend they exist or cast safely.
             const stop = r.stops?.[0] as any;
             if (!stop || typeof stop.lat !== 'number') return;
 
@@ -156,8 +175,6 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
             for (const g of groups) {
                 if (getDistanceFromLatLonInM(stop.lat, stop.lng, g.lat, g.lng) <= radius) {
                     g.members.push(r);
-                    // Weighted center? For simplicity keep first point or average?
-                    // Average looks better
                     const totalLat = g.members.reduce((sum, m) => sum + ((m.stops?.[0] as any)?.lat || 0), 0);
                     const totalLng = g.members.reduce((sum, m) => sum + ((m.stops?.[0] as any)?.lng || 0), 0);
                     g.lat = totalLat / g.members.length;
@@ -172,12 +189,9 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
         });
 
         return groups;
-
     }, [validRoutes, zoom]);
 
-    // Render Logic
     const showIndividualMarkers = zoom >= 13;
-
 
     if (loadError) return <div className="p-4 text-center">Error cargando mapa</div>;
     if (!isLoaded) return <div className="p-4 text-center">Cargando mapa...</div>;
@@ -192,10 +206,10 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
                 onLoad={(m) => setMap(m)}
                 onZoomChanged={() => map && setZoom(map.getZoom() || 6)}
                 onClick={() => {
-                    setSelectedCluster(null);
+                    // map click
                 }}
             >
-                {/* CLUSTERS (Zoom < 13) */}
+                {/* CLUSTERS */}
                 {!showIndividualMarkers && clusters.map((cluster, i) => (
                     <OverlayView
                         key={`cluster-${i}`}
@@ -207,28 +221,21 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
                             className="flex flex-col items-center justify-center cursor-pointer transition-transform hover:scale-110 active:scale-95"
                             onClick={(e) => {
                                 e.stopPropagation();
-
-                                // If single route in cluster, open it directly
                                 if (cluster.members.length === 1) {
                                     onRouteSelect(cluster.members[0].id);
                                     return;
                                 }
-
-                                // Zoom in to this cluster
                                 map?.panTo({ lat: cluster.lat, lng: cluster.lng });
                                 const targetZoom = zoom < 8 ? 10 : 15;
                                 map?.setZoom(targetZoom);
                             }}
                         >
-                            {/* Circle Badge */}
                             <div className={`
                             flex items-center justify-center rounded-full shadow-xl border-4 border-white text-white font-bold
                             ${cluster.members.length > 10 ? 'w-16 h-16 bg-purple-600 text-xl' : 'w-12 h-12 bg-amber-500 text-base'}
                         `}>
                                 {cluster.members.length}
                             </div>
-
-                            {/* Optional Label (Area Name?) - Could imply from members */}
                             {zoom >= 8 && (
                                 <div className="mt-1 bg-white/90 backdrop-blur px-2 py-0.5 rounded text-xs font-bold text-slate-700 shadow-sm">
                                     {cluster.members.length} plan{cluster.members.length !== 1 ? 'es' : ''}
@@ -238,10 +245,10 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
                     </OverlayView>
                 ))}
 
-                {/* INDIVIDUAL MARKERS (Zoom >= 13) */}
+                {/* MARKERS */}
                 {showIndividualMarkers && validRoutes.map((route) => {
                     const stop = route.stops?.[0] as any;
-                    if (!stop || !stop.lat) return null;
+                    if (!stop || typeof stop.lat !== 'number') return null;
 
                     return (
                         <Marker
@@ -263,21 +270,27 @@ export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProp
                         />
                     );
                 })}
-
-
-
             </GoogleMap>
 
-            {/* Back to Overview Button */}
-            {zoom > 7 && (
+            {/* Smart Back Button */}
+            {(zoom > 7 || (searchSignature && searchSignature.length > 0)) && (
                 <button
                     onClick={() => {
-                        map?.setZoom(6);
+                        if (searchSignature && searchSignature.length > 0 && onResetFilter) {
+                            onResetFilter();
+                        }
+
+                        // Always reset to Madrid/Zoom 5 (Passive)
                         map?.panTo(defaultCenter);
+                        map?.setZoom(5);
                     }}
                     className="absolute top-4 left-4 bg-white text-slate-700 px-4 py-2 rounded-full shadow-lg font-bold text-sm flex items-center gap-2 hover:bg-slate-50 border border-slate-200 z-10"
                 >
-                    <span>🔙</span> Ver todo
+                    {(searchSignature && searchSignature.length > 0) ? (
+                        <><span>✖️</span> Borrar búsqueda</>
+                    ) : (
+                        <><span>🔙</span> Ver todo</>
+                    )}
                 </button>
             )}
         </div>

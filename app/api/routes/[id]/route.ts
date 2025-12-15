@@ -25,6 +25,8 @@ type UpdateRouteBody = {
     endTime?: string | null; // ISO string
     isPublic?: boolean;
     description?: string | null;
+    potEnabled?: boolean;
+    potAmountPerPerson?: number | null;
 };
 
 // Verifica si el usuario es el creador de la ruta (solo el creador puede modificar/eliminar)
@@ -198,6 +200,8 @@ export async function PUT(
                     endTime: endTime ? new Date(endTime) : null,
                     isPublic: body.isPublic ?? false,
                     description: body.description ?? null,
+                    potEnabled: body.potEnabled ?? false,
+                    potAmountPerPerson: body.potAmountPerPerson,
                 },
             });
 

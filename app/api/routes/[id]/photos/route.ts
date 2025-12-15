@@ -95,6 +95,13 @@ export async function POST(
       },
     });
 
+    // Gamification Trigger
+    if (userId) {
+      const { checkAndAwardBadges } = await import('@/lib/gamification');
+      // No esperamos (fire and forget) para no bloquear respuesta
+      checkAndAwardBadges(userId, "PHOTO_UPLOADED", routeId).catch(e => console.error("Gamification error:", e));
+    }
+
     return NextResponse.json({ ok: true, photo }, { status: 201 });
   } catch (error) {
     console.error("Error en POST /api/routes/[id]/photos:", error);

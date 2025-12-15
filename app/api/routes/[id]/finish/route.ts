@@ -64,6 +64,29 @@ export async function POST(
 
         await Promise.allSettled(emailPromises);
 
+        // Gamificación: Otorgar logros a todos los participantes activos
+        try {
+            const { checkAndAwardBadges } = await import("@/lib/gamification");
+            console.log(`[API-FINISH] Triggering gamification for ${updatedRoute.participants.length} participants`);
+
+            const gamificationPromises = updatedRoute.participants
+                .filter(p => p.userId) // Solo usuarios registrados
+                .map(async (p) => {
+                    try {
+                        const badges = await checkAndAwardBadges(p.userId!, "ROUTE_COMPLETED", routeId);
+                        if (badges.length > 0) {
+                            console.log(`[API-FINISH] User ${p.userId} awarded: ${badges.join(", ")}`);
+                        }
+                    } catch (err) {
+                        console.error(`[API-FINISH] Error awarding badges to ${p.userId}:`, err);
+                    }
+                });
+
+            await Promise.allSettled(gamificationPromises);
+        } catch (error) {
+            console.error("[API-FINISH] Gamification module error:", error);
+        }
+
         return NextResponse.json({ ok: true, route: updatedRoute });
 
     } catch (error) {

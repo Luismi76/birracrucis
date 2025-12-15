@@ -59,6 +59,22 @@ export async function GET(req: NextRequest) {
       where: { paidById: user.id },
     });
 
+    // Obtener todas las medallas disponibles
+    const allBadges = await prisma.badge.findMany();
+
+    // Marcar cuáles tiene el usuario
+    const userBadgeIds = new Set(user.badges.map(ub => ub.badge.id));
+
+    const processedBadges = allBadges.map(badge => ({
+      id: badge.id,
+      code: badge.code,
+      name: badge.name,
+      description: badge.description,
+      icon: badge.icon,
+      earnedAt: user.badges.find(ub => ub.badge.id === badge.id)?.earnedAt || null,
+      isEarned: userBadgeIds.has(badge.id)
+    }));
+
     return NextResponse.json({
       ok: true,
       profile: {
@@ -66,10 +82,7 @@ export async function GET(req: NextRequest) {
         name: user.name,
         email: user.email,
         image: user.image,
-        badges: user.badges.map(ub => ({
-          ...ub.badge,
-          earnedAt: ub.earnedAt,
-        })),
+        badges: processedBadges, // Ahora enviamos todas con estado isEarned
         // @ts-ignore
         onboardingCompleted: user.onboardingCompleted,
       },

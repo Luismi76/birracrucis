@@ -37,8 +37,8 @@ export async function POST(req: NextRequest) {
     if (!validationResult.success) {
       // Formatear errores de Zod para devolver mensaje legible
       const errorMessages = validationResult.error.issues
-  .map(err => `${err.path.join('.')}: ${err.message}`)
-  .join('\n');
+        .map(err => `${err.path.join('.')}: ${err.message}`)
+        .join('\n');
       return NextResponse.json(
         { ok: false, error: `Datos inválidos:\n${errorMessages}` },
         { status: 400 }
@@ -57,6 +57,9 @@ export async function POST(req: NextRequest) {
         // Public visibility
         isPublic: body.isPublic,
         isDiscovery: body.isDiscovery,
+        // Pot configuration
+        potEnabled: body.potEnabled,
+        potAmountPerPerson: body.potAmountPerPerson,
         // Template system - new routes are templates by default
         isTemplate: true,
         // Campos de tiempo

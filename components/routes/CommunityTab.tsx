@@ -246,10 +246,12 @@ export default function CommunityTab() {
                                 setSelectedRouteData(route);
                             }
                         }}
+                        searchSignature={debouncedSearch}
+                        onResetFilter={() => setSearch("")}
                     />
                 </div>
             ) : (
-                <div className="space-y-4 pb-20">
+                <div className="h-full overflow-y-auto px-4 pb-24 space-y-4">
                     {/* Standard Header for List View */}
                     <div className="flex gap-2 mb-2">
                         <div className="relative flex-1">
