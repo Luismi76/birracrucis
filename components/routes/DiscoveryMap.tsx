@@ -74,6 +74,7 @@ function deg2rad(deg: number) {
 
 export default function DiscoveryMap({ routes, onRouteSelect }: DiscoveryMapProps) {
     const { isLoaded, loadError } = useLoadScript({
+        id: "google-maps-script",
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES,
     });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthenticatedUser } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/prisma";
+import { deleteImage, isMinioUrl } from "@/lib/minio";
 
 export async function DELETE(
     req: NextRequest,
@@ -33,7 +34,13 @@ export async function DELETE(
             where: { id: photoId },
         });
 
-        // TODO: Eliminar de MinIO si es necesario (limpieza de huérfanos)
+        // Eliminar de MinIO si es una imagen alojada allí
+        if (photo.url && isMinioUrl(photo.url)) {
+            // Ejecutar en background para no bloquear la respuesta (best effort)
+            deleteImage(photo.url).catch(err => {
+                console.error(`Failed to delete MinIO image for photo ${photoId}:`, err);
+            });
+        }
 
         return NextResponse.json({ ok: true });
     } catch (error) {

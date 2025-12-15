@@ -90,6 +90,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
     } | null>(null);
 
     const { isLoaded, loadError } = useLoadScript({
+        id: "google-maps-script",
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES,
     });
@@ -147,7 +148,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             const sortedStops = [...initialData.stops].sort((a, b) => a.order - b.order);
 
             sortedStops.forEach((stop, index) => {
-                const placeId = stop.googlePlaceId || stop.id;
+                const placeId = stop.googlePlaceId || "";
                 // Generate a unique instance ID for each stop, even if placeId repeats
                 const instanceId = generateInstanceId(); // Use the existing helper or inline it if scope issue?
                 // Helper is defined above, but inside function component body. It's accessible.
@@ -800,42 +801,42 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
             {/* Footer Navigation - Ocultar cuando hay modal de éxito */}
             {!createdRoute && (
-            <div className="bg-white border-t px-6 py-4 shadow-lg z-20">
-                <div className="max-w-4xl mx-auto flex gap-4">
-                    {currentStep > 0 && (
-                        <button
-                            onClick={handleBack}
-                            className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
-                        >
-                            Atrás
-                        </button>
-                    )}
+                <div className="bg-white border-t px-6 py-4 shadow-lg z-20">
+                    <div className="max-w-4xl mx-auto flex gap-4">
+                        {currentStep > 0 && (
+                            <button
+                                onClick={handleBack}
+                                className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                            >
+                                Atrás
+                            </button>
+                        )}
 
-                    {currentStep < STEPS.length - 1 ? (
-                        <button
-                            onClick={handleNext}
-                            className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-lg shadow-md hover:bg-amber-600 hover:shadow-lg transition-all active:scale-[0.98]"
-                        >
-                            Continuar &rarr;
-                        </button>
-                    ) : (
-                        <button
-                            onClick={handleSubmit}
-                            disabled={loading}
-                            className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <>
-                                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                                    Guardando...
-                                </>
-                            ) : (
-                                <>🚀 ¡Crear Ruta!</>
-                            )}
-                        </button>
-                    )}
+                        {currentStep < STEPS.length - 1 ? (
+                            <button
+                                onClick={handleNext}
+                                className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-lg shadow-md hover:bg-amber-600 hover:shadow-lg transition-all active:scale-[0.98]"
+                            >
+                                Continuar &rarr;
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {loading ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                                        Guardando...
+                                    </>
+                                ) : (
+                                    <>🚀 ¡Crear Ruta!</>
+                                )}
+                            </button>
+                        )}
+                    </div>
                 </div>
-            </div>
             )}
         </div>
     );

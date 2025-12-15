@@ -21,7 +21,7 @@ export default function BarPlaceInfo({ placeId, name }: { placeId?: string | nul
     const divRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (!placeId || !window.google || !window.google.maps || !window.google.maps.places) {
+        if (!placeId || !window.google || !window.google.maps || !window.google.maps.places || (placeId.length === 25 && placeId.startsWith("c"))) {
             return;
         }
 

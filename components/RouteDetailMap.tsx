@@ -43,6 +43,7 @@ const mapOptions = {
 
 export default function RouteDetailMap({ stops, userPosition, participants = [], onParticipantClick, isRouteComplete = false, creatorId, focusLocation }: RouteDetailMapProps) {
     const { isLoaded, loadError } = useLoadScript({
+        id: "google-maps-script",
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
         libraries: GOOGLE_MAPS_LIBRARIES,
     });

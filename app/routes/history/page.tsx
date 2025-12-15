@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import HistoryList from "@/components/HistoryList";
+
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 import UserMenu from "@/components/UserMenu";

@@ -10,7 +10,7 @@ export function BarTooltip({ stop, index }: { stop: Stop; index: number }) {
     } | null>(null);
 
     useEffect(() => {
-        if (!stop.googlePlaceId) return;
+        if (!stop.googlePlaceId || (stop.googlePlaceId.length === 25 && stop.googlePlaceId.startsWith("c"))) return;
 
         const service = new google.maps.places.PlacesService(document.createElement('div'));
         service.getDetails(

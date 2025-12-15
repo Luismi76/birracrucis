@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
                     some: { userId },
                 },
                 NOT: { creatorId: userId },
+                status: { notIn: ["completed", "cancelled"] },
             },
             include: {
                 stops: {

@@ -64,10 +64,11 @@ export async function GET(
             const totalPoints = p.user?.totalPoints || 0;
 
             return {
-                userId,
+                id: userId,
                 name: p.user?.name || p.name || 'Invitado',
                 image: p.user?.image || p.avatar,
                 rounds: roundsCount,
+                drinks: roundsCount,
                 spent,
                 barsVisited,
                 avgRating: Number(avgRating.toFixed(1)),

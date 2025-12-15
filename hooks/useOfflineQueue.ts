@@ -90,7 +90,7 @@ export function useOfflineQueue() {
                         });
                         break;
                     case "add_photo":
-                        // TODO: Implementar subida de foto
+                        // TODO: Implementar subida de foto (Requires IndexedDB for large payloads, localStorage is too small)
                         break;
                     case "send_nudge":
                         await fetch(`/api/routes/${action.data.routeId}/nudge`, {

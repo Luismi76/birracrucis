@@ -26,7 +26,7 @@ export default function NextBarPreview({
     } | null>(null);
 
     useEffect(() => {
-        if (!googlePlaceId || typeof window === "undefined") return;
+        if (!googlePlaceId || typeof window === "undefined" || (googlePlaceId.length === 25 && googlePlaceId.startsWith("c"))) return;
 
         // Verificar que Google Maps esté cargado
         if (typeof google === "undefined" || !google.maps || !google.maps.places) {

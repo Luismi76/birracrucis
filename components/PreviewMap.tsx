@@ -2,7 +2,7 @@
 
 import { GoogleMap, Marker, useLoadScript, DirectionsService, DirectionsRenderer } from "@react-google-maps/api";
 import { useMemo, useState, useCallback, useEffect } from "react";
-import { GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
+import { GOOGLE_MAPS_API_KEY, GOOGLE_MAPS_LIBRARIES } from "@/lib/google-maps";
 
 type Stop = {
     lat: number;
@@ -28,7 +28,9 @@ const mapOptions = {
 
 export default function PreviewMap({ stops }: PreviewMapProps) {
     const { isLoaded } = useLoadScript({
+        id: "google-maps-script",
         googleMapsApiKey: GOOGLE_MAPS_API_KEY,
+        libraries: GOOGLE_MAPS_LIBRARIES,
     });
 
     const [directionsResponse, setDirectionsResponse] = useState<google.maps.DirectionsResult | null>(null);
