@@ -47,6 +47,8 @@ export type RouteData = {
     isDiscovery?: boolean;
     description: string | null;
     originalRouteId?: string | null;
+    potEnabled?: boolean;
+    potAmountPerPerson?: number | null;
 };
 
 export interface RouteEditorProps {
