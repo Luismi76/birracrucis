@@ -35,12 +35,13 @@ export default function GuiaPage() {
             <a href="#crear-ruta" className="text-amber-600 hover:text-amber-700 hover:underline">2. Crear una ruta</a>
             <a href="#invitar" className="text-amber-600 hover:text-amber-700 hover:underline">3. Invitar amigos</a>
             <a href="#durante-ruta" className="text-amber-600 hover:text-amber-700 hover:underline">4. Durante la ruta</a>
-            <a href="#contador" className="text-amber-600 hover:text-amber-700 hover:underline">5. Contador de rondas</a>
-            <a href="#bote" className="text-amber-600 hover:text-amber-700 hover:underline">6. Bote compartido</a>
+            <a href="#contador" className="text-amber-600 hover:text-amber-700 hover:underline">5. Registro de Consumo</a>
+            <a href="#bote" className="text-amber-600 hover:text-amber-700 hover:underline">6. Gestión de Gastos</a>
             <a href="#chat" className="text-amber-600 hover:text-amber-700 hover:underline">7. Chat y fotos</a>
             <a href="#valoraciones" className="text-amber-600 hover:text-amber-700 hover:underline">8. Valoraciones</a>
-            <a href="#exportar" className="text-amber-600 hover:text-amber-700 hover:underline">9. Exportar PDF</a>
-            <a href="#consejos" className="text-amber-600 hover:text-amber-700 hover:underline">10. Consejos</a>
+            <a href="#gamificacion" className="text-amber-600 hover:text-amber-700 hover:underline">9. Tu Historial</a>
+            <a href="#exportar" className="text-amber-600 hover:text-amber-700 hover:underline">10. Exportar PDF</a>
+            <a href="#consejos" className="text-amber-600 hover:text-amber-700 hover:underline">11. Consejos</a>
           </nav>
         </div>
 
@@ -65,7 +66,7 @@ export default function GuiaPage() {
             <div className="mt-4 flex justify-center">
               <div className="bg-slate-100 rounded-2xl p-2 max-w-[250px]">
                 <Image
-                  src="/guia/screenshot-lista.jpg"
+                  src="/guia/screenshot-lista.png"
                   alt="Lista de rutas"
                   width={250}
                   height={500}
@@ -184,7 +185,7 @@ export default function GuiaPage() {
               </div>
               <div className="bg-slate-100 rounded-2xl p-2 max-w-[200px]">
                 <Image
-                  src="/guia/screenshot-ruta.jpg"
+                  src="/guia/screenshot-ruta.png"
                   alt="Vista de ruta activa"
                   width={200}
                   height={400}
@@ -201,34 +202,33 @@ export default function GuiaPage() {
           </div>
         </section>
 
-        {/* Seccion 5: Contador */}
+        {/* Seccion 5: Registro de Consumo */}
         <section id="contador" className="bg-white rounded-xl shadow-sm p-6 md:p-8 mb-6">
           <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm">5</span>
-            Contador de rondas
+            Registro de Consumo
           </h2>
           <div className="space-y-4 text-slate-600">
             <p>
-              Cada bar tiene un contador de rondas. Puedes llevar la cuenta de lo que bebes:
+              Lleva un control detallado del consumo en cada establecimiento. Transparencia total para el grupo:
             </p>
             <div className="flex flex-col md:flex-row gap-6 items-start">
               <div className="flex-1">
                 <ul className="list-disc pl-6 space-y-2">
-                  <li><strong>Otra ronda mas:</strong> Pulsa el boton naranja para anadir una ronda al grupo</li>
-                  <li><strong>Tipos de bebida:</strong> Cerveza, vino, cocktail, chupito, refresco o agua</li>
-                  <li><strong>Precio:</strong> Puedes poner el precio de cada bebida para llevar la cuenta</li>
-                  <li><strong>Por persona:</strong> Ve lo que ha bebido cada participante</li>
+                  <li><strong>Registrar consumición:</strong> Añade lo que se ha pedido para mantener el registro actualizado.</li>
+                  <li><strong>Tipos de bebida:</strong> Clasificación por tipo para mayor detalle.</li>
+                  <li><strong>Control de costes:</strong> Asigna precios para tener una estimación del gasto en tiempo real.</li>
+                  <li><strong>Desglose:</strong> Visualiza el consumo individual si es necesario.</li>
                 </ul>
                 <div className="bg-green-50 rounded-lg p-4 mt-4">
                   <p className="text-green-800 text-sm">
-                    <strong>Objetivo cumplido:</strong> Cuando completes las rondas planificadas en un bar,
-                    veras un mensaje de exito. Puedes seguir o pasar al siguiente bar.
+                    <strong>Plan cumplido:</strong> La app te notificará cuando se haya completado lo planificado en el local.
                   </p>
                 </div>
               </div>
               <div className="bg-slate-100 rounded-2xl p-2 max-w-[200px]">
                 <Image
-                  src="/guia/screenshot-contador.jpg"
+                  src="/guia/screenshot-contador.png"
                   alt="Contador de rondas"
                   width={200}
                   height={400}
@@ -239,34 +239,33 @@ export default function GuiaPage() {
           </div>
         </section>
 
-        {/* Seccion 6: Bote */}
+        {/* Seccion 6: Gestión de Gastos */}
         <section id="bote" className="bg-white rounded-xl shadow-sm p-6 md:p-8 mb-6">
           <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm">6</span>
-            Bote compartido
+            Gestión de Gastos
           </h2>
           <div className="space-y-4 text-slate-600">
             <p>
-              El bote es una forma facil de gestionar el dinero del grupo:
+              Simplifica la logística financiera del encuentro. Cuentas claras, amistades largas:
             </p>
             <div className="flex flex-col md:flex-row gap-6 items-start">
               <div className="flex-1">
                 <ol className="list-decimal pl-6 space-y-2">
-                  <li><strong>Activar bote:</strong> El creador de la ruta activa el bote y pone la cantidad por persona</li>
-                  <li><strong>Contribuir:</strong> Cada participante marca cuando ha puesto su parte</li>
-                  <li><strong>Ver estado:</strong> Mira cuanto hay recaudado, gastado y cuanto queda</li>
-                  <li><strong>Participantes:</strong> Ve quien ha puesto y quien falta</li>
+                  <li><strong>Fondo común:</strong> El organizador define la aportación inicial por persona.</li>
+                  <li><strong>Aportaciones:</strong> Registro de quién ha pagado su parte.</li>
+                  <li><strong>Estado del fondo:</strong> Balance en tiempo real de gastos y remanente.</li>
+                  <li><strong>Participantes:</strong> Control de pagos pendientes.</li>
                 </ol>
                 <div className="bg-amber-50 rounded-lg p-4 mt-4">
                   <p className="text-amber-800 text-sm">
-                    <strong>Nota:</strong> El bote es informativo. El dinero fisico lo gestionais vosotros,
-                    la app solo ayuda a llevar la cuenta.
+                    <strong>Nota:</strong> Esta herramienta es un libro de registro digital. Facilita la contabilidad del dinero físico del grupo.
                   </p>
                 </div>
               </div>
               <div className="bg-slate-100 rounded-2xl p-2 max-w-[200px]">
                 <Image
-                  src="/guia/screenshot-bote.jpg"
+                  src="/guia/screenshot-bote.png"
                   alt="Bote compartido"
                   width={200}
                   height={400}
@@ -322,10 +321,32 @@ export default function GuiaPage() {
           </div>
         </section>
 
-        {/* Seccion 9: Exportar */}
-        <section id="exportar" className="bg-white rounded-xl shadow-sm p-6 md:p-8 mb-6">
+        {/* Seccion 9: Historial */}
+        <section id="gamificacion" className="bg-white rounded-xl shadow-sm p-6 md:p-8 mb-6">
           <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm">9</span>
+            Tu Historial y Logros
+          </h2>
+          <div className="space-y-4 text-slate-600">
+            <p>
+              Mantén un registro de tus experiencias. Birracrucis guarda tu actividad para que recuerdes cada aventura.
+            </p>
+            <ul className="list-disc pl-6 space-y-2">
+              <li><strong>Experiencia:</strong> Acumula conocimientos sobre rutas y locales de tu ciudad.</li>
+              <li><strong>Estatus:</strong> Tu perfil refleja tu nivel de actividad y experiencia como organizador.</li>
+              <li><strong>Medallas:</strong> Reconocimientos especiales a tu participación (ej: "Explorador", "Organizador Top").</li>
+              <li><strong>Comunidad:</strong> Comparte tu afición con otros usuarios locales.</li>
+            </ul>
+            <p className="text-sm text-slate-500">
+              Consulta tu historial completo en tu Perfil.
+            </p>
+          </div>
+        </section>
+
+        {/* Seccion 10: Exportar */}
+        <section id="exportar" className="bg-white rounded-xl shadow-sm p-6 md:p-8 mb-6">
+          <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm">10</span>
             Exportar PDF
           </h2>
           <div className="space-y-4 text-slate-600">
@@ -345,10 +366,10 @@ export default function GuiaPage() {
           </div>
         </section>
 
-        {/* Seccion 10: Consejos */}
+        {/* Seccion 11: Consejos */}
         <section id="consejos" className="bg-white rounded-xl shadow-sm p-6 md:p-8 mb-6">
           <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm">10</span>
+            <span className="w-8 h-8 bg-amber-500 text-white rounded-full flex items-center justify-center text-sm">11</span>
             Consejos para una ruta perfecta
           </h2>
           <div className="space-y-4 text-slate-600">
