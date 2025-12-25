@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useEffect, useState } from "react";
 
 interface LogoLoaderProps {
     src: string;
@@ -10,17 +11,84 @@ interface LogoLoaderProps {
     height?: number;
 }
 
+type SeaonalTheme = 'default' | 'christmas' | 'semana-santa' | 'feria';
+
+const getSeasonalTheme = (): SeaonalTheme => {
+    const now = new Date();
+    const month = now.getMonth(); // 0-11
+    const day = now.getDate();
+
+    // Navidad: 15 Dic - 6 Ene
+    if ((month === 11 && day >= 15) || (month === 0 && day <= 6)) return 'christmas';
+
+    // Semana Santa 2025 (Estimada 13-20 Abril)
+    if (month === 3 && day >= 13 && day <= 20) return 'semana-santa';
+
+    // Feria 2025 (Estimada 5-11 Mayo)
+    if (month === 4 && day >= 5 && day <= 11) return 'feria';
+
+    return 'default';
+};
+
 export default function LogoLoader({
     src,
     className,
     width = 300,
     height = 450,
 }: LogoLoaderProps) {
+    const [theme, setTheme] = useState<SeaonalTheme>('default');
+
+    useEffect(() => {
+        setTheme(getSeasonalTheme());
+    }, []);
+
     return (
         <div
             className={cn("relative flex flex-col items-center justify-center", className)}
             style={{ width, height }}
         >
+            <style jsx>{`
+                @keyframes fall {
+                    0% { transform: translateY(-10vh) rotate(0deg); opacity: 0.8; }
+                    100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+                }
+                .animate-fall {
+                    animation-name: fall;
+                    animation-timing-function: linear;
+                    animation-iteration-count: infinite;
+                }
+            `}</style>
+
+            {/* Seasonal Decor - Fixed Overlay for Snow (Screen-wide effect) */}
+            {theme === 'christmas' && (
+                <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+                    {[...Array(15)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="absolute text-white/60 animate-fall"
+                            style={{
+                                left: `${Math.random() * 100}%`,
+                                top: `-10%`,
+                                fontSize: `${Math.random() * 20 + 15}px`, // 15px to 35px
+                                animationDuration: `${Math.random() * 3 + 2}s`, // 2s to 5s
+                                animationDelay: `${Math.random() * 5}s`
+                            }}
+                        >
+                            ❄️
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Feria: Farolillos */}
+            {theme === 'feria' && (
+                <div className="fixed top-0 left-0 w-full flex justify-between z-20 pointer-events-none select-none px-4">
+                    {[...Array(6)].map((_, i) => (
+                        <span key={i} className="text-[3rem] animate-swing origin-top drop-shadow-md" style={{ animationDelay: `${i * 0.2}s` }}>🏮</span>
+                    ))}
+                </div>
+            )}
+
             {/* 
          Cruzcampo-style Caña Glass Shape:
          - Taller aspect ratio (~2:3)
@@ -49,6 +117,13 @@ export default function LogoLoader({
 
                         {/* Foam Head - Thicker, creamier */}
                         <div className="absolute top-0 w-full h-12 bg-gradient-to-b from-white to-white/90 blur-[2px] -translate-y-6" />
+
+                        {/* Elemento flotando en la cerveza (Semana Santa) */}
+                        {theme === 'semana-santa' && (
+                            <div className="absolute bottom-1/3 left-1/2 -translate-x-1/2 text-4xl opacity-60 animate-pulse mix-blend-overlay">
+                                🕯️
+                            </div>
+                        )}
                     </div>
 
                     {/* Logo floating inside (Counter-rotate to keep it flat) */}
