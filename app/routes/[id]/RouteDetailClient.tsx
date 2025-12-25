@@ -890,36 +890,34 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
           </div>
         )}
 
-        {/* DEV TOOLS - Solo en desarrollo */}
-        {activeTab === 'route' && process.env.NODE_ENV === 'development' && (
-          <DevLocationControl
-            activeStop={activeStop ? { id: activeStop.id, name: activeStop.name, lat: activeStop.lat, lng: activeStop.lng, plannedRounds: activeStop.plannedRounds } : undefined}
-            stops={stops.map(s => ({ id: s.id, name: s.name, lat: s.lat, lng: s.lng, plannedRounds: s.plannedRounds }))}
-            onSetPosition={(pos) => {
-              // Si la prop es onSetPosition, la usamos directamente para setPosition
-              // Pero también queremos centrar el mapa, así que usamos ambos
-              setPosition(pos);
-              setMapFocusLocation(pos); // Esto centrará el mapa
-
-              setAccuracy(5);
-              const stopName = stops.find(s => s.lat === pos.lat && s.lng === pos.lng)?.name || 'ubicación';
-              toast.success(`Teletransportado a ${stopName} 📍`);
-            }}
-            rounds={rounds}
-            onSetRounds={(stopId, count) => {
-              setRounds(prev => ({ ...prev, [stopId]: count }));
-              toast.success(`Rondas ajustadas a ${count}`);
-            }}
-            currentBarIndex={currentBarIndex}
-            onTriggerCheckIn={() => {
-              if (activeStop) {
-                setManualArrivals(prev => new Set(prev).add(activeStop.id));
-                toast.success("Check-in forzado habilitado");
-              }
-            }}
-          />
-        )}
       </div>
+
+      {/* DEV TOOLS - Solo en desarrollo (MOVED OUTSIDE MAP CONTAINER TO AVOID OVERLAY ISSUES) */}
+      {activeTab === 'route' && process.env.NODE_ENV === 'development' && (
+        <DevLocationControl
+          activeStop={activeStop}
+          stops={stops}
+          onSetPosition={(pos) => {
+            setPosition(pos);
+            setMapFocusLocation(pos);
+            setAccuracy(5);
+            const stopName = stops.find(s => s.lat === pos.lat && s.lng === pos.lng)?.name || 'ubicación';
+            toast.success(`Teletransportado a ${stopName} 📍`);
+          }}
+          rounds={rounds}
+          onSetRounds={(stopId, count) => {
+            setRounds(prev => ({ ...prev, [stopId]: count }));
+            toast.success(`Rondas ajustadas a ${count}`);
+          }}
+          currentBarIndex={currentBarIndex}
+          onTriggerCheckIn={() => {
+            if (activeStop) {
+              setManualArrivals(prev => new Set(prev).add(activeStop.id));
+              toast.success("Check-in forzado habilitado");
+            }
+          }}
+        />
+      )}
 
       {/* 3. BOTTOM INFO SHEET */}
       {activeTab === 'route' && activeStop && (

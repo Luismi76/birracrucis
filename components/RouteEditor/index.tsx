@@ -655,7 +655,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                         className={`
                             fixed bottom-0 left-0 right-0 z-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.1)] rounded-t-3xl transition-all duration-300
                             md:static md:w-1/3 md:h-full md:shadow-none md:rounded-none md:border-r flex flex-col
-                            ${isMobileListExpanded ? 'h-[85%]' : 'h-[35%] md:h-full'}
+                            ${isMobileListExpanded ? 'h-[90%]' : 'h-[50%] md:h-full'}
                         `}
                     >
                         {/* Toggle Handle (Mobile Only) */}
@@ -721,7 +721,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     </div>
 
                     {/* Mapa (Absolute en Mobile, Flex en Desktop) */}
-                    <div className="absolute inset-0 md:static md:flex-1 bg-slate-100 h-full z-0 md:z-auto pb-[35%] md:pb-0">
+                    <div className="absolute inset-0 md:static md:flex-1 bg-slate-100 h-full z-0 md:z-auto pb-[50%] md:pb-0">
                         <BarSearchMap
                             center={mapCenter}
                             radius={parseInt(radius)}

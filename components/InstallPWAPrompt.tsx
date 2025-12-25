@@ -29,8 +29,18 @@ export default function InstallPWAPrompt() {
     const dismissedTime = dismissed ? parseInt(dismissed) : 0;
     const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
 
-    // Mostrar de nuevo despues de 7 dias
-    if (dismissedTime && daysSinceDismissed < 7) {
+    // Mostrar de nuevo despues de 15 dias si fue descartado explícitamente
+    if (dismissedTime && daysSinceDismissed < 15) {
+      return;
+    }
+
+    // Verificar cuándo se mostró por última vez (para no spammear si solo se ignora)
+    const lastShown = localStorage.getItem("pwa-prompt-last-shown");
+    const lastShownTime = lastShown ? parseInt(lastShown) : 0;
+    const hoursSinceLastShown = (Date.now() - lastShownTime) / (1000 * 60 * 60);
+
+    // Si se mostró hace menos de 24 horas, no mostrar
+    if (lastShownTime && hoursSinceLastShown < 24) {
       return;
     }
 
@@ -39,14 +49,20 @@ export default function InstallPWAPrompt() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       // Esperar un poco antes de mostrar
-      setTimeout(() => setShowPrompt(true), 3000);
+      setTimeout(() => {
+        setShowPrompt(true);
+        localStorage.setItem("pwa-prompt-last-shown", Date.now().toString());
+      }, 3000);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
 
     // Para iOS, mostrar instrucciones manuales
     if (iOS && !standalone) {
-      setTimeout(() => setShowPrompt(true), 3000);
+      setTimeout(() => {
+        setShowPrompt(true);
+        localStorage.setItem("pwa-prompt-last-shown", Date.now().toString());
+      }, 3000);
     }
 
     return () => {
@@ -93,7 +109,7 @@ export default function InstallPWAPrompt() {
             {isIOS ? (
               // Instrucciones para iOS
               <p className="text-xs text-slate-500 mt-1">
-                Pulsa <span className="inline-flex items-center"><svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L12 14M12 2L8 6M12 2L16 6M4 14V20H20V14"/></svg></span> y luego{" "}
+                Pulsa <span className="inline-flex items-center"><svg className="w-4 h-4 text-blue-500" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L12 14M12 2L8 6M12 2L16 6M4 14V20H20V14" /></svg></span> y luego{" "}
                 <strong>&quot;Anadir a pantalla de inicio&quot;</strong>
               </p>
             ) : (
@@ -137,7 +153,7 @@ export default function InstallPWAPrompt() {
         {isIOS && (
           <div className="mt-3 flex items-center justify-center gap-2 text-xs text-amber-600 bg-amber-50 rounded-lg py-2">
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
             </svg>
             Safari &rarr; Compartir &rarr; Anadir a inicio
           </div>

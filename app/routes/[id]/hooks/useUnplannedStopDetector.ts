@@ -20,7 +20,7 @@ interface UseUnplannedStopDetectorProps {
 // Configuración
 const CONSTANTS = {
     STATIONARY_THRESHOLD_METERS: 30, // 30 metros de margen
-    MIN_TIME_MS: 10 * 60 * 1000, // 10 minutos (Prudence Time)
+    MIN_TIME_MS: 10 * 60 * 1000, // 10 minutos
     // MIN_TIME_MS: 30 * 1000, // 30s para pruebas rápidas - CAMBIAR ANTES DE PROD
     CHECK_RADIUS_METERS: 40,
 };
