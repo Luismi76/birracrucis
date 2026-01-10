@@ -1,8 +1,10 @@
 "use client";
 
-import { FormEvent, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
 import BarSearchMap from "@/components/BarSearchMap";
 import { useLoadScript } from "@react-google-maps/api";
 import { GOOGLE_MAPS_LIBRARIES, GOOGLE_MAPS_API_KEY } from "@/lib/google-maps";
@@ -17,73 +19,38 @@ import { useRouteOptimization } from "./hooks/useRouteOptimization";
 import { useRouteCalculations } from "./hooks/useRouteCalculations";
 import { useManualBarCreation } from "./hooks/useManualBarCreation";
 
-// Import components
+// Import new components
+import BottomBar from "./BottomBar";
+import ConfigModal, { type RouteConfig } from "./ConfigModal";
 import ManualBarModal from "./components/ManualBarModal";
-import BarSearchPanel from "./components/BarSearchPanel";
-import BarList from "./components/BarList";
-import AvailableBarsList from "./components/AvailableBarsList";
-import CompactRouteSummary from "./components/CompactRouteSummary";
-
-// Import Wizard Steps
-import InfoStep from "./steps/InfoStep";
-import DetailsStep from "./steps/DetailsStep";
-import ReviewStep from "./steps/ReviewStep";
 import ShareInviteCode from "@/components/ShareInviteCode";
-
-// ... existing imports ...
-const STEPS = ["Info", "Mapa", "Detalles", "Revisión"];
 
 export default function RouteEditor({ initialData }: RouteEditorProps) {
     const router = useRouter();
     const isEditing = !!initialData;
 
-    // Wizard State
-    const [currentStep, setCurrentStep] = useState(0);
-    const [isMobileListExpanded, setIsMobileListExpanded] = useState(false);
+    // View State - Solo 2 vistas: Mapa y Modal de configuración
+    const [showConfigModal, setShowConfigModal] = useState(false);
 
     // Success/Share State
-    const [createdRoute, setCreatedRoute] = useState<{ id: string, name: string, inviteCode: string } | null>(null); // Nuevo estado para UI móvil
+    const [createdRoute, setCreatedRoute] = useState<{ id: string; name: string; inviteCode: string } | null>(null);
 
-    // Estado del formulario básico
-    const [name, setName] = useState(initialData?.name || "");
-    const [date, setDate] = useState(
-        initialData?.date ? new Date(initialData.date).toISOString().slice(0, 10) : ""
-    );
+    // Estado de carga y errores
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-
-    // Estado de configuración de tiempo
-    const [startMode, setStartMode] = useState<"manual" | "scheduled" | "all_present">(
-        initialData?.startMode || "scheduled"
-    );
-    const [startTime, setStartTime] = useState(
-        initialData?.startTime ? new Date(initialData.startTime).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : ""
-    );
-    const [hasEndTime, setHasEndTime] = useState(initialData?.hasEndTime || false);
-    const [endTime, setEndTime] = useState(
-        initialData?.endTime ? new Date(initialData.endTime).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : ""
-    );
-    const [defaultStayDuration, setDefaultStayDuration] = useState(initialData?.defaultStayDuration || 30);
-    const [isPublic, setIsPublic] = useState(initialData?.isPublic || false);
-    const [isDiscovery, setIsDiscovery] = useState(initialData?.isDiscovery || false);
-    const [description, setDescription] = useState(initialData?.description || "");
-
-    // Estado para opciones de la ruta
-    // Estado para opciones de la ruta
-    const [potEnabled, setPotEnabled] = useState(initialData?.potEnabled || false);
-    const [potAmount, setPotAmount] = useState(initialData?.potAmountPerPerson?.toString() || "20"); // 20€ por defecto
-
-    // Estado de búsqueda
-    const [radius, setRadius] = useState("800");
 
     // Estado de selección y orden
     const [selectedBars, setSelectedBars] = useState<Map<string, BarConfig>>(new Map());
     const [orderedIds, setOrderedIds] = useState<string[]>([]);
-    const [draggedId, setDraggedId] = useState<string | null>(null);
 
     // Estado de distancia
     const [routeDistance, setRouteDistance] = useState<number | null>(null);
     const [routeDuration, setRouteDuration] = useState<number | null>(null);
+
+    // Estado de búsqueda
+    const [radius, setRadius] = useState("800");
+
+    // Configuración por defecto (se puede editar en el modal)
+    const defaultStayDuration = initialData?.defaultStayDuration || 30;
 
     const mapFunctionsRef = useRef<{
         getClickCoordinates: (x: number, y: number, rect: DOMRect) => { lat: number; lng: number } | null;
@@ -109,16 +76,28 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
     const routeOptimization = useRouteOptimization(orderedIds, selectedBars, routeDistance);
 
+    // Para calcular tiempos, usamos valores por defecto temporales
     const routeCalculations = useRouteCalculations(
         orderedIds,
         selectedBars,
         routeDuration,
-        startTime,
-        date
+        "", // startTime vacío por ahora
+        ""  // date vacío por ahora
     );
 
+    // Generar nombre sugerido basado en la ubicación del primer bar
+    const suggestedName = useMemo(() => {
+        if (orderedIds.length === 0) return "";
+        const firstBar = selectedBars.get(orderedIds[0]);
+        if (!firstBar) return "";
+
+        const zone = firstBar.bar.address.split(",")[1]?.trim() || "tu zona";
+        const dateStr = format(new Date(), "d MMM", { locale: es });
+        return `Ruta por ${zone} - ${dateStr}`;
+    }, [orderedIds, selectedBars]);
+
     // Callback para cuando se añade un bar manual
-    const handleBarAdded = (place: PlaceResult, config: BarConfig) => {
+    const handleBarAdded = useCallback((place: PlaceResult, config: BarConfig) => {
         barSearch.setPlaces(prev => [...prev, place]);
 
         setSelectedBars(prev => {
@@ -132,7 +111,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         });
 
         setOrderedIds(prev => [...prev, config.placeId]);
-    };
+    }, [barSearch]);
 
     const manualBarCreation = useManualBarCreation({
         defaultStayDuration,
@@ -150,21 +129,8 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
             sortedStops.forEach((stop, index) => {
                 const placeId = stop.googlePlaceId || "";
-                // Generate a unique instance ID for each stop, even if placeId repeats
-                const instanceId = generateInstanceId(); // Use the existing helper or inline it if scope issue?
-                // Helper is defined above, but inside function component body. It's accessible.
-
-                // But wait, generateInstanceId is defined AFTER this useEffect in the previous tool call?
-                // No, I inserted it before handleToggleBar.
-                // Ah, useEffect is defined BEFORE handleToggleBar in the original file (line 131 vs 206).
-                // So generateInstanceId might not be defined yet if it is declared after.
-                // I need to confirm where I inserted generateInstanceId.
-                // I replaced handleToggleBar (line 206). useEffect is at 131.
-                // So generateInstanceId is NOT available in useEffect.
-                // I should move generateInstanceId up or duplicate logic.
                 const uniqueId = Math.random().toString(36).substring(2, 15);
 
-                // Check if place is already in newPlaces to avoid duplicates in the "Available/Cache" list
                 let place = newPlaces.find(p => p.placeId === placeId);
                 if (!place) {
                     place = {
@@ -186,9 +152,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                     plannedRounds: stop.plannedRounds,
                     maxRounds: stop.maxRounds ?? undefined,
                     isStart: index === 0,
-                    stayDuration: 30, // Or recover from stop if available? The stop object has stayDuration in payload but maybe not in type?
-                    // Type RouteStop doesn't seem to have stayDuration in the viewed file.
-                    // If it did, use it. For now default.
+                    stayDuration: defaultStayDuration,
                 });
             });
 
@@ -206,7 +170,7 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [initialData]);
 
-    // Cuando las coordenadas cambian, buscar automáticamente
+    // Auto-búsqueda cuando cambian las coordenadas (solo si no estamos editando)
     useEffect(() => {
         if (geolocation.centerLat && geolocation.centerLng && !initialData) {
             barSearch.handleSearchPlaces();
@@ -214,31 +178,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [geolocation.centerLat, geolocation.centerLng]);
 
-    // Manejar selección de sugerencia con actualización de coordenadas
-    const handleSelectSuggestionWithSearch = async (placeId: string, description: string) => {
-        const result = await barSearch.handleSelectSuggestion(placeId, description);
-        if (result) {
-            geolocation.setCenterLat(result.lat);
-            geolocation.setCenterLng(result.lng);
-            await barSearch.handleSearchPlaces(result.lat, result.lng);
-        }
-    };
-
-    // Manejar búsqueda por nombre con actualización de coordenadas
-    const handleSearchByPlaceNameWithCoords = async () => {
-        const result = await barSearch.handleSearchByPlaceName();
-        if (result) {
-            geolocation.setCenterLat(result.lat);
-            geolocation.setCenterLng(result.lng);
-            await barSearch.handleSearchPlaces(result.lat, result.lng);
-        }
-    };
-
     // Generar ID único para instancias de bares
     const generateInstanceId = () => Math.random().toString(36).substring(2, 15);
 
     // Añadir bar (permite duplicados)
-    const handleAddBar = (placeId: string) => {
+    const handleAddBar = useCallback((placeId: string) => {
         const place = barSearch.places.find((p) => p.placeId === placeId);
         if (!place) return;
 
@@ -260,17 +204,16 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
         setOrderedIds((prev) => [...prev, instanceId]);
         toast.success("Bar añadido a la ruta");
-    };
+    }, [barSearch.places, defaultStayDuration]);
 
     // Eliminar bar (por instancia)
-    const handleRemoveBar = (instanceId: string) => {
+    const handleRemoveBar = useCallback((instanceId: string) => {
         setSelectedBars((prev) => {
             const newMap = new Map(prev);
             const wasStart = newMap.get(instanceId)?.isStart;
             newMap.delete(instanceId);
 
             if (wasStart && newMap.size > 0) {
-                // Asignar start al siguiente
                 const firstKey = newMap.keys().next().value as string | undefined;
                 if (firstKey) {
                     const v = newMap.get(firstKey);
@@ -282,61 +225,26 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
 
         setOrderedIds((prev) => prev.filter((id) => id !== instanceId));
         toast.info("Bar eliminado de la ruta");
-    };
-
-    // Legacy adapter for components verifying selection (optional)
-    const handleToggleBar = (placeId: string) => {
-        // En AvailableBarsList, esto siempre es "Add" ahora.
-        // Pero mantenemos el nombre para minimizar cambios en props por ahora,
-        // aunque lo ideal sería renombrar en el componente hijo.
-        handleAddBar(placeId);
-    };
+    }, []);
 
     // Establecer bar de inicio
-    const handleSetStartBar = (placeId: string) => {
+    const handleSetStartBar = useCallback((instanceId: string) => {
         setSelectedBars((prev) => {
             const newMap = new Map<string, BarConfig>();
             for (const [key, cfg] of prev.entries()) {
-                newMap.set(key, { ...cfg, isStart: key === placeId });
+                newMap.set(key, { ...cfg, isStart: key === instanceId });
             }
             return newMap;
         });
-    };
+    }, []);
 
-    const handleUpdateRounds = (placeId: string, field: "plannedRounds" | "maxRounds", value: string) => {
-        const numVal = value === "" ? undefined : parseInt(value, 10);
-        if (value !== "" && isNaN(numVal as number)) return;
-
-        setSelectedBars((prev) => {
-            const newMap = new Map(prev);
-            const target = newMap.get(placeId);
-            if (target) {
-                if (field === "plannedRounds") {
-                    newMap.set(placeId, { ...target, plannedRounds: numVal ?? target.plannedRounds });
-                } else {
-                    newMap.set(placeId, { ...target, maxRounds: numVal });
-                }
-            }
-            return newMap;
-        });
-    };
-
-    const handleUpdateStayDuration = (placeId: string, value: string) => {
-        const numVal = parseInt(value, 10);
-        if (isNaN(numVal) || numVal < 5) return;
-
-        setSelectedBars((prev) => {
-            const newMap = new Map(prev);
-            const target = newMap.get(placeId);
-            if (target) {
-                newMap.set(placeId, { ...target, stayDuration: numVal });
-            }
-            return newMap;
-        });
-    };
+    // Reordenar bares
+    const handleReorder = useCallback((newOrder: string[]) => {
+        setOrderedIds(newOrder);
+    }, []);
 
     // Optimizar ruta
-    const handleOptimizeRoute = () => {
+    const handleOptimizeRoute = useCallback(() => {
         const optimizedOrder = routeOptimization.handleOptimizeRoute();
         if (optimizedOrder) {
             setOrderedIds(optimizedOrder);
@@ -344,73 +252,33 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         } else {
             toast.error("Selecciona un bar de inicio primero.");
         }
-    };
+    }, [routeOptimization]);
 
-    // Drag and Drop handlers
-    const handleDragStart = (e: React.DragEvent, id: string) => {
-        setDraggedId(id);
-        e.dataTransfer.effectAllowed = "move";
-    };
-
-    const handleDragOver = (e: React.DragEvent, id: string) => {
-        e.preventDefault();
-        if (!draggedId || draggedId === id) return;
-
-        const sourceIndex = orderedIds.indexOf(draggedId);
-        const targetIndex = orderedIds.indexOf(id);
-
-        if (sourceIndex !== -1 && targetIndex !== -1) {
-            const newOrder = [...orderedIds];
-            newOrder.splice(sourceIndex, 1);
-            newOrder.splice(targetIndex, 0, draggedId);
-            setOrderedIds(newOrder);
+    // Abrir modal de configuración
+    const handleContinue = useCallback(() => {
+        if (orderedIds.length < 2) {
+            toast.error("Añade al menos 2 bares");
+            return;
         }
-    };
 
-    const handleDragEnd = () => {
-        setDraggedId(null);
-    };
+        const hasStart = orderedIds.some(id => selectedBars.get(id)?.isStart);
+        if (!hasStart) {
+            toast.error("Selecciona un bar de inicio");
+            return;
+        }
 
-    const handleMoveUp = (index: number) => {
-        if (index === 0) return;
-        const newOrder = [...orderedIds];
-        const temp = newOrder[index];
-        newOrder[index] = newOrder[index - 1];
-        newOrder[index - 1] = temp;
-        setOrderedIds(newOrder);
-    };
+        setShowConfigModal(true);
+    }, [orderedIds, selectedBars]);
 
-    const handleMoveDown = (index: number) => {
-        if (index === orderedIds.length - 1) return;
-        const newOrder = [...orderedIds];
-        const temp = newOrder[index];
-        newOrder[index] = newOrder[index + 1];
-        newOrder[index + 1] = temp;
-        setOrderedIds(newOrder);
-    };
-
-    const handleSubmit = async () => {
+    // Submit de la ruta
+    const handleSubmit = useCallback(async (config: RouteConfig) => {
         setLoading(true);
-        setError(null);
 
         try {
-            const minBars = isDiscovery ? 0 : 2;
-            if (selectedBars.size < minBars) {
-                // If discovery and 0 bars, it's fine.
-                // If standard route, need 2.
-                throw new Error("Selecciona al menos 2 bares para crear una ruta estándar.");
-            }
-            if (!name.trim()) {
-                throw new Error("El nombre de la ruta es obligatorio.");
-            }
-
             const orderedBars = orderedIds.map((id) => selectedBars.get(id)).filter((b): b is BarConfig => !!b);
 
-            // In Discovery mode with 0 bars, there is no start bar.
-            if (!isDiscovery) {
-                const startBar = orderedBars.find((b) => b.isStart);
-                if (!startBar) throw new Error("Debe haber un bar de inicio.");
-            }
+            const startBar = orderedBars.find((b) => b.isStart);
+            if (!startBar) throw new Error("Debe haber un bar de inicio.");
 
             const stopsPayload = orderedBars.map((b, index) => ({
                 name: b.bar.name,
@@ -425,15 +293,9 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             }));
 
             let fullStartTime: string | null = null;
-            if (startTime && date) {
-                const dateOnly = date.split("T")[0];
-                fullStartTime = `${dateOnly}T${startTime}:00`;
-            }
-
-            let fullEndTime: string | null = null;
-            if (hasEndTime && endTime && date) {
-                const dateOnly = date.split("T")[0];
-                fullEndTime = `${dateOnly}T${endTime}:00`;
+            if (config.startTime && config.date) {
+                const dateOnly = config.date.split("T")[0];
+                fullStartTime = `${dateOnly}T${config.startTime}:00`;
             }
 
             const url = isEditing ? `/api/routes/${initialData?.id}` : "/api/routes";
@@ -443,21 +305,19 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 method: method,
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    name,
-                    date: date ? (date.includes("T") ? date.split("T")[0] + "T00:00:00" : `${date}T00:00:00`) : null,
+                    name: config.name,
+                    date: config.date ? (config.date.includes("T") ? config.date.split("T")[0] + "T00:00:00" : `${config.date}T00:00:00`) : null,
                     stops: stopsPayload,
-                    startMode,
+                    startMode: config.startMode,
                     startTime: fullStartTime,
-                    hasEndTime,
-                    endTime: fullEndTime,
-                    isPublic,
-                    isDiscovery,
-                    description,
-                    // Siempre crear edición directamente (simplificación UX)
-                    createEditionNow: !isEditing && !isDiscovery,
-                    potEnabled: potEnabled,
-                    // Si el bote está habilitado pero no se puso cantidad, usar 20€ por defecto
-                    potAmountPerPerson: potEnabled ? (potAmount ? parseFloat(potAmount) : 20) : null,
+                    hasEndTime: false,
+                    endTime: null,
+                    isPublic: false,
+                    isDiscovery: false,
+                    description: "",
+                    createEditionNow: !isEditing,
+                    potEnabled: config.potEnabled,
+                    potAmountPerPerson: config.potEnabled ? config.potAmount : null,
                 }),
             });
 
@@ -469,24 +329,14 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                 router.push(`/routes/${data.route.id}`);
                 router.refresh();
             } else {
-                if (isDiscovery) {
-                    toast.success("¡Aventura iniciada! 🧭");
-                    // Show Share UI instead of redirecting immediately
-                    setCreatedRoute({
-                        id: data.route.id,
-                        name: data.route.name,
-                        inviteCode: data.route.inviteCode
-                    });
-                } else if (data.edition && data.edition.inviteCode) {
-                    // Se creó la ruta directamente
+                if (data.edition && data.edition.inviteCode) {
                     toast.success("¡Ruta creada! 🎉");
                     setCreatedRoute({
                         id: data.edition.id,
                         name: data.edition.name,
-                        inviteCode: data.edition.inviteCode
+                        inviteCode: data.edition.inviteCode,
                     });
                 } else {
-                    // Fallback por si algo falla
                     toast.success("Ruta guardada");
                     router.push("/routes");
                     router.refresh();
@@ -494,11 +344,11 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
             }
         } catch (err) {
             const message = (err as Error).message;
-            setError(message);
             toast.error(message);
+        } finally {
             setLoading(false);
         }
-    };
+    }, [orderedIds, selectedBars, isEditing, initialData?.id, router]);
 
     const mapCenter = geolocation.centerLat && geolocation.centerLng
         ? { lat: parseFloat(geolocation.centerLat), lng: parseFloat(geolocation.centerLng) }
@@ -509,59 +359,51 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
         .filter((b): b is BarConfig => !!b)
         .map((b) => ({ lat: b.bar.lat, lng: b.bar.lng }));
 
-    // Detectar si mostrar opción pública
-    const isClone = isEditing && !!initialData?.originalRouteId;
-    const hasChanges = () => {
-        if (!initialData) return true;
-        if (orderedIds.length !== initialData.stops.length) return true;
-
-        // Simplificado para el wizard, si hay cualquier cambio asumimos que puede querer publicarla
-        return true;
-    };
-    const showPublicOption = !isClone || (isEditing && initialData.isPublic) || hasChanges();
-
-    // WIZARD NAVIGATION LOGIC
-    const handleNext = () => {
-        if (currentStep === 0) {
-            if (!name.trim()) return toast.error("El nombre es obligatorio");
-            // If Discovery Mode, skip Map step (Step 1) and go to Details (Step 2)
-            if (isDiscovery) {
-                setCurrentStep(2);
-                return;
-            }
-        }
-        if (currentStep === 1) {
-            const minBars = isDiscovery ? 0 : 2;
-            if (selectedBars.size < minBars) return toast.error("Selecciona al menos 2 bares");
-        }
-
-        setCurrentStep(prev => Math.min(prev + 1, STEPS.length - 1));
-    };
-
-    const handleBack = () => {
-        // If Discovery Mode and on Details (Step 2), go back to Info (Step 0)
-        if (currentStep === 2 && isDiscovery) {
-            setCurrentStep(0);
-            return;
-        }
-        setCurrentStep(prev => Math.max(prev - 1, 0));
-    };
-
     return (
         <div className="flex flex-col h-[100dvh] bg-slate-50 font-sans text-slate-900 overflow-hidden">
-            {/* Success/Share Overlay for Discovery Mode */}
+            {/* Modal para añadir bar manualmente */}
+            <ManualBarModal
+                isOpen={manualBarCreation.isModalOpen}
+                barName={manualBarCreation.barName}
+                onBarNameChange={manualBarCreation.setBarName}
+                barAddress={manualBarCreation.barAddress}
+                onBarAddressChange={manualBarCreation.setBarAddress}
+                onConfirm={() => {
+                    const currentCenter = mapFunctionsRef.current?.getMapCenter();
+                    const lat = currentCenter?.lat ?? mapCenter.lat;
+                    const lng = currentCenter?.lng ?? mapCenter.lng;
+                    manualBarCreation.handleConfirm(lat, lng);
+                }}
+                onCancel={manualBarCreation.closeModal}
+            />
+
+            {/* Modal de configuración */}
+            <ConfigModal
+                isOpen={showConfigModal}
+                onClose={() => setShowConfigModal(false)}
+                onSubmit={handleSubmit}
+                selectedBars={selectedBars}
+                orderedIds={orderedIds}
+                routeDistance={routeDistance}
+                routeDuration={routeDuration}
+                suggestedName={suggestedName}
+                loading={loading}
+            />
+
+            {/* Success/Share Overlay */}
             {createdRoute && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-8 text-center space-y-6">
-                            <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-2 animate-in zoom-in spin-in-12 duration-500">
-                                <span className="text-4xl">🧭</span>
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom sm:zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+                        {/* Contenido scrollable */}
+                        <div className="flex-1 overflow-y-auto p-6 sm:p-8 text-center space-y-5">
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto animate-in zoom-in spin-in-12 duration-500">
+                                <span className="text-3xl sm:text-4xl">🍺</span>
                             </div>
 
                             <div>
-                                <h2 className="text-2xl font-bold text-slate-800 mb-2">¡Aventura Lista!</h2>
-                                <p className="text-slate-600">
-                                    Tu ruta <span className="font-bold text-blue-600">"{createdRoute.name}"</span> está creada.
+                                <h2 className="text-xl sm:text-2xl font-bold text-slate-800 mb-2">¡Ruta Lista!</h2>
+                                <p className="text-slate-600 text-sm sm:text-base">
+                                    Tu ruta <span className="font-bold text-amber-600">"{createdRoute.name}"</span> está creada.
                                     <br />¡Invita a tus amigos antes de empezar!
                                 </p>
                             </div>
@@ -572,26 +414,29 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                                     routeName={createdRoute.name}
                                 />
                             </div>
+                        </div>
 
+                        {/* Botón fijo en la parte inferior */}
+                        <div className="p-4 sm:p-6 border-t bg-white">
                             <button
                                 onClick={() => {
                                     router.push(`/routes/${createdRoute.id}`);
                                     router.refresh();
                                 }}
-                                className="w-full py-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-bold rounded-2xl hover:from-blue-600 hover:to-indigo-600 transition-all shadow-lg active:scale-[0.98] text-lg"
+                                className="w-full py-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-2xl hover:from-amber-600 hover:to-orange-600 transition-all shadow-lg active:scale-[0.98] text-lg"
                             >
-                                Ir a la Ruta &rarr;
+                                Ir a la Ruta →
                             </button>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* Header */}
-            <div className="bg-white border-b px-4 py-3 shadow-sm z-10 flex justify-between items-center">
+            {/* Header minimalista */}
+            <div className="bg-white/80 backdrop-blur-sm border-b px-4 py-3 shadow-sm z-30 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => currentStep > 0 ? handleBack() : router.back()}
+                        onClick={() => router.back()}
                         className="flex items-center justify-center w-10 h-10 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors"
                     >
                         <svg className="w-5 h-5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -599,246 +444,102 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                         </svg>
                     </button>
                     <div>
-                        <h1 className="font-bold text-slate-800 text-sm md:text-base">
+                        <h1 className="font-bold text-slate-800">
                             {isEditing ? "Editar Ruta" : "Nueva Ruta"}
                         </h1>
-                        <div className="flex items-center gap-1 text-xs text-slate-500">
-                            Paso {currentStep + 1} de {STEPS.length}: {STEPS[currentStep]}
-                        </div>
+                        <p className="text-xs text-slate-500">
+                            Toca los bares en el mapa para añadirlos
+                        </p>
                     </div>
                 </div>
 
-                {/* Progress Indicators */}
-                <div className="flex gap-1.5">
-                    {STEPS.map((_, i) => (
-                        <div
-                            key={i}
-                            className={`w-8 h-1.5 rounded-full transition-all ${i <= currentStep ? 'bg-amber-500' : 'bg-slate-200'}`}
-                        />
-                    ))}
-                </div>
-            </div>
-
-            {/* Main Content Area */}
-            <div className="flex-1 min-h-0 overflow-hidden relative">
-                {/* Step 0: Info */}
-                {currentStep === 0 && (
-                    <div className="max-w-2xl mx-auto p-6 md:p-12 h-full overflow-y-auto">
-                        <InfoStep
-                            name={name} onNameChange={setName}
-                            date={date} onDateChange={setDate}
-                            isPublic={isPublic} onIsPublicChange={setIsPublic}
-                            isDiscovery={isDiscovery} onIsDiscoveryChange={setIsDiscovery}
-                            description={description} onDescriptionChange={setDescription}
-                            showPublicOption={showPublicOption}
-                        />
-                    </div>
-                )}
-
-                {/* Step 1: Map Builder (Full Width) */}
-                <div className={`${currentStep === 1 ? 'block' : 'hidden'} h-full md:flex md:flex-row relative`}>
-
-                    {/* Resumen Compacto Flotante (Solo visible en paso 1) */}
-                    <div className="absolute top-4 left-0 right-0 z-30 flex justify-center pointer-events-none">
-                        <div className="pointer-events-auto">
-                            <CompactRouteSummary
-                                selectedBarsCount={orderedIds.length}
-                                routeDistance={routeDistance}
-                                totalTimes={routeCalculations.totalTimes}
-                                formatDistance={routeCalculations.formatDistance}
-                            />
+                {/* Stats rápidos */}
+                {orderedIds.length > 0 && (
+                    <div className="text-right">
+                        <div className="text-sm font-bold text-amber-600">
+                            {orderedIds.length} {orderedIds.length === 1 ? 'bar' : 'bares'}
                         </div>
-                    </div>
-
-                    {/* Búsqueda y Lista (Sidebar en Desktop, Bottom Sheet en Mobile) */}
-                    <div
-                        className={`
-                            fixed bottom-0 left-0 right-0 z-20 bg-white shadow-[0_-5px_20px_rgba(0,0,0,0.1)] rounded-t-3xl transition-all duration-300
-                            md:static md:w-1/3 md:h-full md:shadow-none md:rounded-none md:border-r flex flex-col
-                            ${isMobileListExpanded ? 'h-[90%]' : 'h-[50%] md:h-full'}
-                        `}
-                    >
-                        {/* Toggle Handle (Mobile Only) */}
-                        <div
-                            className="md:hidden w-full flex justify-center py-3 cursor-pointer touch-none"
-                            onClick={() => setIsMobileListExpanded(!isMobileListExpanded)}
-                        >
-                            <div className="w-12 h-1.5 bg-slate-200 rounded-full" />
-                        </div>
-
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                            <BarSearchPanel
-                                placeSearchQuery={barSearch.placeSearchQuery}
-                                onPlaceSearchChange={barSearch.handlePlaceSearchChange}
-                                autocompleteSuggestions={barSearch.autocompleteSuggestions}
-                                showSuggestions={barSearch.showSuggestions}
-                                onSelectSuggestion={handleSelectSuggestionWithSearch}
-                                onSearchByPlaceName={handleSearchByPlaceNameWithCoords}
-                                isGeocoding={barSearch.isGeocoding}
-                                onUseMyLocation={geolocation.handleUseMyLocation}
-                                onSearchPlaces={() => barSearch.handleSearchPlaces()}
-                                placesLoading={barSearch.placesLoading}
-                                placesError={barSearch.placesError}
-                                radius={radius}
-                                onRadiusChange={setRadius}
-                                manualAddMode={manualBarCreation.manualAddMode}
-                                onToggleManualMode={() => manualBarCreation.setManualAddMode(!manualBarCreation.manualAddMode)}
-                            />
-
-                            <BarList
-                                orderedIds={orderedIds}
-                                selectedBars={selectedBars}
-                                onDragStart={handleDragStart}
-                                onDragOver={handleDragOver}
-                                onDragEnd={handleDragEnd}
-                                onMoveUp={handleMoveUp}
-                                onMoveDown={handleMoveDown}
-                                onToggleBar={handleRemoveBar}
-                                onSetStartBar={handleSetStartBar}
-                                onUpdateRounds={handleUpdateRounds}
-                                onUpdateStayDuration={handleUpdateStayDuration}
-                                arrivalTimes={routeCalculations.arrivalTimes}
-                                draggedId={draggedId}
-                                onOptimizeRoute={handleOptimizeRoute}
-                                preOptimizeDistance={routeOptimization.preOptimizeDistance}
-                                routeDistance={routeDistance}
-                                formatDistance={routeCalculations.formatDistance}
-
-                            />
-
-                            {/* Lista de bares disponibles */}
-                            {barSearch.places.length > 0 && (
-                                <AvailableBarsList
-                                    places={barSearch.places}
-                                    selectedBars={selectedBars}
-                                    centerLat={geolocation.centerLat}
-                                    centerLng={geolocation.centerLng}
-                                    onToggleBar={handleAddBar}
-                                    formatDistance={routeCalculations.formatDistance}
-                                />
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Mapa (Absolute en Mobile, Flex en Desktop) */}
-                    <div className="absolute inset-0 md:static md:flex-1 bg-slate-100 h-full z-0 md:z-auto pb-[50%] md:pb-0">
-                        <BarSearchMap
-                            center={mapCenter}
-                            radius={parseInt(radius)}
-                            bars={barSearch.places}
-                            selectedBars={orderedIds.map(id => selectedBars.get(id)?.placeId).filter((id): id is string => !!id)}
-                            routePreview={routePreview}
-                            onBarClick={handleToggleBar}
-                            onDistanceCalculated={(distance, duration) => {
-                                setRouteDistance(distance);
-                                setRouteDuration(duration);
-                            }}
-                            onMapClick={manualBarCreation.handleMapClick}
-                            manualAddMode={manualBarCreation.manualAddMode}
-                            isLoaded={isLoaded}
-                            loadError={loadError}
-                            onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
-                        />
-                        {manualBarCreation.manualAddMode && (
-                            <div className="absolute inset-x-4 top-4 md:bottom-4 md:top-auto bg-white p-4 rounded-xl shadow-lg z-20 flex flex-col gap-3 animate-in slide-in-from-top md:slide-in-from-bottom">
-                                <p className="text-sm font-medium text-center">Toca en el mapa para añadir un punto</p>
-                                <button
-                                    onClick={() => {
-                                        if (mapFunctionsRef.current) {
-                                            const coords = mapFunctionsRef.current.getMapCenter();
-                                            if (coords) manualBarCreation.handleMapClick(coords.lat, coords.lng);
-                                        }
-                                    }}
-                                    className="w-full py-3 bg-purple-500 text-white rounded-lg font-bold"
-                                >
-                                    Añadir centro del mapa
-                                </button>
-                                <ManualBarModal
-                                    isOpen={!!manualBarCreation.pendingManualBar}
-                                    barName={manualBarCreation.manualBarName}
-                                    onBarNameChange={manualBarCreation.setManualBarName}
-                                    barAddress={manualBarCreation.manualBarAddress}
-                                    onBarAddressChange={manualBarCreation.setManualBarAddress}
-                                    onConfirm={manualBarCreation.handleConfirmManualBar}
-                                    onCancel={manualBarCreation.handleCancelManualBar}
-                                />
+                        {routeDistance && routeDistance > 0 && (
+                            <div className="text-xs text-slate-500">
+                                {routeCalculations.formatDistance(routeDistance)}
                             </div>
                         )}
                     </div>
-                </div>
-
-                {/* Step 2: Details */}
-                {currentStep === 2 && (
-                    <div className="max-w-2xl mx-auto p-6 md:p-12 h-full overflow-y-auto">
-                        <DetailsStep
-                            startMode={startMode} onStartModeChange={setStartMode}
-                            startTime={startTime} onStartTimeChange={setStartTime}
-                            hasEndTime={hasEndTime} onHasEndTimeChange={setHasEndTime}
-                            endTime={endTime} onEndTimeChange={setEndTime}
-                            defaultStayDuration={defaultStayDuration} onDefaultStayDurationChange={setDefaultStayDuration}
-                        />
-                    </div>
-                )}
-
-                {/* Step 3: Review */}
-                {currentStep === 3 && (
-                    <div className="max-w-2xl mx-auto p-6 md:p-12 h-full overflow-y-auto pb-32">
-                        <ReviewStep
-                            name={name} date={date}
-                            startMode={startMode} startTime={startTime}
-                            hasEndTime={hasEndTime} endTime={endTime}
-                            defaultStayDuration={defaultStayDuration} isPublic={isPublic}
-                            orderedIds={orderedIds} selectedBars={selectedBars}
-                            routeDistance={routeDistance} routeDuration={routeDuration}
-                            isDiscovery={isDiscovery}
-                            potEnabled={potEnabled}
-                            onPotEnabledChange={setPotEnabled}
-                            potAmount={potAmount}
-                            onPotAmountChange={setPotAmount}
-                        />
-                    </div>
                 )}
             </div>
 
-            {/* Footer Navigation - Ocultar cuando hay modal de éxito */}
-            {!createdRoute && (
-                <div className="bg-white border-t px-6 py-4 shadow-lg z-20">
-                    <div className="max-w-4xl mx-auto flex gap-4">
-                        {currentStep > 0 && (
-                            <button
-                                onClick={handleBack}
-                                className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
-                            >
-                                Atrás
-                            </button>
-                        )}
+            {/* Mapa a pantalla completa */}
+            <div className="flex-1 relative">
+                <BarSearchMap
+                    center={mapCenter}
+                    radius={parseInt(radius)}
+                    bars={barSearch.places}
+                    selectedBars={orderedIds.map(id => selectedBars.get(id)?.placeId).filter((id): id is string => !!id)}
+                    routePreview={routePreview}
+                    onBarClick={handleAddBar}
+                    onDistanceCalculated={(distance, duration) => {
+                        setRouteDistance(distance);
+                        setRouteDuration(duration);
+                    }}
+                    isLoaded={isLoaded}
+                    loadError={loadError}
+                    onMapRef={(ref) => { mapFunctionsRef.current = ref; }}
+                />
 
-                        {currentStep < STEPS.length - 1 ? (
-                            <button
-                                onClick={handleNext}
-                                className="flex-1 bg-amber-500 text-white py-3 rounded-xl font-bold text-lg shadow-md hover:bg-amber-600 hover:shadow-lg transition-all active:scale-[0.98]"
-                            >
-                                Continuar &rarr;
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handleSubmit}
-                                disabled={loading}
-                                className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                            >
-                                {loading ? (
-                                    <>
-                                        <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                                        Guardando...
-                                    </>
-                                ) : (
-                                    <>🚀 ¡Crear Ruta!</>
-                                )}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            )}
+                {/* Indicador del centro del mapa cuando está posicionando */}
+                {manualBarCreation.isPositioning && (
+                    <>
+                        {/* Pin en el centro */}
+                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-30">
+                            <div className="flex flex-col items-center -translate-y-8">
+                                <div className="text-5xl drop-shadow-lg animate-bounce">📍</div>
+                                <div className="w-4 h-4 bg-amber-500 rounded-full shadow-lg border-2 border-white -mt-2"></div>
+                            </div>
+                        </div>
+                        {/* Barra superior con instrucción y botones */}
+                        <div className="absolute top-4 left-2 right-2 z-30">
+                            <div className="bg-white rounded-2xl p-4 shadow-2xl border border-slate-200">
+                                <p className="text-center text-slate-700 font-medium mb-3">
+                                    📍 Mueve el mapa para posicionar el bar
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={manualBarCreation.cancelPositioning}
+                                        className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        onClick={manualBarCreation.confirmPosition}
+                                        className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 transition-colors"
+                                    >
+                                        Añadir aquí
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </>
+                )}
+
+                {/* Barra inferior con controles */}
+                {!manualBarCreation.isPositioning && (
+                    <BottomBar
+                        orderedIds={orderedIds}
+                        selectedBars={selectedBars}
+                        routeDistance={routeDistance}
+                        onReorder={handleReorder}
+                        onRemoveBar={handleRemoveBar}
+                        onSetStartBar={handleSetStartBar}
+                        onSearch={() => barSearch.handleSearchPlaces()}
+                        onUseMyLocation={geolocation.handleUseMyLocation}
+                        onAddManual={manualBarCreation.startPositioning}
+                        onOptimize={handleOptimizeRoute}
+                        onContinue={handleContinue}
+                        isSearching={barSearch.placesLoading}
+                        formatDistance={routeCalculations.formatDistance}
+                    />
+                )}
+            </div>
         </div>
     );
 }

@@ -363,6 +363,16 @@ export default function CompletedRouteSummary({
                 <p className="text-sm text-slate-400">Hasta la proxima aventura!</p>
                 <p className="text-2xl mt-1">🍻</p>
             </div>
+
+            {/* Botón para volver al inicio */}
+            <div className="pt-2 pb-4">
+                <a
+                    href="/routes"
+                    className="block w-full py-4 bg-slate-800 text-white text-center font-bold rounded-2xl hover:bg-slate-700 active:scale-[0.98] transition-all"
+                >
+                    ← Volver a Mis Rutas
+                </a>
+            </div>
         </div>
     );
 }

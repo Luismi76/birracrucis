@@ -8,33 +8,57 @@ interface UseManualBarCreationProps {
     onBarAdded: (place: PlaceResult, config: BarConfig) => void;
 }
 
+/**
+ * Hook para añadir bares manualmente con dos pasos:
+ * 1. Activar modo de posicionamiento (el usuario mueve el mapa)
+ * 2. Confirmar posición y abrir modal para el nombre
+ */
 export function useManualBarCreation({ defaultStayDuration, onBarAdded }: UseManualBarCreationProps) {
-    const [manualAddMode, setManualAddMode] = useState(false);
-    const [pendingManualBar, setPendingManualBar] = useState<{ lat: number; lng: number } | null>(null);
-    const [manualBarName, setManualBarName] = useState("");
-    const [manualBarAddress, setManualBarAddress] = useState("");
+    const [isPositioning, setIsPositioning] = useState(false); // Paso 1: posicionando
+    const [isModalOpen, setIsModalOpen] = useState(false);     // Paso 2: modal abierto
+    const [barName, setBarName] = useState("");
+    const [barAddress, setBarAddress] = useState("");
 
-    // Handler para clic en el mapa (modo manual)
-    const handleMapClick = useCallback((lat: number, lng: number) => {
-        // console.log("Map clicked at:", lat, lng);
-        setPendingManualBar({ lat, lng });
-        setManualBarName("");
-        setManualBarAddress("");
+    // Paso 1: Activar modo de posicionamiento
+    const startPositioning = useCallback(() => {
+        setIsPositioning(true);
+        setIsModalOpen(false);
     }, []);
 
-    // Confirmar la creación del bar manual
-    const handleConfirmManualBar = useCallback(() => {
-        if (!pendingManualBar || !manualBarName.trim()) return;
+    // Cancelar posicionamiento
+    const cancelPositioning = useCallback(() => {
+        setIsPositioning(false);
+        setIsModalOpen(false);
+        setBarName("");
+        setBarAddress("");
+    }, []);
 
-        // Crear un ID único para el bar manual
+    // Paso 2: Confirmar posición y abrir modal
+    const confirmPosition = useCallback(() => {
+        setIsPositioning(false);
+        setBarName("");
+        setBarAddress("");
+        setIsModalOpen(true);
+    }, []);
+
+    const closeModal = useCallback(() => {
+        setIsModalOpen(false);
+        setBarName("");
+        setBarAddress("");
+    }, []);
+
+    // Confirmar creación del bar con las coordenadas del centro del mapa
+    const handleConfirm = useCallback((lat: number, lng: number) => {
+        if (!barName.trim()) return;
+
         const manualPlaceId = `manual_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
         const manualPlace: PlaceResult = {
             placeId: manualPlaceId,
-            name: manualBarName.trim(),
-            address: manualBarAddress.trim() || `${pendingManualBar.lat.toFixed(6)}, ${pendingManualBar.lng.toFixed(6)}`,
-            lat: pendingManualBar.lat,
-            lng: pendingManualBar.lng,
+            name: barName.trim(),
+            address: barAddress.trim() || `${lat.toFixed(5)}, ${lng.toFixed(5)}`,
+            lat,
+            lng,
             rating: null,
             userRatingsTotal: 0,
         };
@@ -44,37 +68,27 @@ export function useManualBarCreation({ defaultStayDuration, onBarAdded }: UseMan
             bar: manualPlace,
             plannedRounds: 1,
             maxRounds: undefined,
-            isStart: false, // Se determinará en el componente padre
+            isStart: false,
             stayDuration: defaultStayDuration,
         };
 
-        // Llamar al callback
         onBarAdded(manualPlace, config);
-
-        // Limpiar estado
-        setPendingManualBar(null);
-        setManualBarName("");
-        setManualBarAddress("");
-        setManualAddMode(false);
-    }, [pendingManualBar, manualBarName, manualBarAddress, defaultStayDuration, onBarAdded]);
-
-    // Cancelar la creación del bar manual
-    const handleCancelManualBar = useCallback(() => {
-        setPendingManualBar(null);
-        setManualBarName("");
-        setManualBarAddress("");
-    }, []);
+        closeModal();
+    }, [barName, barAddress, defaultStayDuration, onBarAdded, closeModal]);
 
     return {
-        manualAddMode,
-        setManualAddMode,
-        pendingManualBar,
-        manualBarName,
-        setManualBarName,
-        manualBarAddress,
-        setManualBarAddress,
-        handleMapClick,
-        handleConfirmManualBar,
-        handleCancelManualBar,
+        // Estados
+        isPositioning,
+        isModalOpen,
+        barName,
+        setBarName,
+        barAddress,
+        setBarAddress,
+        // Acciones
+        startPositioning,
+        cancelPositioning,
+        confirmPosition,
+        closeModal,
+        handleConfirm,
     };
 }

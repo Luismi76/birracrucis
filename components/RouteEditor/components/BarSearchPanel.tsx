@@ -24,9 +24,8 @@ interface BarSearchPanelProps {
     radius: string;
     onRadiusChange: (radius: string) => void;
 
-    // Modo manual
-    manualAddMode: boolean;
-    onToggleManualMode: () => void;
+    // Añadir bar manualmente
+    onAddManualBar: () => void;
 }
 
 export default function BarSearchPanel({
@@ -43,8 +42,7 @@ export default function BarSearchPanel({
     placesError,
     radius,
     onRadiusChange,
-    manualAddMode,
-    onToggleManualMode,
+    onAddManualBar,
 }: BarSearchPanelProps) {
     const searchInputRef = useRef<HTMLDivElement | null>(null);
     const [isExpanded, setIsExpanded] = useState(true);
@@ -150,23 +148,6 @@ export default function BarSearchPanel({
                     </button>
                 </div>
 
-                {/* Botón para añadir bar manualmente */}
-                <button
-                    onClick={onToggleManualMode}
-                    className={`w-full px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 border ${manualAddMode
-                        ? "bg-purple-500 text-white border-purple-600 hover:bg-purple-600"
-                        : "bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100"
-                        }`}
-                >
-                    <span>✏️</span>
-                    {manualAddMode ? "Modo manual activo - Clica en el mapa" : "Añadir bar que no aparece"}
-                </button>
-                {manualAddMode && (
-                    <p className="text-xs text-purple-600 bg-purple-50 p-2 rounded-lg border border-purple-100 text-center">
-                        💡 Haz clic en el mapa para añadir un bar que no aparece en Google Maps
-                    </p>
-                )}
-
                 {/* Radio de búsqueda */}
                 <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <div className="flex justify-between text-xs font-bold text-slate-500 uppercase tracking-wide">
@@ -198,6 +179,15 @@ export default function BarSearchPanel({
                     ) : (
                         <>🔍 Buscar Bares</>
                     )}
+                </button>
+
+                {/* Botón para añadir bar manualmente - simple y directo */}
+                <button
+                    onClick={onAddManualBar}
+                    className="w-full px-4 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                >
+                    <span>✏️</span>
+                    Añadir bar que no aparece
                 </button>
 
                 {/* Error de búsqueda */}

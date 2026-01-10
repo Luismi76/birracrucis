@@ -22,11 +22,14 @@ export default function ManualBarModal({
     if (!isOpen) return null;
 
     return (
-        <div className="absolute inset-0 bg-black/50 flex items-end sm:items-center justify-center z-30">
-            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl w-full sm:max-w-sm sm:mx-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50">
+            <div className="bg-white rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl w-full sm:max-w-sm sm:mx-4 max-h-[80vh] overflow-y-auto animate-in slide-in-from-bottom duration-200">
                 <div className="text-center mb-4">
                     <span className="text-3xl">📍</span>
-                    <h3 className="font-bold text-slate-800 text-lg mt-1">Nuevo Bar</h3>
+                    <h3 className="font-bold text-slate-800 text-lg mt-1">Añadir bar manualmente</h3>
+                    <p className="text-sm text-slate-500 mt-1">
+                        Se añadirá en el centro del mapa
+                    </p>
                 </div>
 
                 <div className="space-y-3">
@@ -39,7 +42,7 @@ export default function ManualBarModal({
                             placeholder="Ej: Bar de Pepe, La Taberna..."
                             value={barName}
                             onChange={(e) => onBarNameChange(e.target.value)}
-                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
+                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none text-base"
                             autoFocus
                         />
                     </div>
@@ -52,12 +55,12 @@ export default function ManualBarModal({
                             placeholder="Ej: Calle Mayor 5"
                             value={barAddress}
                             onChange={(e) => onBarAddressChange(e.target.value)}
-                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none text-base"
+                            className="w-full mt-1 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none text-base"
                         />
                     </div>
                 </div>
 
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2 mt-5">
                     <button
                         onClick={onCancel}
                         className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition-colors"
@@ -67,9 +70,9 @@ export default function ManualBarModal({
                     <button
                         onClick={onConfirm}
                         disabled={!barName.trim()}
-                        className="flex-1 py-3 bg-purple-500 text-white rounded-xl font-bold hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-bold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                        ✓ Añadir
+                        Añadir
                     </button>
                 </div>
             </div>

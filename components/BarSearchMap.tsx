@@ -21,8 +21,6 @@ type BarSearchMapProps = {
     routePreview?: { lat: number; lng: number }[]; // Array de coordenadas ordenadas
     onBarClick?: (placeId: string) => void;
     onDistanceCalculated?: (distanceMeters: number, durationSeconds: number) => void;
-    onMapClick?: (lat: number, lng: number) => void; // Para añadir bares manualmente
-    manualAddMode?: boolean; // Indica si está activo el modo de añadir bar manual
     isLoaded: boolean;
     loadError?: Error;
     onMapRef?: (mapRef: {
@@ -36,14 +34,13 @@ const mapContainerStyle = {
     height: "100%",
 };
 
-const getMapOptions = (manualMode: boolean) => ({
+const mapOptions = {
     disableDefaultUI: false,
     zoomControl: true,
     mapTypeControl: false,
     streetViewControl: false,
     fullscreenControl: false,
-    draggableCursor: manualMode ? "crosshair" : undefined,
-});
+};
 
 // Crear una key única para comparar rutas
 const getRouteKey = (routePreview?: { lat: number; lng: number }[]): string => {
@@ -59,8 +56,6 @@ export default function BarSearchMap({
     routePreview,
     onBarClick,
     onDistanceCalculated,
-    onMapClick,
-    manualAddMode = false,
     isLoaded,
     loadError,
     onMapRef,
@@ -189,14 +184,6 @@ export default function BarSearchMap({
         );
     }
 
-    const handleMapClick = (e: google.maps.MapMouseEvent) => {
-        console.log("BarSearchMap click event, manualAddMode:", manualAddMode, "hasCallback:", !!onMapClick);
-        if (manualAddMode && onMapClick && e.latLng) {
-            console.log("Calling onMapClick with:", e.latLng.lat(), e.latLng.lng());
-            onMapClick(e.latLng.lat(), e.latLng.lng());
-        }
-    };
-
     // Función para obtener coordenadas del clic usando la referencia del mapa
     const getClickCoordinates = (pixelX: number, pixelY: number, containerRect: DOMRect): { lat: number; lng: number } | null => {
         if (!mapRef.current) return null;
@@ -246,8 +233,7 @@ export default function BarSearchMap({
             mapContainerStyle={mapContainerStyle}
             center={center}
             zoom={zoom}
-            options={getMapOptions(manualAddMode)}
-            onClick={handleMapClick}
+            options={mapOptions}
             onLoad={onMapLoad}
         >
             {/* Círculo mostrando el radio de búsqueda */}
@@ -293,7 +279,7 @@ export default function BarSearchMap({
             />
 
             {/* Marcadores de bares */}
-            {bars.map((bar, index) => {
+            {bars.map((bar) => {
                 const isSelected = selectedBars.includes(bar.placeId);
                 const selectedIndex = selectedBars.indexOf(bar.placeId);
                 const displayNumber = isSelected ? selectedIndex + 1 : undefined;

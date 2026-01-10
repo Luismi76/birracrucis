@@ -64,11 +64,18 @@ const currentUser = await prisma.user.findUnique({
 
 **Guest User Support**: Many models (Participant, Drink, Photo, Message) support both `userId` and `guestId` fields. Guests can participate in routes without an account using a client-generated guestId.
 
-**Geolocation**: Uses Haversine formula for distance calculations. Auto check-in radius is 50m, proximity detection is 75m. Geolocation requires HTTPS on mobile.
+**Geolocation**: Uses Haversine formula for distance calculations (`hooks/useGeolocation.ts`). Auto check-in radius is 50m, manual check-in radius is 75m. Constants defined in `GEOLOCATION_CONSTANTS`. Geolocation requires HTTPS on mobile.
 
 **API Route Pattern**: All API routes use `{ params }: { params: Promise<{ id: string }> }` pattern (Next.js 15 async params).
 
-**Rate Limiting**: API routes use custom rate limiting via `lib/rate-limit.ts`. Use `rateLimit()` and `getClientIdentifier()` for protected endpoints.
+**Rate Limiting**: API routes use custom rate limiting via `lib/rate-limit.ts`. Use `rateLimit()` and `getClientIdentifier()` for protected endpoints. Predefined configs: `frequent` (30/10s), `standard` (60/min), `write` (20/min), `strict` (10/min).
+
+**Real-time Updates**: Uses Pusher for real-time features (participant locations, chat messages, round updates). Server client in `lib/pusher.ts` uses singleton pattern to avoid multiple connections in development.
+
+**Auth Helpers**: Use `lib/auth-helpers.ts` for consistent auth handling:
+- `getCurrentUser(req)` - Returns authenticated user OR guest (check `user.type`)
+- `getAuthenticatedUser(req)` - Returns only authenticated users (rejects guests)
+- `getUserIds(user)` - Extracts `{ userId }` or `{ guestId }` for database queries
 
 ### Main Components
 - `RouteEditor.tsx` - Create/edit routes with bar search and map
@@ -82,11 +89,27 @@ The app UI and user-facing content is in **Spanish**. Code comments and variable
 
 ## Environment Variables
 
-Required in `.env.local`:
+See `.env.example` for full documentation. Core required variables:
+
 ```
+# Database
 DATABASE_URL=postgresql://...
+
+# NextAuth
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=...
+
+# Google OAuth & Maps
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
 GOOGLE_MAPS_API_KEY=...
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
+
+# Pusher (real-time features)
+PUSHER_APP_ID=...
+PUSHER_SECRET=...
+NEXT_PUBLIC_PUSHER_KEY=...
+NEXT_PUBLIC_PUSHER_CLUSTER=...
 ```
+
+Optional: VAPID keys (push notifications), RESEND_API_KEY (emails), MINIO_* (photo storage).

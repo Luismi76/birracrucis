@@ -824,6 +824,9 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
   // Confetti al completar ruta
   const [showCompletionConfetti, setShowCompletionConfetti] = useState(false);
 
+  // Estado para expandir el resumen de ruta completada
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
+
   useEffect(() => {
     if (routeStatus === "completed" && !showCompletionConfetti) {
       setShowCompletionConfetti(true);
@@ -921,8 +924,22 @@ export default function RouteDetailClient({ stops, routeId, routeName, routeDate
 
       {/* 3. BOTTOM INFO SHEET */}
       {activeTab === 'route' && activeStop && (
-        <div className={`shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up overflow-y-auto ${routeStatus === "completed" ? "max-h-[25vh]" : "max-h-[35vh]"}`}>
-          <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full mx-auto mt-3 mb-1" />
+        <div className={`shrink-0 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 shadow-xl rounded-t-3xl z-40 -mt-4 relative animate-slide-up overflow-y-auto transition-all duration-300 ${
+          routeStatus === "completed"
+            ? (summaryExpanded ? "max-h-[85vh]" : "max-h-[40vh]")
+            : "max-h-[35vh]"
+        }`}>
+          <button
+            onClick={() => routeStatus === "completed" && setSummaryExpanded(!summaryExpanded)}
+            className="w-full flex flex-col items-center pt-3 pb-1 cursor-pointer"
+          >
+            <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-600 rounded-full" />
+            {routeStatus === "completed" && (
+              <span className="text-[10px] text-slate-400 mt-1">
+                {summaryExpanded ? "Toca para contraer" : "Toca para expandir"}
+              </span>
+            )}
+          </button>
 
           {/* RUTA COMPLETADA: Mostrar resumen */}
           {routeStatus === "completed" ? (
