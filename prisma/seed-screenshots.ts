@@ -65,21 +65,19 @@ async function main() {
             participants: {
                 create: [
                     {
-                        user: { connect: { id: user.id } },
-                        status: 'ACCEPTED',
-                        role: 'OWNER'
+                        userId: user.id,
+                        isActive: true
                     },
                     {
-                        user: { connect: { id: friend.id } },
-                        status: 'ACCEPTED',
-                        role: 'MEMBER'
+                        userId: friend.id,
+                        isActive: true
                     }
                 ]
             },
             potContributions: {
                 create: [
                     {
-                        user: { connect: { id: user.id } },
+                        userId: user.id,
                         userName: user.name,
                         amount: 20
                     }
