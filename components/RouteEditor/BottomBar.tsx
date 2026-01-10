@@ -32,7 +32,7 @@ interface BottomBarProps {
     onOptimize: () => void;
     onContinue: () => void;
     isSearching: boolean;
-    formatDistance: (meters: number | null) => string;
+    formatDistance: (meters: number) => string;
 }
 
 export default function BottomBar({
