@@ -26,13 +26,20 @@ interface BottomBarProps {
     onReorder: (newOrder: string[]) => void;
     onRemoveBar: (instanceId: string) => void;
     onSetStartBar: (instanceId: string) => void;
-    onSearch: () => void;
+    onSearchAtLocation: (lat: string, lng: string) => void;
+    onSearchInMapArea: () => void;
     onUseMyLocation: () => void;
     onAddManual: () => void;
     onOptimize: () => void;
     onContinue: () => void;
     isSearching: boolean;
     formatDistance: (meters: number) => string;
+    // Para búsqueda de ubicación
+    placeSearchQuery: string;
+    onPlaceSearchChange: (value: string) => void;
+    autocompleteSuggestions: google.maps.places.AutocompletePrediction[];
+    showSuggestions: boolean;
+    onSelectSuggestion: (placeId: string, description: string) => Promise<{ lat: string; lng: string } | null> | null;
 }
 
 export default function BottomBar({
@@ -42,15 +49,38 @@ export default function BottomBar({
     onReorder,
     onRemoveBar,
     onSetStartBar,
-    onSearch,
+    onSearchAtLocation,
+    onSearchInMapArea,
     onUseMyLocation,
     onAddManual,
     onOptimize,
     onContinue,
     isSearching,
     formatDistance,
+    placeSearchQuery,
+    onPlaceSearchChange,
+    autocompleteSuggestions,
+    showSuggestions,
+    onSelectSuggestion,
 }: BottomBarProps) {
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showSearchModal, setShowSearchModal] = useState(false);
+
+    const handleSuggestionClick = useCallback(async (placeId: string, description: string) => {
+        const result = onSelectSuggestion(placeId, description);
+        if (!result) return;
+        const coords = await result;
+        if (coords) {
+            onSearchAtLocation(coords.lat, coords.lng);
+            setShowSearchModal(false);
+            onPlaceSearchChange("");
+        }
+    }, [onSelectSuggestion, onSearchAtLocation, onPlaceSearchChange]);
+
+    const handleSearchInArea = useCallback(() => {
+        onSearchInMapArea();
+        setShowSearchModal(false);
+    }, [onSearchInMapArea]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -97,10 +127,10 @@ export default function BottomBar({
                 {/* Botones de acción */}
                 <div className="flex gap-2">
                     <button
-                        onClick={onSearch}
+                        onClick={() => setShowSearchModal(true)}
                         disabled={isSearching}
                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors disabled:opacity-50"
-                        title="Buscar bares cercanos"
+                        title="Buscar bares en otra zona"
                     >
                         {isSearching ? (
                             <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-400 border-t-transparent" />
@@ -112,7 +142,7 @@ export default function BottomBar({
                     <button
                         onClick={onUseMyLocation}
                         className="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 transition-colors"
-                        title="Usar mi ubicación"
+                        title="Buscar en mi ubicación"
                     >
                         <span className="text-lg">📍</span>
                     </button>
@@ -212,6 +242,89 @@ export default function BottomBar({
                     )}
                 </button>
             </div>
+
+            {/* Modal de búsqueda de ubicación */}
+            {showSearchModal && (
+                <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 border-b">
+                            <h3 className="font-bold text-lg text-slate-800">Buscar zona</h3>
+                            <button
+                                onClick={() => {
+                                    setShowSearchModal(false);
+                                    onPlaceSearchChange("");
+                                }}
+                                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Contenido */}
+                        <div className="p-4 space-y-4 flex-1 overflow-y-auto">
+                            {/* Input de búsqueda */}
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={placeSearchQuery}
+                                    onChange={(e) => onPlaceSearchChange(e.target.value)}
+                                    placeholder="Ej: Barcelona, Plaza Mayor, Chueca..."
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none"
+                                    autoFocus
+                                />
+
+                                {/* Sugerencias de autocompletado */}
+                                {showSuggestions && autocompleteSuggestions.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
+                                        {autocompleteSuggestions.map((suggestion) => (
+                                            <button
+                                                key={suggestion.place_id}
+                                                onClick={() => handleSuggestionClick(suggestion.place_id, suggestion.description)}
+                                                className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                                            >
+                                                <div className="font-medium text-slate-800 text-sm">
+                                                    {suggestion.structured_formatting.main_text}
+                                                </div>
+                                                <div className="text-xs text-slate-500">
+                                                    {suggestion.structured_formatting.secondary_text}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Separador */}
+                            <div className="flex items-center gap-3">
+                                <div className="flex-1 h-px bg-slate-200" />
+                                <span className="text-xs text-slate-400">o</span>
+                                <div className="flex-1 h-px bg-slate-200" />
+                            </div>
+
+                            {/* Buscar en área del mapa */}
+                            <button
+                                onClick={handleSearchInArea}
+                                disabled={isSearching}
+                                className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 rounded-xl font-medium text-slate-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isSearching ? (
+                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-slate-400 border-t-transparent" />
+                                ) : (
+                                    <>
+                                        <span>🗺️</span>
+                                        <span>Buscar en el área visible del mapa</span>
+                                    </>
+                                )}
+                            </button>
+
+                            <p className="text-xs text-slate-400 text-center">
+                                Mueve el mapa a la zona que quieras y pulsa el botón
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

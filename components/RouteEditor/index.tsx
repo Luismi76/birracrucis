@@ -530,13 +530,34 @@ export default function RouteEditor({ initialData }: RouteEditorProps) {
                         onReorder={handleReorder}
                         onRemoveBar={handleRemoveBar}
                         onSetStartBar={handleSetStartBar}
-                        onSearch={() => barSearch.handleSearchPlaces()}
-                        onUseMyLocation={geolocation.handleUseMyLocation}
+                        onSearchAtLocation={(lat, lng) => {
+                            geolocation.setCenterLat(lat);
+                            geolocation.setCenterLng(lng);
+                            barSearch.handleSearchPlaces(lat, lng);
+                        }}
+                        onSearchInMapArea={() => {
+                            const center = mapFunctionsRef.current?.getMapCenter();
+                            if (center) {
+                                const lat = center.lat.toString();
+                                const lng = center.lng.toString();
+                                geolocation.setCenterLat(lat);
+                                geolocation.setCenterLng(lng);
+                                barSearch.handleSearchPlaces(lat, lng);
+                            }
+                        }}
+                        onUseMyLocation={() => {
+                            geolocation.handleUseMyLocation();
+                        }}
                         onAddManual={manualBarCreation.startPositioning}
                         onOptimize={handleOptimizeRoute}
                         onContinue={handleContinue}
                         isSearching={barSearch.placesLoading}
                         formatDistance={routeCalculations.formatDistance}
+                        placeSearchQuery={barSearch.placeSearchQuery}
+                        onPlaceSearchChange={barSearch.handlePlaceSearchChange}
+                        autocompleteSuggestions={barSearch.autocompleteSuggestions}
+                        showSuggestions={barSearch.showSuggestions}
+                        onSelectSuggestion={barSearch.handleSelectSuggestion}
                     />
                 )}
             </div>
